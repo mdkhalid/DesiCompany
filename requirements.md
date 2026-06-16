@@ -150,10 +150,19 @@ The system prioritizes **simplicity, trust, and scalability**.
 ### 4.7 Payments
 - Multiple payment methods:
   - Cash/offline
-  - Online via configured Indian payment gateway (e.g., Razorpay)
+  - Online via admin-configured payment gateway (Razorpay, Stripe, etc.)
+- **Admin-configurable gateway** (no server restart needed):
+  - Admin can add/edit/remove gateways from dashboard
+  - Enable/disable gateways at runtime
+  - Store gateway credentials securely in DB
+  - Select default gateway for the platform
+  - Env variable as fallback if no DB config exists
+- Strategy pattern for gateway abstraction:
+  - `PaymentGateway` interface with pluggable implementations
+  - `RazorpayGateway`, `StripeGateway`, etc.
+  - Selected via admin config, not hardcoded
 - Wallet support for refunds/credits.
 - Transaction ledger.
-- Configurable gateway via environment settings.
 
 ### 4.8 Notifications
 - Push notifications via Firebase Cloud Messaging.
@@ -226,9 +235,18 @@ npm run start:dev
 - [x] Search/discovery (by category, location, rating, availability)
 
 ### Phase 3 — Payments & Commission ⬜ PENDING
-- [ ] Wallet system
-- [ ] Payment gateway integration (Razorpay - configurable)
-- [ ] Cash/offline payment support
+- [ ] Payment gateway config table (`payment_gateway_configs`)
+  - `type` (razorpay/stripe/cash)
+  - `name` (display name)
+  - `credentials` (encrypted JSON)
+  - `isActive` (enabled/disabled)
+  - `isDefault` (primary gateway)
+- [ ] Admin gateway management (add/edit/remove/enable/disable)
+- [ ] Strategy pattern gateway abstraction (`PaymentGateway` interface)
+- [ ] Razorpay gateway implementation
+- [ ] Stripe gateway implementation (future)
+- [ ] Cash/offline payment flow
+- [ ] Wallet system (balance, add funds, deduct)
 - [ ] Commission calculation and deduction
 - [ ] Transaction ledger
 
