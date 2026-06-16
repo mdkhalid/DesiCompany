@@ -1,5 +1,20 @@
 # DesiCompany — Application Requirements
 
+## Current Status
+
+| Component | Status |
+|-----------|--------|
+| Requirements Doc | ✅ Complete |
+| NestJS Backend (Phase 1) | ✅ Complete — tested & pushed |
+| Backend Phase 2-4 | ⬜ Pending |
+| Flutter Mobile App | ⬜ Pending |
+| React Admin Web | ⬜ Pending |
+
+**Last Updated:** 2026-06-17
+**GitHub:** https://github.com/mdkhalid/DesiCompany
+
+---
+
 ## 1. Overview
 
 **DesiCompany** is a multi-platform local service marketplace connecting:
@@ -191,37 +206,41 @@ npm run start:dev
 
 ## 7. Implementation Phases
 
-### Phase 1 — Foundation (Backend First)
-- Project scaffolding
-- Docker Compose setup
-- Database design and entities
-- Authentication (OTP + JWT)
-- User management
-- KYC document upload
-- Admin user management
+### Phase 1 — Foundation ✅ COMPLETED
+- [x] Project scaffolding (NestJS)
+- [x] Docker Compose setup (PostgreSQL + Redis)
+- [x] Database design and entities (15 entities)
+- [x] Authentication (Phone OTP + JWT + Passport)
+- [x] User management (CRUD, status)
+- [x] KYC document upload (provider verification)
+- [x] Admin user management (activate/suspend/remove)
+- [x] Service categories (EN/HI)
+- [x] Commission engine (free/fixed/percentage)
+- [x] Seed data (admin, customer, provider, 5 categories)
+- [x] Swagger API docs at `/api`
 
-### Phase 2 — Core Business Logic
-- Service categories
-- Provider services and pricing
-- Booking workflow
-- Search/discovery
+### Phase 2 — Core Business Logic ⬜ PENDING
+- [ ] Provider services and pricing (hourly/daily/fixed)
+- [ ] Booking workflow (request → accept → on the way → working → completed)
+- [ ] Booking charges (material/parts added during job)
+- [ ] Search/discovery (by category, location, rating, availability)
 
-### Phase 3 — Payments & Commission
-- Wallet
-- Payment gateway integration
-- Commission engine
-- Transaction ledger
+### Phase 3 — Payments & Commission ⬜ PENDING
+- [ ] Wallet system
+- [ ] Payment gateway integration (Razorpay - configurable)
+- [ ] Cash/offline payment support
+- [ ] Commission calculation and deduction
+- [ ] Transaction ledger
 
-### Phase 4 — Engagement
-- Real-time chat
-- Reviews and ratings
-- Notifications
+### Phase 4 — Engagement ⬜ PENDING
+- [ ] Real-time chat (Socket.io)
+- [ ] Reviews and ratings (after booking completion)
+- [ ] Notifications (push + SMS + in-app)
 
-### Phase 5 — Admin Web & Mobile UI
-- Admin dashboard
-- Customer mobile app
-- Provider mobile app
-- Polish, testing, deployment prep
+### Phase 5 — Mobile & Web UI ⬜ PENDING
+- [ ] Flutter mobile app (Customer + Provider)
+- [ ] React admin dashboard (TailwindCSS)
+- [ ] Polish, testing, deployment prep
 
 ---
 
@@ -231,3 +250,39 @@ npm run start:dev
 - Payment gateway should be configurable via environment variables to switch providers.
 - Commission engine should be flexible and not hardcoded.
 - Mock OTP for local development; real SMS gateway for production.
+
+---
+
+## 9. Backend Setup (Local Development)
+
+```bash
+# Prerequisites: Node.js 20+, Docker Desktop running
+
+cd backendapi
+
+# Start PostgreSQL + Redis
+docker-compose up -d
+
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Seed sample data (admin, customer, provider, categories)
+npm run seed
+
+# Start dev server (http://localhost:3000)
+npm run start:dev
+
+# Swagger docs at http://localhost:3000/api
+```
+
+### Seed Data
+| User | Phone | Role |
+|------|-------|------|
+| Admin | 9999999999 | admin |
+| Rahul Sharma | 9876543210 | customer |
+| Amit Kumar | 9876543211 | provider |
+
+**Mock OTP Code:** `123456` (for all users in dev)
