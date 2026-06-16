@@ -1,0 +1,43 @@
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { BaseEntity } from '../../common/entities/base.entity';
+import { BookingStatus } from '../../common/enums/booking-status.enum';
+import { Customer } from '../../users/entities/customer.entity';
+import { Provider } from '../../users/entities/provider.entity';
+import { ProviderService } from '../../services/entities/provider-service.entity';
+import { BookingCharge } from './booking-charge.entity';
+
+@Entity('bookings')
+export class Booking extends BaseEntity {
+  @ManyToOne(() => Customer, (customer) => customer.bookings, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'customer_id' })
+  customer: Customer;
+
+  @ManyToOne(() => Provider, (provider) => provider.bookings, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'provider_id' })
+  provider: Provider;
+
+  @ManyToOne(() => ProviderService, { nullable: true })
+  @JoinColumn({ name: 'provider_service_id' })
+  providerService: ProviderService;
+
+  @Column({ default: BookingStatus.REQUESTED })
+  status: BookingStatus;
+
+  @Column()
+  scheduledDate: Date;
+
+  @Column({ nullable: true })
+  description: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  totalAmount: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  commissionAmount: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  providerAmount: number;
+
+  @OneToMany(() => BookingCharge, (charge) => charge.booking)
+  charges?: BookingCharge[];
+}

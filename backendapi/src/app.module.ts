@@ -1,0 +1,59 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { databaseConfig } from './config/database.config';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { KycModule } from './kyc/kyc.module';
+import { ServicesModule } from './services/services.module';
+import { CommissionsModule } from './commissions/commissions.module';
+import { AdminModule } from './admin/admin.module';
+import { User } from './users/entities/user.entity';
+import { Customer } from './users/entities/customer.entity';
+import { Provider } from './users/entities/provider.entity';
+import { KycDocument } from './kyc/entities/kyc-document.entity';
+import { ServiceCategory } from './services/entities/service-category.entity';
+import { Booking } from './bookings/entities/booking.entity';
+import { BookingCharge } from './bookings/entities/booking-charge.entity';
+import { Payment } from './payments/entities/payment.entity';
+import { Wallet } from './payments/entities/wallet.entity';
+import { Transaction } from './payments/entities/transaction.entity';
+import { CommissionConfig } from './commissions/entities/commission-config.entity';
+import { Review } from './reviews/entities/review.entity';
+import { Notification } from './notifications/entities/notification.entity';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    TypeOrmModule.forRoot(databaseConfig()),
+    AuthModule,
+    UsersModule,
+    KycModule,
+    ServicesModule,
+    CommissionsModule,
+    AdminModule,
+    TypeOrmModule.forFeature([
+      User,
+      Customer,
+      Provider,
+      KycDocument,
+      ServiceCategory,
+      Booking,
+      BookingCharge,
+      Payment,
+      Wallet,
+      Transaction,
+      CommissionConfig,
+      Review,
+      Notification,
+    ]),
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
