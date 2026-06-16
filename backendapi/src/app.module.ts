@@ -10,6 +10,7 @@ import { KycModule } from './kyc/kyc.module';
 import { ServicesModule } from './services/services.module';
 import { CommissionsModule } from './commissions/commissions.module';
 import { AdminModule } from './admin/admin.module';
+import { BookingsModule } from './bookings/bookings.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -37,6 +38,7 @@ import { Notification } from './notifications/entities/notification.entity';
     ServicesModule,
     CommissionsModule,
     AdminModule,
+    BookingsModule,
     TypeOrmModule.forFeature([
       User,
       Customer,

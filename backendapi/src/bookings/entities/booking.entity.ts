@@ -8,11 +8,15 @@ import { BookingCharge } from './booking-charge.entity';
 
 @Entity('bookings')
 export class Booking extends BaseEntity {
-  @ManyToOne(() => Customer, (customer) => customer.bookings, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Customer, (customer) => customer.bookings, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'customer_id' })
   customer: Customer;
 
-  @ManyToOne(() => Provider, (provider) => provider.bookings, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Provider, (provider) => provider.bookings, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'provider_id' })
   provider: Provider;
 
@@ -37,6 +41,12 @@ export class Booking extends BaseEntity {
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   providerAmount: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  estimatedHours: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  estimatedDays: number;
 
   @OneToMany(() => BookingCharge, (charge) => charge.booking)
   charges?: BookingCharge[];

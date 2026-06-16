@@ -6,7 +6,7 @@
 |-----------|--------|
 | Requirements Doc | ✅ Complete |
 | NestJS Backend (Phase 1) | ✅ Complete — tested & pushed |
-| Backend Phase 2-4 | ⬜ Pending |
+| Backend Phase 2 | ✅ Complete |
 | Flutter Mobile App | ⬜ Pending |
 | React Admin Web | ⬜ Pending |
 
@@ -219,11 +219,11 @@ npm run start:dev
 - [x] Seed data (admin, customer, provider, 5 categories)
 - [x] Swagger API docs at `/api`
 
-### Phase 2 — Core Business Logic ⬜ PENDING
-- [ ] Provider services and pricing (hourly/daily/fixed)
-- [ ] Booking workflow (request → accept → on the way → working → completed)
-- [ ] Booking charges (material/parts added during job)
-- [ ] Search/discovery (by category, location, rating, availability)
+### Phase 2 — Core Business Logic ✅ COMPLETED
+- [x] Provider services and pricing (hourly/daily/fixed)
+- [x] Booking workflow (request → accept → on the way → working → completed)
+- [x] Booking charges (material/parts added during job)
+- [x] Search/discovery (by category, location, rating, availability)
 
 ### Phase 3 — Payments & Commission ⬜ PENDING
 - [ ] Wallet system

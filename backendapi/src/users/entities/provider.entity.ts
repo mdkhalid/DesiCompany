@@ -5,6 +5,7 @@ import { KycDocument } from '../../kyc/entities/kyc-document.entity';
 import { ProviderService } from '../../services/entities/provider-service.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
 import { Review } from '../../reviews/entities/review.entity';
+import { ProviderAvailability } from '../../services/entities/provider-availability.entity';
 
 @Entity('providers')
 export class Provider extends BaseEntity {
@@ -54,8 +55,17 @@ export class Provider extends BaseEntity {
   @OneToMany(() => KycDocument, (kycDocument) => kycDocument.provider)
   kycDocuments?: KycDocument[];
 
-  @OneToMany(() => ProviderService, (providerService) => providerService.provider)
+  @OneToMany(
+    () => ProviderService,
+    (providerService) => providerService.provider,
+  )
   services?: ProviderService[];
+
+  @OneToMany(
+    () => ProviderAvailability,
+    (availability) => availability.provider,
+  )
+  availabilities?: ProviderAvailability[];
 
   @OneToMany(() => Booking, (booking) => booking.provider)
   bookings?: Booking[];

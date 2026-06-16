@@ -5,6 +5,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { KycDocument } from '../kyc/entities/kyc-document.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
+import { ProviderAvailability } from '../services/entities/provider-availability.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { BookingCharge } from '../bookings/entities/booking-charge.entity';
 import { Payment } from '../payments/entities/payment.entity';
@@ -21,11 +22,21 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const entities = [
-  User, Customer, Provider, KycDocument,
-  ServiceCategory, ProviderService,
-  Booking, BookingCharge,
-  Payment, Wallet, Transaction,
-  CommissionConfig, Review, Notification,
+  User,
+  Customer,
+  Provider,
+  KycDocument,
+  ServiceCategory,
+  ProviderService,
+  ProviderAvailability,
+  Booking,
+  BookingCharge,
+  Payment,
+  Wallet,
+  Transaction,
+  CommissionConfig,
+  Review,
+  Notification,
 ];
 
 async function seed() {
@@ -47,7 +58,9 @@ async function seed() {
   const providerRepository = dataSource.getRepository(Provider);
   const categoryRepository = dataSource.getRepository(ServiceCategory);
 
-  const adminExists = await userRepository.findOne({ where: { role: UserRole.ADMIN } });
+  const adminExists = await userRepository.findOne({
+    where: { role: UserRole.ADMIN },
+  });
   if (!adminExists) {
     const admin = userRepository.create({
       phone: process.env.ADMIN_PHONE || '9999999999',
@@ -59,7 +72,9 @@ async function seed() {
     console.log('Admin user created');
   }
 
-  const customerExists = await userRepository.findOne({ where: { phone: '9876543210' } });
+  const customerExists = await userRepository.findOne({
+    where: { phone: '9876543210' },
+  });
   if (!customerExists) {
     const customerUser = userRepository.create({
       phone: '9876543210',
@@ -81,7 +96,9 @@ async function seed() {
     console.log('Sample customer created');
   }
 
-  const providerExists = await userRepository.findOne({ where: { phone: '9876543211' } });
+  const providerExists = await userRepository.findOne({
+    where: { phone: '9876543211' },
+  });
   if (!providerExists) {
     const providerUser = userRepository.create({
       phone: '9876543211',
@@ -108,16 +125,124 @@ async function seed() {
     console.log('Sample provider created');
   }
 
+  const provider = await providerRepository.findOne({
+    where: { user: { phone: '9876543211' } },
+    relations: { user: true },
+  });
+  if (provider) {
+    const providerServiceRepository = dataSource.getRepository(ProviderService);
+    const availabilityRepository =
+      dataSource.getRepository(ProviderAvailability);
+
+    const plumberCategory = await categoryRepository.findOne({
+      where: { nameEn: 'Plumber' },
+    });
+    const electricianCategory = await categoryRepository.findOne({
+      where: { nameEn: 'Electrician' },
+    });
+
+    if (plumberCategory) {
+      const plumberServiceExists = await providerServiceRepository.findOne({
+        where: {
+          provider: { id: provider.id },
+          category: { id: plumberCategory.id },
+        },
+      });
+      if (!plumberServiceExists) {
+        await providerServiceRepository.save(
+          providerServiceRepository.create({
+            provider,
+            category: plumberCategory,
+            fixedRate: 500,
+            hourlyRate: 250,
+          }),
+        );
+        console.log('Plumber service created for sample provider');
+      }
+    }
+
+    if (electricianCategory) {
+      const electricianServiceExists = await providerServiceRepository.findOne({
+        where: {
+          provider: { id: provider.id },
+          category: { id: electricianCategory.id },
+        },
+      });
+      if (!electricianServiceExists) {
+        await providerServiceRepository.save(
+          providerServiceRepository.create({
+            provider,
+            category: electricianCategory,
+            fixedRate: 400,
+            hourlyRate: 200,
+          }),
+        );
+        console.log('Electrician service created for sample provider');
+      }
+    }
+
+    const existingAvailability = await availabilityRepository.findOne({
+      where: { provider: { id: provider.id } },
+    });
+    if (!existingAvailability) {
+      const availabilitySlots = [
+        { dayOfWeek: 1, startTime: '09:00', endTime: '18:00' },
+        { dayOfWeek: 2, startTime: '09:00', endTime: '18:00' },
+        { dayOfWeek: 3, startTime: '09:00', endTime: '18:00' },
+        { dayOfWeek: 4, startTime: '09:00', endTime: '18:00' },
+        { dayOfWeek: 5, startTime: '09:00', endTime: '18:00' },
+      ];
+      for (const slot of availabilitySlots) {
+        await availabilityRepository.save(
+          availabilityRepository.create({ provider, ...slot }),
+        );
+      }
+      console.log('Availability slots created for sample provider');
+    }
+  }
+
   const categories = [
-    { nameEn: 'Plumber', nameHi: 'प्लंबर', icon: 'plumber', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
-    { nameEn: 'Electrician', nameHi: 'इलेक्ट्रीशियन', icon: 'electrician', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
-    { nameEn: 'Computer Repair', nameHi: 'कंप्यूटर रिपेयर', icon: 'computer', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
-    { nameEn: 'Electronics Service', nameHi: 'इलेक्ट्रॉनिक्स सर्विस', icon: 'electronics', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
-    { nameEn: 'Daily Wage Labour', nameHi: 'दैनिक मजदूर', icon: 'labour', commissionType: CommissionType.PERCENTAGE, commissionValue: 5 },
+    {
+      nameEn: 'Plumber',
+      nameHi: 'प्लंबर',
+      icon: 'plumber',
+      commissionType: CommissionType.PERCENTAGE,
+      commissionValue: 10,
+    },
+    {
+      nameEn: 'Electrician',
+      nameHi: 'इलेक्ट्रीशियन',
+      icon: 'electrician',
+      commissionType: CommissionType.PERCENTAGE,
+      commissionValue: 10,
+    },
+    {
+      nameEn: 'Computer Repair',
+      nameHi: 'कंप्यूटर रिपेयर',
+      icon: 'computer',
+      commissionType: CommissionType.PERCENTAGE,
+      commissionValue: 10,
+    },
+    {
+      nameEn: 'Electronics Service',
+      nameHi: 'इलेक्ट्रॉनिक्स सर्विस',
+      icon: 'electronics',
+      commissionType: CommissionType.PERCENTAGE,
+      commissionValue: 10,
+    },
+    {
+      nameEn: 'Daily Wage Labour',
+      nameHi: 'दैनिक मजदूर',
+      icon: 'labour',
+      commissionType: CommissionType.PERCENTAGE,
+      commissionValue: 5,
+    },
   ];
 
   for (const category of categories) {
-    const exists = await categoryRepository.findOne({ where: { nameEn: category.nameEn } });
+    const exists = await categoryRepository.findOne({
+      where: { nameEn: category.nameEn },
+    });
     if (!exists) {
       await categoryRepository.save(categoryRepository.create(category));
       console.log(`Category created: ${category.nameEn}`);
