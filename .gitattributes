@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+# Ensure shell scripts always use LF even if checked out on Windows
+*.sh text eol=lf
+
+# Binary files (don't touch)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
