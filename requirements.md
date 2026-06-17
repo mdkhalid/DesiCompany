@@ -8,6 +8,7 @@
 | NestJS Backend (Phase 1) | ✅ Complete — tested & pushed |
 | Backend Phase 2 | ✅ Complete |
 | Backend Phase 3 | ✅ Complete |
+| Backend Phase 4 | ✅ Complete |
 | Flutter Mobile App | ⬜ Pending |
 | React Admin Web | ⬜ Pending |
 
@@ -261,10 +262,23 @@ npm run start:dev
 - [x] Admin initiated refunds (wallet credit + gateway refund)
 - [x] Encrypted credential storage (AES-256-GCM with env key)
 
-### Phase 4 — Engagement ⬜ PENDING
-- [ ] Real-time chat (Socket.io)
-- [ ] Reviews and ratings (after booking completion)
-- [ ] Notifications (push + SMS + in-app)
+### Phase 4 — Engagement ✅ COMPLETED
+- [x] Real-time chat (Socket.io via `ChatGateway`)
+  - Join booking room (`join`)
+  - Send message (`send_message`)
+  - Mark as read (`mark_read`)
+  - Message history on join
+- [x] Reviews and ratings (after booking completion)
+  - Create review (`POST /reviews`)
+  - View by provider (`GET /reviews/provider/:id`)
+  - View by customer (`GET /reviews/customer/:id`)
+  - View by booking (`GET /reviews/booking/:id`)
+  - Auto-updates provider average rating
+- [x] In-app notifications (REST API)
+  - List notifications (`GET /notifications`)
+  - Unread count (`GET /notifications/unread-count`)
+  - Mark as read (`PATCH /notifications/:id/read`)
+  - Mark all as read (`PATCH /notifications/read-all`)
 
 ### Phase 5 — Mobile & Web UI ⬜ PENDING
 - [ ] Flutter mobile app (Customer + Provider)
