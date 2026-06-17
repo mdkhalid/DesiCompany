@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.env
+*.log
+body.json
+body2.json
+login_resp.json
+.kimchi/
+frontendapp/.dart_tool/
+frontendapp/.packages
+frontendapp/build/
+frontendapp/.flutter-plugins
+frontendapp/.flutter-plugins-dependencies
+frontendapp/pubspec.lock
+adminweb/node_modules/
+adminweb/dist/

@@ -15,6 +15,8 @@ import { Payment } from '../payments/entities/payment.entity';
 import { Wallet } from '../payments/entities/wallet.entity';
 import { Transaction } from '../payments/entities/transaction.entity';
 import { PaymentGatewayConfig } from '../payments/entities/payment-gateway-config.entity';
+import { Review } from '../reviews/entities/review.entity';
+import { CommissionConfig } from '../commissions/entities/commission-config.entity';
 import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
@@ -28,6 +30,8 @@ import { PaymentsModule } from '../payments/payments.module';
       Wallet,
       Transaction,
       PaymentGatewayConfig,
+      Review,
+      CommissionConfig,
     ]),
     PaymentsModule,
   ],

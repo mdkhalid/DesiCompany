@@ -32,14 +32,29 @@ export class BookingsController {
 
   @Post()
   @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
-  create(@Body() dto: CreateBookingDto) {
+  async create(@Body() dto: CreateBookingDto, @Req() req: AuthRequest) {
+    if (dto.customerId === 'me' || !dto.customerId) {
+      return this.bookingsService.createByUser(req.user.id, dto);
+    }
     return this.bookingsService.create(dto);
+  }
+
+  @Get('customer/me')
+  @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
+  findMyCustomerBookings(@Req() req: AuthRequest) {
+    return this.bookingsService.findByCustomerUser(req.user.id);
   }
 
   @Get('customer/:customerId')
   @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
   findByCustomer(@Param('customerId') customerId: string) {
     return this.bookingsService.findByCustomer(customerId);
+  }
+
+  @Get('provider/me')
+  @Roles(UserRole.PROVIDER, UserRole.ADMIN)
+  findMyProviderBookings(@Req() req: AuthRequest) {
+    return this.bookingsService.findByProviderUser(req.user.id);
   }
 
   @Get('provider/:providerId')

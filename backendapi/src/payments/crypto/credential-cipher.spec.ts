@@ -114,7 +114,7 @@ describe('credential-cipher', () => {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { encryptCredentials: enc } = require('./credential-cipher');
       return enc('sk_live_cross_key');
-    }) as ReturnType<typeof encryptCredentials>;
+    }) as unknown as ReturnType<typeof encryptCredentials>;
 
     // decryptCredentials uses the main module (VALID_KEY_HEX) — different key
     // → GCM authentication fails because ciphertext was sealed with wrongKey

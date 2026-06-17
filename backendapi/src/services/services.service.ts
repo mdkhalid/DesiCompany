@@ -201,6 +201,13 @@ export class ServicesService {
     await this.availabilityRepository.remove(availability);
   }
 
+  async findAllVerifiedProviders() {
+    return this.providerRepository.find({
+      where: { isVerified: true },
+      relations: { user: true, services: { category: true }, availabilities: true },
+    });
+  }
+
   async searchVerifiedProviders(dto: SearchProvidersDto) {
     const query = this.providerRepository
       .createQueryBuilder('provider')

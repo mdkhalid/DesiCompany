@@ -8,8 +8,9 @@ import {
 import { BookingStatus } from '../../common/enums/booking-status.enum';
 
 export class CreateBookingDto {
-  @IsUUID()
-  customerId: string;
+  @IsOptional()
+  @IsString()
+  customerId?: string;
 
   @IsUUID()
   providerId: string;

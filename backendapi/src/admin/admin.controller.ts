@@ -15,4 +15,22 @@ export class AdminController {
   getDashboard() {
     return this.adminService.getDashboard();
   }
+
+  @Get('bookings')
+  @Roles(UserRole.ADMIN)
+  findAllBookings() {
+    return this.adminService.findAllBookings();
+  }
+
+  @Get('commissions')
+  @Roles(UserRole.ADMIN)
+  findAllCommissions() {
+    return this.adminService.findAllCommissions();
+  }
+
+  @Get('reviews')
+  @Roles(UserRole.ADMIN)
+  findAllReviews() {
+    return this.adminService.findAllReviews();
+  }
 }

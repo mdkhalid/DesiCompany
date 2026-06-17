@@ -5,6 +5,7 @@ import { ServicesService } from './services.service';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
+import { Provider } from '../users/entities/provider.entity';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ProviderAvailability } from './entities/provider-availability.entity';
       ServiceCategory,
       ProviderService,
       ProviderAvailability,
+      Provider,
     ]),
   ],
   controllers: [ServicesController],

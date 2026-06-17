@@ -21,10 +21,8 @@ describe('AdminPaymentGatewaysService', () => {
 
   function makeRow(overrides: Partial<PaymentGatewayConfig> & { id: string; type: PaymentGatewayType }): PaymentGatewayConfig {
     return {
-      id: 'id',
       createdAt: now,
       updatedAt: now,
-      type: PaymentGatewayType.RAZORPAY,
       displayName: 'Test',
       encryptedCredentials: 'encrypted',
       iv: 'iv123456789012',
@@ -54,7 +52,7 @@ describe('AdminPaymentGatewaysService', () => {
         if (where?.isDefault !== undefined) res = res.filter((r) => r.isDefault === where.isDefault);
         return Promise.resolve(res[0] ?? null);
       }),
-      create: jest.fn((data: any) => makeRow({ id: 'new-id', ...data })),
+      create: jest.fn((data?: any) => makeRow({ id: 'new-id', ...data })) as any,
       save: jest.fn(async (entity: any) => {
         const existing = rows.findIndex((r) => r.id === entity.id);
         if (existing >= 0) rows[existing] = entity;

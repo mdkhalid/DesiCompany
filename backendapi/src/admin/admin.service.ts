@@ -6,6 +6,8 @@ import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { Payment } from '../payments/entities/payment.entity';
+import { Review } from '../reviews/entities/review.entity';
+import { CommissionConfig } from '../commissions/entities/commission-config.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
 
@@ -22,6 +24,10 @@ export class AdminService {
     private readonly bookingRepository: Repository<Booking>,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
+    @InjectRepository(Review)
+    private readonly reviewRepository: Repository<Review>,
+    @InjectRepository(CommissionConfig)
+    private readonly commissionConfigRepository: Repository<CommissionConfig>,
   ) {}
 
   async getDashboard() {
@@ -40,5 +46,25 @@ export class AdminService {
       totalPayments,
       activeUsers,
     };
+  }
+
+  async findAllBookings() {
+    return this.bookingRepository.find({
+      relations: { customer: { user: true }, provider: { user: true }, providerService: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findAllCommissions() {
+    return this.commissionConfigRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findAllReviews() {
+    return this.reviewRepository.find({
+      relations: { customer: { user: true }, provider: { user: true }, booking: true },
+      order: { createdAt: 'DESC' },
+    });
   }
 }

@@ -37,6 +37,16 @@ export class BookingsService {
     private readonly commissionService: CommissionService,
   ) {}
 
+  async createByUser(userId: string, dto: CreateBookingDto) {
+    const customer = await this.customerRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!customer) {
+      throw new NotFoundException('Customer not found for this user');
+    }
+    return this.create({ ...dto, customerId: customer.id });
+  }
+
   async create(dto: CreateBookingDto) {
     const customer = await this.customerRepository.findOne({
       where: { id: dto.customerId },
@@ -78,6 +88,18 @@ export class BookingsService {
 
     const saved = await this.bookingRepository.save(booking);
     return this.recalculateTotals(saved.id);
+  }
+
+  async findByCustomerUser(userId: string) {
+    const customer = await this.customerRepository.findOne({ where: { user: { id: userId } } });
+    if (!customer) return [];
+    return this.findByCustomer(customer.id);
+  }
+
+  async findByProviderUser(userId: string) {
+    const provider = await this.providerRepository.findOne({ where: { user: { id: userId } } });
+    if (!provider) return [];
+    return this.findByProvider(provider.id);
   }
 
   async findByCustomer(customerId: string) {

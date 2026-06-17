@@ -147,8 +147,8 @@ describe('PaymentsService', () => {
         bookingId,
         customerPhone: '9999999999',
       });
-      expect(result.gatewayOrderId).toBe('order_abc123');
-      expect(result.paymentId).toBe('pay-new');
+      expect((result as any).gatewayOrderId).toBe('order_abc123');
+      expect((result as any).paymentId).toBe('pay-new');
     });
 
     it('creates cash order when default gateway is cash', async () => {
@@ -163,8 +163,8 @@ describe('PaymentsService', () => {
 
       const result = await service.createOrderForBooking(bookingId, userId, UserRole.CUSTOMER);
 
-      expect(result.method).toBe('cash');
-      expect(result.paymentId).toBe('pay-cash');
+      expect((result as any).method).toBe('cash');
+      expect((result as any).paymentId).toBe('pay-cash');
     });
   });
 

@@ -6,9 +6,6 @@ import { Wallet } from './entities/wallet.entity';
 import { PaymentGatewayConfig } from './entities/payment-gateway-config.entity';
 import { WebhookEvent } from './entities/webhook-event.entity';
 import { PaymentGatewayFactory } from './gateways/payment-gateway.factory';
-import { RazorpayGateway } from './gateways/razorpay.gateway';
-import { StripeGateway } from './gateways/stripe.gateway';
-import { CashGateway } from './gateways/cash.gateway';
 import { PaymentsService } from './payments.service';
 import { PaymentsController } from './payments.controller';
 import { WebhookService } from './webhooks.service';
@@ -45,9 +42,6 @@ import { Booking } from '../bookings/entities/booking.entity';
   ],
   providers: [
     PaymentGatewayFactory,
-    RazorpayGateway,
-    StripeGateway,
-    CashGateway,
     PaymentsService,
     WebhookService,
     WalletsService,

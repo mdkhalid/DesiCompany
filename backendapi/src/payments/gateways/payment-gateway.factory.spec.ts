@@ -13,13 +13,13 @@ const ENCRYPTION_KEY = '0'.repeat(64); // 32 bytes of '0' in hex
 const mockRepo = {
   find: jest.fn(),
   findOne: jest.fn(),
-} as unknown as Repository<PaymentGatewayConfig>;
+};
 
 let factory: PaymentGatewayFactory;
 
 beforeAll(() => {
   process.env.PAYMENT_GATEWAY_ENCRYPTION_KEY = ENCRYPTION_KEY;
-  factory = new PaymentGatewayFactory(mockRepo);
+  factory = new PaymentGatewayFactory(mockRepo as unknown as Repository<PaymentGatewayConfig>);
 });
 
 afterAll(() => {
@@ -36,7 +36,6 @@ function buildConfig(overrides: Partial<PaymentGatewayConfig> & { type: PaymentG
     id: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
-    type: PaymentGatewayType.CASH,
     displayName: 'Cash',
     encryptedCredentials: '',
     iv: '',
@@ -199,8 +198,8 @@ describe('PaymentGatewayFactory', () => {
 
     beforeEach(() => {
       configs = [];
-      (mockRepo.find as jest.Mock).mockImplementation(() => Promise.resolve([...configs]));
-      (mockRepo.findOne as jest.Mock).mockImplementation(({ where }: any) => {
+      mockRepo.find.mockImplementation(() => Promise.resolve([...configs]));
+      mockRepo.findOne.mockImplementation(({ where }: any) => {
         if (where?.type) {
           return Promise.resolve(configs.find((c) => c.type === where.type) ?? null);
         }

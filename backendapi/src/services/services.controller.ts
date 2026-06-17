@@ -25,6 +25,12 @@ import { SearchProvidersDto } from './dto/search-providers.dto';
 export class ServicesController {
   constructor(private readonly servicesService: ServicesService) {}
 
+  @Get('providers')
+  @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
+  findAllProviders() {
+    return this.servicesService.findAllVerifiedProviders();
+  }
+
   @Get('search')
   @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
   searchProviders(@Query() dto: SearchProvidersDto) {
@@ -79,6 +85,12 @@ export class ServicesController {
   @Roles(UserRole.ADMIN)
   deleteCategory(@Param('id') id: string) {
     return this.servicesService.deleteCategory(id);
+  }
+
+  @Get('providers/:providerId/services')
+  @Roles(UserRole.CUSTOMER, UserRole.PROVIDER, UserRole.ADMIN)
+  findProviderServicesByProviderId(@Param('providerId') providerId: string) {
+    return this.servicesService.findProviderServices(providerId);
   }
 
   @Get('provider-services')
