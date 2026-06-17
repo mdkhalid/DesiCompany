@@ -1,5 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
+import { PaymentGatewayType } from '../../common/enums/payment-gateway-type.enum';
 import { PaymentMethod } from '../../common/enums/payment-method.enum';
 import { PaymentStatus } from '../../common/enums/payment-status.enum';
 import { Booking } from '../../bookings/entities/booking.entity';
@@ -24,4 +25,10 @@ export class Payment extends BaseEntity {
 
   @Column({ nullable: true })
   gatewayResponse: string;
+
+  @Column({ type: 'enum', enum: PaymentGatewayType, nullable: true, name: 'gateway' })
+  gateway: PaymentGatewayType;
+
+  @Column({ type: 'varchar', length: 200, nullable: true, name: 'gateway_order_id' })
+  gatewayOrderId: string;
 }

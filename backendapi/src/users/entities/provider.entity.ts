@@ -46,6 +46,9 @@ export class Provider extends BaseEntity {
   @Column({ default: false })
   isVerified: boolean;
 
+  @Column({ default: false, name: 'is_soft_blocked' })
+  isSoftBlocked: boolean;
+
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
   averageRating: number;
 

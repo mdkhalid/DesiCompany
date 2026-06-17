@@ -1,98 +1,167 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# DesiCompany — Backend API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Local service marketplace connecting customers with service providers (plumbing, electrical, repairs, daily wage labour, etc.).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Tech Stack
 
-## Description
+- **Framework:** NestJS 11 (TypeScript)
+- **ORM:** TypeORM + PostgreSQL
+- **Cache:** Redis
+- **Auth:** JWT + Phone OTP
+- **API Docs:** Swagger (at `/api`)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Project Setup
 
 ```bash
-$ npm install
+# Prerequisites: Node.js 20+, Docker Desktop
+
+# Start PostgreSQL + Redis
+docker-compose up -d
+
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Seed sample data
+npm run seed
+
+# Start dev server (http://localhost:3000)
+npm run start:dev
 ```
 
-## Compile and run the project
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string |
+| `JWT_SECRET` | JWT signing secret |
+| `PAYMENT_GATEWAY_ENCRYPTION_KEY` | 64-char hex key (32 bytes) for encrypting gateway credentials |
+| `API_PREFIX` | API prefix (default: `/api/v1`) |
+
+## Phase 3 — Payments & Commission
+
+### Payment Gateway Architecture
+
+- **Strategy Pattern:** Pluggable `PaymentGateway` interface with `RazorpayGateway`, `StripeGateway`, and `CashGateway`
+- **Admin Configurable:** Gateways are added/managed via admin dashboard — no server restart needed
+- **Encrypted Credentials:** Gateway API keys are encrypted with AES-256-GCM and stored in the database
+- **Factory:** `PaymentGatewayFactory.getDefault()` returns the active default gateway; `getByType()` returns a specific one
+
+### Payment Flow
+
+1. **Create Order:** `POST /payments/create-order` — creates a gateway order for a completed booking (uses the default gateway from admin config)
+2. **Get Status:** `GET /payments/:id/status` — polls gateway for payment status, auto-updates on success/failure
+3. **Cash Flow:**
+   - `POST /payments/pay-cash` — records a cash payment intent
+   - `POST /payments/mark-cash-received` — provider confirms cash received, credits provider wallet
+4. **Webhooks:**
+   - `POST /webhooks/razorpay` — Razorpay webhook handler with HMAC-SHA256 signature verification
+   - `POST /webhooks/stripe` — Stripe webhook handler with timestamp + HMAC verification
+   - Idempotency via `webhook_events` table
+
+### Wallet & Ledger
+
+- Auto-created for each user on first access
+- Provider wallets are credited on payment success
+- `LedgerService.settleOutstandingCommissions()` — FIFO commission settlement from provider wallets
+- `SoftBlockService` — auto-blocks providers whose outstanding commissions exceed `2x` the average (configurable threshold)
+
+### Admin Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /admin/payment-gateways` | List all gateways (credentials masked) |
+| `POST /admin/payment-gateways` | Add a new gateway (encrypts credentials) |
+| `PATCH /admin/payment-gateways/:id` | Update gateway config |
+| `PATCH /admin/payment-gateways/:id/default` | Set as default gateway |
+| `DELETE /admin/payment-gateways/:id` | Remove gateway (not if it's default) |
+| `POST /admin/refunds` | Initiate a refund (gateway + wallet credit) |
+| `GET /admin/soft-block-config` | View soft-block threshold config |
+| `PATCH /admin/soft-block-config` | Update soft-block config |
+| `PATCH /admin/check-soft-blocks` | Run soft-block check manually |
+
+### Payment Gateway Config Data Model
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `type` | enum | `razorpay`, `stripe`, `cash` |
+| `displayName` | string | Human-readable name |
+| `encryptedCredentials` | text | AES-256-GCM encrypted JSON |
+| `iv` | text | Encryption IV |
+| `authTag` | text | GCM authentication tag |
+| `isActive` | boolean | Gateway enabled |
+| `isDefault` | boolean | Primary gateway |
+
+## API Endpoints
+
+### Authentication
+- `POST /auth/send-otp` — Send OTP
+- `POST /auth/verify-otp` — Verify OTP & get JWT
+
+### Users
+- `GET /users/:id` — Get user profile
+- `PATCH /users/:id` — Update profile
+
+### Services
+- `GET /services/categories` — List categories
+- `GET /services/providers` — Search providers
+- `GET /services/:providerId` — Provider services
+
+### Bookings
+- `POST /bookings` — Create booking
+- `PATCH /bookings/:id/status` — Update status
+- `PATCH /bookings/:id/reschedule` — Reschedule
+- `POST /bookings/charges` — Add material charge
+- `DELETE /bookings/charges/:id` — Remove charge
+
+### Payments
+- `POST /payments/create-order` — Create payment order
+- `GET /payments/:id/status` — Get payment status
+- `POST /payments/pay-cash` — Record cash payment
+- `POST /payments/mark-cash-received` — Confirm cash received
+
+### Wallet
+- `GET /wallet` — Get wallet balance
+- `GET /wallet/transactions` — List transactions
+
+### Webhooks
+- `POST /webhooks/razorpay` — Razorpay webhook
+- `POST /webhooks/stripe` — Stripe webhook
+
+### Admin
+- `GET /admin/dashboard` — Dashboard metrics
+- `GET /admin/payment-gateways` — List gateways
+- `POST /admin/payment-gateways` — Add gateway
+- `PATCH /admin/payment-gateways/:id` — Update gateway
+- `PATCH /admin/payment-gateways/:id/default` — Set default
+- `DELETE /admin/payment-gateways/:id` — Remove gateway
+- `POST /admin/refunds` — Issue refund
+- `GET /admin/soft-block-config` — View soft-block config
+- `PATCH /admin/soft-block-config` — Update soft-block config
+- `PATCH /admin/check-soft-blocks` — Run soft-block check
+
+## Running Tests
 
 ```bash
-# development
-$ npm run start
+# Unit tests
+npm run test
 
-# watch mode
-$ npm run start:dev
+# E2E tests
+npm run test:e2e
 
-# production mode
-$ npm run start:prod
+# Test coverage
+npm run test:cov
 ```
 
-## Run tests
+## Seed Data
 
-```bash
-# unit tests
-$ npm run test
+| User | Phone | Role |
+|------|-------|------|
+| Admin | 9999999999 | admin |
+| Rahul Sharma | 9876543210 | customer |
+| Amit Kumar | 9876543211 | provider |
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**Mock OTP:** `123456` (all users in dev)

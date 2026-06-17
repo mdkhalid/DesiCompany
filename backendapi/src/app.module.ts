@@ -11,6 +11,7 @@ import { ServicesModule } from './services/services.module';
 import { CommissionsModule } from './commissions/commissions.module';
 import { AdminModule } from './admin/admin.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { PaymentsModule } from './payments/payments.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -39,6 +40,7 @@ import { Notification } from './notifications/entities/notification.entity';
     CommissionsModule,
     AdminModule,
     BookingsModule,
+    PaymentsModule,
     TypeOrmModule.forFeature([
       User,
       Customer,

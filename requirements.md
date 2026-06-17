@@ -7,6 +7,7 @@
 | Requirements Doc | ✅ Complete |
 | NestJS Backend (Phase 1) | ✅ Complete — tested & pushed |
 | Backend Phase 2 | ✅ Complete |
+| Backend Phase 3 | ✅ Complete |
 | Flutter Mobile App | ⬜ Pending |
 | React Admin Web | ⬜ Pending |
 
@@ -234,21 +235,30 @@ npm run start:dev
 - [x] Booking charges (material/parts added during job)
 - [x] Search/discovery (by category, location, rating, availability)
 
-### Phase 3 — Payments & Commission ⬜ PENDING
-- [ ] Payment gateway config table (`payment_gateway_configs`)
+### Phase 3 — Payments & Commission ✅ COMPLETED
+- [x] Payment gateway config table (`payment_gateway_configs`)
   - `type` (razorpay/stripe/cash)
   - `name` (display name)
-  - `credentials` (encrypted JSON)
+  - `credentials` (encrypted JSON via AES-256-GCM)
   - `isActive` (enabled/disabled)
   - `isDefault` (primary gateway)
-- [ ] Admin gateway management (add/edit/remove/enable/disable)
-- [ ] Strategy pattern gateway abstraction (`PaymentGateway` interface)
-- [ ] Razorpay gateway implementation
-- [ ] Stripe gateway implementation (future)
-- [ ] Cash/offline payment flow
-- [ ] Wallet system (balance, add funds, deduct)
-- [ ] Commission calculation and deduction
-- [ ] Transaction ledger
+- [x] Admin gateway management (add/edit/remove/enable/disable)
+- [x] Strategy pattern gateway abstraction (`PaymentGateway` interface)
+- [x] Razorpay gateway implementation
+- [x] Stripe gateway implementation
+- [x] Cash/offline payment flow
+- [x] Webhook handling (Razorpay + Stripe signature verification, idempotency)
+- [x] Payment order creation (`POST /payments/create-order`)
+- [x] Payment status polling (`GET /payments/:id/status`)
+- [x] Wallet system (auto-create, balance, transactions)
+- [x] Provider payout wallet (auto-credited on payment success)
+- [x] Commission calculation and deduction
+- [x] Transaction ledger (booking payout, commission owed, settlement, admin adjust)
+- [x] Commission settlement (FIFO via `LedgerService`)
+- [x] Provider soft-block on excessive outstanding commissions
+- [x] Admin-configurable soft-block threshold
+- [x] Admin initiated refunds (wallet credit + gateway refund)
+- [x] Encrypted credential storage (AES-256-GCM with env key)
 
 ### Phase 4 — Engagement ⬜ PENDING
 - [ ] Real-time chat (Socket.io)
