@@ -350,6 +350,58 @@ npm run start:dev
 - Admin uses private feedback for abuse/fraud detection.
 - Public customer reputation is **not** implemented initially (can be added later).
 
+### Phase 8 — Quote/Bargain System ✅ COMPLETED
+- [x] Customer posts requirement
+  - `JobRequest` entity: category, title, description, address, lat/lng, budget min/max, preferred date
+  - Status: OPEN → QUOTED → ACCEPTED → CLOSED / CANCELLED
+- [x] Provider submits quote
+  - `Quote` entity: amount, message, estimated hours, valid until
+  - Unique constraint: one quote per provider per job
+  - Status: PENDING → ACCEPTED / REJECTED / WITHDRAWN
+- [x] Customer picks a provider
+  - Accepting a quote auto-creates a `Booking` (status REQUESTED)
+  - All other PENDING quotes are auto-rejected
+- [x] Backend API
+  - `POST /job-requests` (customer creates)
+  - `GET /job-requests/customer/me`
+  - `GET /job-requests/open` (provider, with Haversine radius filter)
+  - `GET /job-requests/:id`
+  - `PATCH /job-requests/:id/cancel`
+  - `POST /job-requests/:id/quotes`
+  - `GET /job-requests/:id/quotes`
+  - `GET /quotes/provider/me`
+  - `PATCH /quotes/:id`
+  - `DELETE /quotes/:id` (withdraw)
+  - `POST /quotes/:id/accept` (creates booking)
+- [x] Flutter customer
+  - `customer_post_job_screen.dart` — post requirement with GPS, budget, date
+  - `customer_jobs_screen.dart` — list my requests + FAB to post new
+  - `customer_job_detail_screen.dart` — view quotes, chat with provider, accept quote
+- [x] Flutter provider
+  - `provider_open_jobs_screen.dart` — nearby open jobs (radius search)
+  - `provider_submit_quote_screen.dart` — quote form (new + edit)
+  - `provider_my_quotes_screen.dart` — list my submitted quotes + withdraw
+  - `provider_job_detail_screen.dart` — view job + my quote
+- [x] Wiring
+  - Routes registered in `main.dart`
+  - Customer home: "My Jobs" LabeledIconButton
+  - Provider home: "Jobs" LabeledIconButton
+  - 30+ new EN/HI translations
+- [x] Backend tests for QuotesService (31 new tests)
+  - Covers createJobRequest, findMyJobRequests, findJobRequestById, cancelJobRequest
+  - createQuote, findMyQuotes, updateQuote, withdrawQuote, acceptQuote
+  - All error paths: not found, forbidden, bad request
+  - **Backend tests: 243/243 passing**
+
+### How the bargain flow works
+1. **Customer** taps "My Jobs" → "Post a Job", fills in title/category/description/budget/GPS
+2. **Providers** in the same area see the job in "Open Jobs" list (sorted by distance)
+3. Each provider taps "Submit Quote" and offers their price + message
+4. **Customer** opens the job → sees all received quotes, chats with each provider
+5. Customer taps "Accept Quote" on the best one → a booking is auto-created with status REQUESTED
+6. Other PENDING quotes are auto-rejected
+7. Provider can accept/reject/work/complete the booking as normal
+
 ---
 
 ## 8. Notes for Implementation
