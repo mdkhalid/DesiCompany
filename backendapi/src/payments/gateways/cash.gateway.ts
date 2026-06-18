@@ -22,7 +22,7 @@ export class CashGateway implements PaymentGateway {
     return PaymentGatewayType.CASH;
   }
 
-  createOrder(req: CreateOrderRequest): CreateOrderResponse {
+  async createOrder(req: CreateOrderRequest): Promise<CreateOrderResponse> {
     // Cash has no remote order; createOrder synthesizes an order id so callers
     // can persist a Payment row immediately and reference it during the
     // customer → provider handshake.
@@ -64,7 +64,7 @@ export class CashGateway implements PaymentGateway {
     };
   }
 
-  getStatus(gatewayPaymentId: string): PaymentStatusResult {
+  async getStatus(gatewayPaymentId: string): Promise<PaymentStatusResult> {
     // Cash payments settle synchronously when provider confirms receipt;
     // any status query from the customer side returns 'succeeded'.
     return {
@@ -76,7 +76,7 @@ export class CashGateway implements PaymentGateway {
     };
   }
 
-  refund(req: RefundRequest): RefundResult {
+  async refund(req: RefundRequest): Promise<RefundResult> {
     // Refund of a cash payment is handled off-platform (provider gives money
     // back to customer directly). This no-op records the intent for the ledger
     // so downstream services can see a reversal was issued.
