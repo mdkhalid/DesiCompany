@@ -54,7 +54,10 @@ interface ShareLocationPayload {
 }
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: {
+    origin: true, // Reflects the requesting origin; HTTP-level CORS from main.ts handles restriction
+    credentials: true,
+  },
   namespace: '/chat',
 })
 @Injectable()

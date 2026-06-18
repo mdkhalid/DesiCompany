@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { databaseConfig } from './config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { ThrottlerBehindProxyGuard } from './common/guards/throttler-behind-proxy.guard';
 import { UsersModule } from './users/users.module';
 import { KycModule } from './kyc/kyc.module';
 import { ServicesModule } from './services/services.module';
@@ -39,6 +42,13 @@ import { CustomerFeedback } from './feedbacks/entities/customer-feedback.entity'
       envFilePath: '.env',
     }),
     TypeOrmModule.forRoot(databaseConfig()),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000,
+        limit: 30,
+      },
+    ]),
     AuthModule,
     UsersModule,
     KycModule,
@@ -70,6 +80,12 @@ import { CustomerFeedback } from './feedbacks/entities/customer-feedback.entity'
     ]),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerBehindProxyGuard,
+    },
+  ],
 })
 export class AppModule {}

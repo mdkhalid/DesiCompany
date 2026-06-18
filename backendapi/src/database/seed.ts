@@ -227,8 +227,8 @@ async function seed() {
       lastName: 'Agarwal',
       city: 'Delhi',
       state: 'Delhi',
-      latitude: 28.6100,
-      longitude: 77.2300,
+      latitude: 28.61,
+      longitude: 77.23,
     });
     await customerRepository.save(dualCustomer);
 
@@ -241,8 +241,8 @@ async function seed() {
       experienceYears: 3,
       city: 'Delhi',
       state: 'Delhi',
-      latitude: 28.6100,
-      longitude: 77.2300,
+      latitude: 28.61,
+      longitude: 77.23,
       isVerified: true,
       averageRating: 4.2,
       totalReviews: 8,
@@ -250,8 +250,12 @@ async function seed() {
     await providerRepository.save(dualProvider);
 
     // Add services for the provider part
-    const cleaningCat = await categoryRepository.findOne({ where: { nameEn: 'Cleaning' } });
-    const laundryCat = await categoryRepository.findOne({ where: { nameEn: 'Laundry' } });
+    const cleaningCat = await categoryRepository.findOne({
+      where: { nameEn: 'Cleaning' },
+    });
+    const laundryCat = await categoryRepository.findOne({
+      where: { nameEn: 'Laundry' },
+    });
 
     if (cleaningCat) {
       await providerServiceRepository.save(

@@ -1,5 +1,6 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { UserRole } from '../common/enums/user-role.enum';
 
@@ -8,11 +9,13 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('otp/request')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   requestOtp(@Body('phone') phone: string) {
     return this.authService.requestOtp(phone);
   }
 
   @Post('register')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   register(
     @Body('phone') phone: string,
     @Body('otp') otp: string,
@@ -32,16 +35,19 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   login(@Body('phone') phone: string, @Body('otp') otp: string) {
     return this.authService.login({ phone, otp });
   }
 
   @Post('refresh')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   refresh(@Body('refreshToken') refreshToken: string) {
     return this.authService.refreshToken(refreshToken);
   }
 
   @Post('switch-role')
+  @SkipThrottle()
   @UseGuards(AuthGuard('jwt'))
   switchRole(
     @Req() req: { user: { id: string } },
@@ -51,6 +57,7 @@ export class AuthController {
   }
 
   @Post('add-role')
+  @SkipThrottle()
   @UseGuards(AuthGuard('jwt'))
   addRole(
     @Req() req: { user: { id: string } },

@@ -169,9 +169,8 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const availableRoles = user.roles && user.roles.length > 0
-      ? user.roles
-      : [user.role];
+    const availableRoles =
+      user.roles && user.roles.length > 0 ? user.roles : [user.role];
 
     if (!availableRoles.includes(activeRole)) {
       throw new BadRequestException('User does not have this role');
@@ -189,7 +188,9 @@ export class AuthService {
   ): Promise<{ user: User; tokens: AuthTokens }> {
     // Only customer and provider roles can be self-added
     if (newRole !== UserRole.CUSTOMER && newRole !== UserRole.PROVIDER) {
-      throw new BadRequestException('Only customer and provider roles can be self-added');
+      throw new BadRequestException(
+        'Only customer and provider roles can be self-added',
+      );
     }
 
     const user = await this.userRepository.findOne({
@@ -200,9 +201,8 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const currentRoles = user.roles && user.roles.length > 0
-      ? user.roles
-      : [user.role];
+    const currentRoles =
+      user.roles && user.roles.length > 0 ? user.roles : [user.role];
 
     if (currentRoles.includes(newRole)) {
       throw new ConflictException('User already has this role');

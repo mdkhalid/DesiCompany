@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { WebhookService } from './webhooks.service';
 import { PaymentGatewayType } from '../common/enums/payment-gateway-type.enum';
@@ -22,6 +23,7 @@ export class WebhooksController {
   constructor(private readonly webhookService: WebhookService) {}
 
   @Post('razorpay')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async razorpayWebhook(@Req() req: RawBodyRequest, @Res() res: Response) {
     const signature = req.headers['x-razorpay-signature'] as string | undefined;
@@ -46,6 +48,7 @@ export class WebhooksController {
   }
 
   @Post('stripe')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async stripeWebhook(@Req() req: RawBodyRequest, @Res() res: Response) {
     const signature = req.headers['stripe-signature'] as string | undefined;
