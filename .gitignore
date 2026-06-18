@@ -3,6 +3,8 @@ dist/
 build/
 .env
 *.log
+server.log
+server-error.log
 body.json
 body2.json
 login_resp.json
@@ -15,3 +17,4 @@ frontendapp/.flutter-plugins-dependencies
 frontendapp/pubspec.lock
 adminweb/node_modules/
 adminweb/dist/
+adminweb/tsconfig.tsbuildinfo
