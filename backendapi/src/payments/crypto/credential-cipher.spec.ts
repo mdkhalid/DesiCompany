@@ -112,7 +112,9 @@ describe('credential-cipher', () => {
     const payload = jest.isolateModules(() => {
       process.env.PAYMENT_GATEWAY_ENCRYPTION_KEY = wrongKey;
 
-      const { encryptCredentials: enc } = require('./credential-cipher');
+      const { encryptCredentials: enc } = jest.requireActual<
+        typeof import('./credential-cipher')
+      >('./credential-cipher');
       return enc('sk_live_cross_key');
     }) as unknown as ReturnType<typeof encryptCredentials>;
 

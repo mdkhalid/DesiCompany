@@ -15,6 +15,7 @@ describe('AdminRefundsService', () => {
   let paymentRepo: jest.Mocked<Repository<Payment>>;
   let walletRepo: jest.Mocked<Repository<Wallet>>;
   let txRepo: jest.Mocked<Repository<Transaction>>;
+  const mockPaymentSave = jest.fn();
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,7 +25,7 @@ describe('AdminRefundsService', () => {
           provide: getRepositoryToken(Payment),
           useValue: {
             findOne: jest.fn(),
-            save: jest.fn(),
+            save: mockPaymentSave,
           },
         },
         {
@@ -68,7 +69,7 @@ describe('AdminRefundsService', () => {
     it('throws BadRequestException when payment not successful', async () => {
       paymentRepo.findOne.mockResolvedValue({
         status: PaymentStatus.PENDING,
-      } as any);
+      } as Payment);
       await expect(
         service.processRefund({ paymentId: 'pay-1' }),
       ).rejects.toThrow(BadRequestException);
@@ -85,15 +86,15 @@ describe('AdminRefundsService', () => {
           customer: { user: { id: 'cust-user' } },
           provider: { user: { id: 'prov-user' } },
         },
-      } as any);
+      } as Payment);
       walletRepo.findOne.mockResolvedValue(null);
-      walletRepo.create.mockReturnValue({ balance: 0 } as any);
-      txRepo.create.mockReturnValue({} as any);
+      walletRepo.create.mockReturnValue({ balance: 0 } as Wallet);
+      txRepo.create.mockReturnValue({} as Transaction);
 
       const result = await service.processRefund({ paymentId: 'pay-1' });
 
       expect(result.status).toBe('processed');
-      expect(paymentRepo.save).toHaveBeenCalledWith(
+      expect(mockPaymentSave).toHaveBeenCalledWith(
         expect.objectContaining({ status: PaymentStatus.REFUNDED }),
       );
     });

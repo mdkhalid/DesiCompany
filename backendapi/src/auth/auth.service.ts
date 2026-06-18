@@ -26,7 +26,7 @@ interface LoginDto {
   otp: string;
 }
 
-interface AuthTokens {
+export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
 }
@@ -54,7 +54,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async requestOtp(phone: string): Promise<{ message: string }> {
+  requestOtp(phone: string): { message: string } {
     const code =
       process.env.OTP_MOCK === 'true'
         ? process.env.OTP_MOCK_CODE || '123456'
@@ -140,7 +140,7 @@ export class AuthService {
 
   async refreshToken(refreshToken: string): Promise<{ tokens: AuthTokens }> {
     try {
-      const payload = this.jwtService.verify(refreshToken, {
+      const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
 
@@ -153,7 +153,7 @@ export class AuthService {
 
       const tokens = this.generateTokens(user);
       return { tokens };
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }

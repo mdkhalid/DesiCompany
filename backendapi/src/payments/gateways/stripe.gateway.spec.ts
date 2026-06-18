@@ -1,17 +1,13 @@
 import * as crypto from 'crypto';
-import Stripe from 'stripe';
 import { StripeGateway } from './stripe.gateway';
 
 // Mocked Stripe SDK methods
 
-const mockPaymentIntentsCreate = jest.fn<
-  any,
-  [Stripe.Stripe.PaymentIntentCreateParams]
->();
+const mockPaymentIntentsCreate = jest.fn();
 
-const mockPaymentIntentsRetrieve = jest.fn<any, [string]>();
+const mockPaymentIntentsRetrieve = jest.fn();
 
-const mockRefundsCreate = jest.fn<any, [Stripe.Stripe.RefundCreateParams]>();
+const mockRefundsCreate = jest.fn();
 
 jest.mock('stripe', () => {
   return jest.fn().mockImplementation(() => ({
@@ -120,11 +116,15 @@ describe('createOrder', () => {
     });
 
     expect(mockPaymentIntentsCreate).toHaveBeenCalledTimes(1);
-    const callArg = mockPaymentIntentsCreate.mock.calls[0][0];
+    const callArg = (
+      mockPaymentIntentsCreate.mock.calls as Array<[Record<string, unknown>]>
+    )[0][0];
     expect(callArg.amount).toBe(50000); // no ×100
     expect(callArg.currency).toBe('inr'); // lowercase
-    expect(callArg.metadata.bookingId).toBe('book_999');
-    expect(callArg.metadata.foo).toBe('bar');
+    expect((callArg.metadata as Record<string, unknown>)?.bookingId).toBe(
+      'book_999',
+    );
+    expect((callArg.metadata as Record<string, unknown>)?.foo).toBe('bar');
     expect(callArg.automatic_payment_methods).toEqual({ enabled: true });
   });
 
@@ -156,8 +156,12 @@ describe('createOrder', () => {
       bookingId: 'book_only',
     });
 
-    const callArg = mockPaymentIntentsCreate.mock.calls[0][0];
-    expect(callArg.metadata.bookingId).toBe('book_only');
+    const callArg = (
+      mockPaymentIntentsCreate.mock.calls as Array<[Record<string, unknown>]>
+    )[0][0];
+    expect((callArg.metadata as Record<string, unknown>)?.bookingId).toBe(
+      'book_only',
+    );
   });
 });
 
@@ -403,7 +407,10 @@ describe('refund', () => {
     await gateway.refund({ gatewayPaymentId: 'pi_abc' });
 
     expect(mockRefundsCreate).toHaveBeenCalledTimes(1);
-    expect(mockRefundsCreate.mock.calls[0][0].payment_intent).toBe('pi_abc');
+    expect(
+      (mockRefundsCreate.mock.calls as Array<[Record<string, unknown>]>)[0][0]
+        .payment_intent,
+    ).toBe('pi_abc');
   });
 
   it('forwards amount in paise when provided', async () => {
@@ -416,7 +423,10 @@ describe('refund', () => {
 
     await gateway.refund({ gatewayPaymentId: 'pi_abc', amount: 25000 });
 
-    expect(mockRefundsCreate.mock.calls[0][0].amount).toBe(25000);
+    expect(
+      (mockRefundsCreate.mock.calls as Array<[Record<string, unknown>]>)[0][0]
+        .amount,
+    ).toBe(25000);
   });
 
   it('omits amount when not provided (full refund)', async () => {
@@ -429,7 +439,10 @@ describe('refund', () => {
 
     await gateway.refund({ gatewayPaymentId: 'pi_abc' });
 
-    expect(mockRefundsCreate.mock.calls[0][0].amount).toBeUndefined();
+    expect(
+      (mockRefundsCreate.mock.calls as Array<[Record<string, unknown>]>)[0][0]
+        .amount,
+    ).toBeUndefined();
   });
 
   it('maps Stripe succeeded status to processed', async () => {
@@ -513,7 +526,10 @@ describe('refund', () => {
       reason: 'duplicate',
     });
 
-    expect(mockRefundsCreate.mock.calls[0][0].metadata).toEqual({
+    expect(
+      (mockRefundsCreate.mock.calls as Array<[Record<string, unknown>]>)[0][0]
+        .metadata,
+    ).toEqual({
       reason: 'duplicate',
     });
   });

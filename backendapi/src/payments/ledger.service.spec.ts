@@ -47,11 +47,17 @@ describe('LedgerService', () => {
         {
           provide: DataSource,
           useValue: {
-            transaction: jest.fn(async (cb: any) =>
-              cb({
-                save: jest.fn(),
-                create: jest.fn(),
-              }),
+            transaction: jest.fn(
+              (
+                cb: (ds: {
+                  save: jest.Mock;
+                  create: jest.Mock;
+                }) => Promise<unknown>,
+              ) =>
+                cb({
+                  save: jest.fn(),
+                  create: jest.fn(),
+                }),
             ),
           },
         },

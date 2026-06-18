@@ -36,8 +36,8 @@ describe('CashGateway', () => {
   // ── createOrder ────────────────────────────────────────────────────────────
 
   describe('createOrder', () => {
-    it('returns gatewayOrderId prefixed with "cash_"', async () => {
-      const res = await gateway.createOrder({
+    it('returns gatewayOrderId prefixed with "cash_"', () => {
+      const res = gateway.createOrder({
         amount: 500,
         currency: 'INR',
         bookingId: 'b1',
@@ -45,8 +45,8 @@ describe('CashGateway', () => {
       expect(res.gatewayOrderId).toMatch(/^cash_[a-f0-9-]+$/);
     });
 
-    it('returns keyId as empty string', async () => {
-      const res = await gateway.createOrder({
+    it('returns keyId as empty string', () => {
+      const res = gateway.createOrder({
         amount: 500,
         currency: 'INR',
         bookingId: 'b1',
@@ -54,8 +54,8 @@ describe('CashGateway', () => {
       expect(res.keyId).toBe('');
     });
 
-    it('passes amount through as-is (already in smallest currency unit)', async () => {
-      const res = await gateway.createOrder({
+    it('passes amount through as-is (already in smallest currency unit)', () => {
+      const res = gateway.createOrder({
         amount: 12345,
         currency: 'INR',
         bookingId: 'b1',
@@ -63,8 +63,8 @@ describe('CashGateway', () => {
       expect(res.amount).toBe(12345);
     });
 
-    it('preserves currency from request', async () => {
-      const res = await gateway.createOrder({
+    it('preserves currency from request', () => {
+      const res = gateway.createOrder({
         amount: 100,
         currency: 'INR',
         bookingId: 'b1',
@@ -72,11 +72,17 @@ describe('CashGateway', () => {
       expect(res.currency).toBe('INR');
     });
 
-    it('produces different gatewayOrderIds on successive calls', async () => {
-      const [a, b] = await Promise.all([
-        gateway.createOrder({ amount: 100, currency: 'INR', bookingId: 'b1' }),
-        gateway.createOrder({ amount: 200, currency: 'INR', bookingId: 'b2' }),
-      ]);
+    it('produces different gatewayOrderIds on successive calls', () => {
+      const a = gateway.createOrder({
+        amount: 100,
+        currency: 'INR',
+        bookingId: 'b1',
+      });
+      const b = gateway.createOrder({
+        amount: 200,
+        currency: 'INR',
+        bookingId: 'b2',
+      });
       expect(a.gatewayOrderId).not.toBe(b.gatewayOrderId);
     });
   });
@@ -171,24 +177,24 @@ describe('CashGateway', () => {
   // ── getStatus ──────────────────────────────────────────────────────────────
 
   describe('getStatus', () => {
-    it('always returns status "success"', async () => {
-      const res = await gateway.getStatus('cash_123');
+    it('always returns status "success"', () => {
+      const res = gateway.getStatus('cash_123');
       expect(res.status).toBe('success');
     });
 
-    it('echoes the gatewayPaymentId passed in', async () => {
-      const res = await gateway.getStatus('cash_abc-xyz');
+    it('echoes the gatewayPaymentId passed in', () => {
+      const res = gateway.getStatus('cash_abc-xyz');
       expect(res.gatewayPaymentId).toBe('cash_abc-xyz');
       expect(res.gatewayOrderId).toBe('cash_abc-xyz');
     });
 
-    it('sets method to "cash"', async () => {
-      const res = await gateway.getStatus('cash_123');
+    it('sets method to "cash"', () => {
+      const res = gateway.getStatus('cash_123');
       expect(res.method).toBe('cash');
     });
 
-    it('sets amount to 0 (amount is caller-side knowledge)', async () => {
-      const res = await gateway.getStatus('cash_123');
+    it('sets amount to 0 (amount is caller-side knowledge)', () => {
+      const res = gateway.getStatus('cash_123');
       expect(res.amount).toBe(0);
     });
   });
@@ -196,42 +202,40 @@ describe('CashGateway', () => {
   // ── refund ─────────────────────────────────────────────────────────────────
 
   describe('refund', () => {
-    it('returns refundId prefixed with "cash_refund_"', async () => {
-      const res = await gateway.refund({
+    it('returns refundId prefixed with "cash_refund_"', () => {
+      const res = gateway.refund({
         gatewayPaymentId: 'cash_123',
         amount: 100,
       });
       expect(res.refundId).toMatch(/^cash_refund_[a-f0-9-]+$/);
     });
 
-    it('echoes the gatewayPaymentId from request', async () => {
-      const res = await gateway.refund({ gatewayPaymentId: 'cash_abc' });
+    it('echoes the gatewayPaymentId from request', () => {
+      const res = gateway.refund({ gatewayPaymentId: 'cash_abc' });
       expect(res.gatewayPaymentId).toBe('cash_abc');
     });
 
-    it('returns status "processed" (off-platform)', async () => {
-      const res = await gateway.refund({ gatewayPaymentId: 'cash_123' });
+    it('returns status "processed" (off-platform)', () => {
+      const res = gateway.refund({ gatewayPaymentId: 'cash_123' });
       expect(res.status).toBe('processed');
     });
 
-    it('returns amount from request', async () => {
-      const res = await gateway.refund({
+    it('returns amount from request', () => {
+      const res = gateway.refund({
         gatewayPaymentId: 'cash_123',
         amount: 500,
       });
       expect(res.amount).toBe(500);
     });
 
-    it('defaults amount to 0 when not provided', async () => {
-      const res = await gateway.refund({ gatewayPaymentId: 'cash_123' });
+    it('defaults amount to 0 when not provided', () => {
+      const res = gateway.refund({ gatewayPaymentId: 'cash_123' });
       expect(res.amount).toBe(0);
     });
 
-    it('produces different refundIds on successive calls', async () => {
-      const [a, b] = await Promise.all([
-        gateway.refund({ gatewayPaymentId: 'cash_123' }),
-        gateway.refund({ gatewayPaymentId: 'cash_456' }),
-      ]);
+    it('produces different refundIds on successive calls', () => {
+      const a = gateway.refund({ gatewayPaymentId: 'cash_123' });
+      const b = gateway.refund({ gatewayPaymentId: 'cash_456' });
       expect(a.refundId).not.toBe(b.refundId);
     });
   });

@@ -81,7 +81,7 @@ export class PaymentGatewayFactory {
     });
     let credentials: Record<string, string>;
     try {
-      credentials = JSON.parse(plaintext);
+      credentials = JSON.parse(plaintext) as Record<string, string>;
     } catch (err) {
       throw new Error(
         `Failed to parse decrypted credentials for gateway '${config.type}': ${(err as Error).message}`,

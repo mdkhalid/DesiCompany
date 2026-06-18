@@ -15,7 +15,7 @@ describe('ReviewsService', () => {
   let reviewRepo: jest.Mocked<Repository<Review>>;
   let bookingRepo: jest.Mocked<Repository<Booking>>;
   let customerRepo: jest.Mocked<Repository<Customer>>;
-  let providerRepo: jest.Mocked<Repository<Provider>>;
+  const mockProviderUpdate = jest.fn();
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -46,7 +46,7 @@ describe('ReviewsService', () => {
         },
         {
           provide: getRepositoryToken(Provider),
-          useValue: { update: jest.fn() },
+          useValue: { update: mockProviderUpdate },
         },
       ],
     }).compile();
@@ -55,7 +55,7 @@ describe('ReviewsService', () => {
     reviewRepo = module.get(getRepositoryToken(Review));
     bookingRepo = module.get(getRepositoryToken(Booking));
     customerRepo = module.get(getRepositoryToken(Customer));
-    providerRepo = module.get(getRepositoryToken(Provider));
+    void module.get(getRepositoryToken(Provider));
   });
 
   describe('create', () => {
@@ -124,7 +124,7 @@ describe('ReviewsService', () => {
 
       const result = await service.create(dto, userId, UserRole.CUSTOMER);
       expect(result).toBeDefined();
-      expect(providerRepo.update).toHaveBeenCalledWith('prov-1', {
+      expect(mockProviderUpdate).toHaveBeenCalledWith('prov-1', {
         averageRating: 4.5,
         totalReviews: 10,
       });

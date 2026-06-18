@@ -50,16 +50,17 @@ describe('ChatGateway', () => {
 
   describe('handleConnection', () => {
     it('rejects client with no token', () => {
+      const mockDisconnect = jest.fn();
       const client = {
         id: 'socket-1',
         handshake: { auth: {}, headers: {} },
-        disconnect: jest.fn(),
+        disconnect: mockDisconnect,
         data: {},
       } as unknown as Socket;
 
-      gateway.handleConnection(client as never);
+      void gateway.handleConnection(client as never);
 
-      expect(client.disconnect).toHaveBeenCalled();
+      expect(mockDisconnect).toHaveBeenCalled();
     });
 
     it('rejects client with invalid token', () => {
@@ -67,16 +68,17 @@ describe('ChatGateway', () => {
         throw new Error('invalid token');
       });
 
+      const mockDisconnect = jest.fn();
       const client = {
         id: 'socket-1',
         handshake: { auth: { token: 'bad-token' }, headers: {} },
-        disconnect: jest.fn(),
+        disconnect: mockDisconnect,
         data: {},
       } as unknown as Socket;
 
-      gateway.handleConnection(client as never);
+      void gateway.handleConnection(client as never);
 
-      expect(client.disconnect).toHaveBeenCalled();
+      expect(mockDisconnect).toHaveBeenCalled();
     });
 
     it('rejects client when user not found', async () => {
@@ -87,16 +89,17 @@ describe('ChatGateway', () => {
       });
       mockUserRepo.findOne.mockResolvedValue(null);
 
+      const mockDisconnect = jest.fn();
       const client = {
         id: 'socket-1',
         handshake: { auth: { token: 'valid-token' }, headers: {} },
-        disconnect: jest.fn(),
+        disconnect: mockDisconnect,
         data: {},
       } as unknown as Socket;
 
       await gateway.handleConnection(client as never);
 
-      expect(client.disconnect).toHaveBeenCalled();
+      expect(mockDisconnect).toHaveBeenCalled();
     });
 
     it('accepts client with valid token and sets user data', async () => {
@@ -108,18 +111,19 @@ describe('ChatGateway', () => {
       });
       mockUserRepo.findOne.mockResolvedValue(mockUser);
 
+      const mockDisconnect = jest.fn();
       const client = {
         id: 'socket-1',
         handshake: { auth: { token: 'valid-token' }, headers: {} },
-        disconnect: jest.fn(),
+        disconnect: mockDisconnect,
         data: {},
       } as unknown as Socket;
 
       await gateway.handleConnection(client as never);
 
-      expect(client.disconnect).not.toHaveBeenCalled();
-      expect(client.data.userId).toBe('user-1');
-      expect(client.data.user).toBe(mockUser);
+      expect(mockDisconnect).not.toHaveBeenCalled();
+      expect((client.data as Record<string, unknown>).userId).toBe('user-1');
+      expect((client.data as Record<string, unknown>).user).toBe(mockUser);
     });
 
     it('extracts token from authorization header', async () => {
@@ -144,21 +148,22 @@ describe('ChatGateway', () => {
       await gateway.handleConnection(client as never);
 
       expect(mockJwtService.verify).toHaveBeenCalledWith('valid-token');
-      expect(client.data.userId).toBe('user-1');
+      expect((client.data as Record<string, unknown>).userId).toBe('user-1');
     });
   });
 
   describe('handleJoin', () => {
     it('rejects unauthenticated client', async () => {
+      const mockEmit = jest.fn();
       const client = {
         id: 'socket-1',
         data: {},
-        emit: jest.fn(),
+        emit: mockEmit,
       } as unknown as Socket;
 
       await gateway.handleJoin(client as never, { bookingId: 'booking-1' });
 
-      expect(client.emit).toHaveBeenCalledWith('error', {
+      expect(mockEmit).toHaveBeenCalledWith('error', {
         message: 'Unauthorized',
       });
     });
@@ -166,15 +171,16 @@ describe('ChatGateway', () => {
     it('rejects when booking not found', async () => {
       mockBookingRepo.findOne.mockResolvedValue(null);
 
+      const mockEmit = jest.fn();
       const client = {
         id: 'socket-1',
         data: { userId: 'user-1' },
-        emit: jest.fn(),
+        emit: mockEmit,
       } as unknown as Socket;
 
       await gateway.handleJoin(client as never, { bookingId: 'booking-1' });
 
-      expect(client.emit).toHaveBeenCalledWith('error', {
+      expect(mockEmit).toHaveBeenCalledWith('error', {
         message: 'Booking not found',
       });
     });
@@ -186,16 +192,18 @@ describe('ChatGateway', () => {
         provider: { user: { id: 'user-3' } },
       });
 
+      const mockEmit = jest.fn();
+      const mockJoin = jest.fn();
       const client = {
         id: 'socket-1',
         data: { userId: 'user-1' },
-        emit: jest.fn(),
-        join: jest.fn(),
+        emit: mockEmit,
+        join: mockJoin,
       } as unknown as Socket;
 
       await gateway.handleJoin(client as never, { bookingId: 'booking-1' });
 
-      expect(client.emit).toHaveBeenCalledWith('error', {
+      expect(mockEmit).toHaveBeenCalledWith('error', {
         message: 'Not a participant of this booking',
       });
     });
@@ -209,26 +217,29 @@ describe('ChatGateway', () => {
       });
       mockMessageRepo.find.mockResolvedValue(mockMessages);
 
+      const mockEmit = jest.fn();
+      const mockJoin = jest.fn();
       const client = {
         id: 'socket-1',
         data: { userId: 'user-1' },
-        emit: jest.fn(),
-        join: jest.fn(),
+        emit: mockEmit,
+        join: mockJoin,
       } as unknown as Socket;
 
       await gateway.handleJoin(client as never, { bookingId: 'booking-1' });
 
-      expect(client.join).toHaveBeenCalledWith('booking_booking-1');
-      expect(client.emit).toHaveBeenCalledWith('history', mockMessages);
+      expect(mockJoin).toHaveBeenCalledWith('booking_booking-1');
+      expect(mockEmit).toHaveBeenCalledWith('history', mockMessages);
     });
   });
 
   describe('handleMessage', () => {
     it('rejects unauthenticated client', async () => {
+      const mockEmit = jest.fn();
       const client = {
         id: 'socket-1',
         data: {},
-        emit: jest.fn(),
+        emit: mockEmit,
       } as unknown as Socket;
 
       await gateway.handleMessage(client as never, {
@@ -236,7 +247,7 @@ describe('ChatGateway', () => {
         content: 'hi',
       });
 
-      expect(client.emit).toHaveBeenCalledWith('error', {
+      expect(mockEmit).toHaveBeenCalledWith('error', {
         message: 'Unauthorized',
       });
     });

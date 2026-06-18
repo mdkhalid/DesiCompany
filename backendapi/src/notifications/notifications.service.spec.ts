@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, UpdateResult } from 'typeorm';
 import { NotificationsService } from './notifications.service';
 import { Notification } from './entities/notification.entity';
 
@@ -32,8 +32,8 @@ describe('NotificationsService', () => {
 
   describe('create', () => {
     it('creates and saves a notification', async () => {
-      repo.create.mockReturnValue({ id: 'notif-1' } as any);
-      repo.save.mockResolvedValue({ id: 'notif-1' } as any);
+      repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
+      repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
       const result = await service.create('user-1', 'Title', 'Message');
       expect(result.id).toBe('notif-1');
     });
@@ -60,8 +60,11 @@ describe('NotificationsService', () => {
 
   describe('markAsRead', () => {
     it('marks a notification as read', async () => {
-      repo.update.mockResolvedValue({ affected: 1 } as any);
-      repo.findOne.mockResolvedValue({ id: 'n1', isRead: true } as any);
+      repo.update.mockResolvedValue({ affected: 1 } as UpdateResult);
+      repo.findOne.mockResolvedValue({
+        id: 'n1',
+        isRead: true,
+      } as Notification);
       const result = await service.markAsRead('n1', 'user-1');
       expect(result?.isRead).toBe(true);
     });
@@ -69,7 +72,7 @@ describe('NotificationsService', () => {
 
   describe('markAllAsRead', () => {
     it('marks all as read', async () => {
-      repo.update.mockResolvedValue({ affected: 5 } as any);
+      repo.update.mockResolvedValue({ affected: 5 } as UpdateResult);
       const result = await service.markAllAsRead('user-1');
       expect(result.success).toBe(true);
     });

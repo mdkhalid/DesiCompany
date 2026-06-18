@@ -52,22 +52,22 @@ describe('WalletsService', () => {
         id: 'wallet-1',
         balance: 500,
         user: { id: 'user-1' },
-      } as any);
+      } as Wallet);
       const result = await service.getWallet('user-1');
       expect(result.balance).toBe(500);
     });
 
     it('creates wallet if not found', async () => {
       walletRepo.findOne.mockResolvedValue(null);
-      userRepo.findOne.mockResolvedValue({ id: 'user-1' } as any);
+      userRepo.findOne.mockResolvedValue({ id: 'user-1' } as User);
       walletRepo.create.mockReturnValue({
         id: 'wallet-new',
         balance: 0,
-      } as any);
+      } as Wallet);
       walletRepo.save.mockResolvedValue({
         id: 'wallet-new',
         balance: 0,
-      } as any);
+      } as Wallet);
 
       const result = await service.getWallet('user-1');
       expect(result.balance).toBe(0);
@@ -90,7 +90,7 @@ describe('WalletsService', () => {
     });
 
     it('returns paginated transactions', async () => {
-      walletRepo.findOne.mockResolvedValue({ id: 'wallet-1' } as any);
+      walletRepo.findOne.mockResolvedValue({ id: 'wallet-1' } as Wallet);
       txRepo.findAndCount.mockResolvedValue([
         [
           {
@@ -100,7 +100,7 @@ describe('WalletsService', () => {
             balanceAfter: 100,
             source: 'booking_payout',
             createdAt: new Date(),
-          } as any,
+          } as Transaction,
         ],
         1,
       ]);

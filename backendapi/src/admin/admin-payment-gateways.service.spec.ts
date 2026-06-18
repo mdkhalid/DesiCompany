@@ -81,26 +81,24 @@ describe('AdminPaymentGatewaysService', () => {
           ...data,
         }),
       ) as never,
-      save: jest.fn(async (entity: PaymentGatewayConfig) => {
+      save: jest.fn((entity: PaymentGatewayConfig) => {
         const existing = rows.findIndex((r) => r.id === entity.id);
         if (existing >= 0) rows[existing] = entity;
         else rows.push(entity);
-        return entity;
+        return Promise.resolve(entity);
       }),
-      remove: jest.fn(async (entity: PaymentGatewayConfig) => {
+      remove: jest.fn((entity: PaymentGatewayConfig) => {
         rows = rows.filter((r) => r.id !== entity.id);
-        return entity;
+        return Promise.resolve(entity);
       }),
     };
 
     const dataSourceMock: Partial<DataSource> = {
       transaction: jest.fn(
-        async (
-          cb: (manager: Record<string, jest.Mock>) => Promise<unknown>,
-        ) => {
+        (cb: (manager: Record<string, jest.Mock>) => Promise<unknown>) => {
           return cb({
             update: jest.fn(
-              async (
+              (
                 _Entity: unknown,
                 where: Record<string, unknown>,
                 partial: Partial<PaymentGatewayConfig>,
@@ -112,14 +110,12 @@ describe('AdminPaymentGatewaysService', () => {
                 }
               },
             ),
-            save: jest.fn(
-              async (_Entity: unknown, entity: PaymentGatewayConfig) => {
-                const existing = rows.findIndex((r) => r.id === entity.id);
-                if (existing >= 0) rows[existing] = entity;
-                else rows.push(entity);
-                return entity;
-              },
-            ),
+            save: jest.fn((_Entity: unknown, entity: PaymentGatewayConfig) => {
+              const existing = rows.findIndex((r) => r.id === entity.id);
+              if (existing >= 0) rows[existing] = entity;
+              else rows.push(entity);
+              return Promise.resolve(entity);
+            }),
           });
         },
       ),
@@ -329,7 +325,9 @@ describe('AdminPaymentGatewaysService', () => {
         isDefault: false,
       });
 
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(dataSource.transaction).not.toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(repo.save).toHaveBeenCalled();
     });
   });
@@ -421,7 +419,9 @@ describe('AdminPaymentGatewaysService', () => {
 
       await service.updateGateway('gw-simp', { displayName: 'Updated' });
 
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(dataSource.transaction).not.toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(repo.save).toHaveBeenCalled();
     });
 
@@ -490,6 +490,7 @@ describe('AdminPaymentGatewaysService', () => {
       await service.deleteGateway('gw-del');
 
       expect(rows.find((r) => r.id === 'gw-del')).toBeUndefined();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(repo.remove).toHaveBeenCalled();
     });
 
@@ -521,7 +522,7 @@ describe('AdminPaymentGatewaysService', () => {
   // credential masking
   // -------------------------------------------------------------------------
   describe('credential masking', () => {
-    beforeEach(async () => {
+    beforeEach(() => {
       rows.push(
         makeRow({
           id: 'gw-mask-1',

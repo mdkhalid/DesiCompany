@@ -34,9 +34,10 @@ interface CashOrderResult {
   status: PaymentStatus;
 }
 
+const mockCreateOrder = jest.fn();
 const mockGateway: jest.Mocked<PaymentGateway> = {
   getName: jest.fn().mockReturnValue(PaymentGatewayType.RAZORPAY),
-  createOrder: jest.fn(),
+  createOrder: mockCreateOrder,
   getStatus: jest.fn(),
   verifyWebhookSignature: jest.fn(),
   parseWebhookEvent: jest.fn(),
@@ -50,6 +51,8 @@ describe('PaymentsService', () => {
   let walletRepo: jest.Mocked<Repository<Wallet>>;
   let txRepo: jest.Mocked<Repository<Transaction>>;
   let factory: jest.Mocked<PaymentGatewayFactory>;
+  const mockPaymentSave = jest.fn();
+  const mockWalletSave = jest.fn();
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -60,7 +63,7 @@ describe('PaymentsService', () => {
           useValue: {
             findOne: jest.fn(),
             create: jest.fn(),
-            save: jest.fn(),
+            save: mockPaymentSave,
           },
         },
         {
@@ -74,7 +77,7 @@ describe('PaymentsService', () => {
           useValue: {
             findOne: jest.fn(),
             create: jest.fn(),
-            save: jest.fn(),
+            save: mockWalletSave,
           },
         },
         {
@@ -183,7 +186,7 @@ describe('PaymentsService', () => {
         UserRole.CUSTOMER,
       )) as CreateOrderResult;
 
-      expect(mockGateway.createOrder).toHaveBeenCalledWith({
+      expect(mockCreateOrder).toHaveBeenCalledWith({
         amount: 50000,
         currency: 'INR',
         bookingId,
@@ -279,7 +282,7 @@ describe('PaymentsService', () => {
         UserRole.CUSTOMER,
       );
 
-      expect(paymentRepo.save).toHaveBeenCalledWith(
+      expect(mockPaymentSave).toHaveBeenCalledWith(
         expect.objectContaining({ status: PaymentStatus.SUCCESS }),
       );
       expect(result.status).toBe(PaymentStatus.SUCCESS);
@@ -340,7 +343,7 @@ describe('PaymentsService', () => {
       );
 
       expect(result.status).toBe(PaymentStatus.SUCCESS);
-      expect(walletRepo.save).toHaveBeenCalled();
+      expect(mockWalletSave).toHaveBeenCalled();
     });
   });
 });

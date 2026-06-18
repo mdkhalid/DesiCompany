@@ -7,7 +7,6 @@ import { Provider } from '../users/entities/provider.entity';
 
 describe('SoftBlockService', () => {
   let service: SoftBlockService;
-  let providerRepo: jest.Mocked<any>;
 
   beforeEach(async () => {
     const queryBuilder = {
@@ -46,7 +45,6 @@ describe('SoftBlockService', () => {
     }).compile();
 
     service = module.get(SoftBlockService);
-    providerRepo = module.get(getRepositoryToken(Provider));
   });
 
   describe('config', () => {
@@ -64,8 +62,12 @@ describe('SoftBlockService', () => {
 
   describe('checkAndBlockProviders', () => {
     it('blocks no one when no wallets exist', async () => {
-      const walletQueryBuilder = await (
-        service as any
+      const walletQueryBuilder: { getMany: jest.Mock } = (
+        service as unknown as {
+          walletRepository: {
+            createQueryBuilder: () => { getMany: jest.Mock };
+          };
+        }
       ).walletRepository.createQueryBuilder();
       walletQueryBuilder.getMany.mockResolvedValue([]);
 

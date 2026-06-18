@@ -218,14 +218,16 @@ describe('PaymentGatewayFactory', () => {
     beforeEach(() => {
       configs = [];
       mockRepo.find.mockImplementation(() => Promise.resolve([...configs]));
-      mockRepo.findOne.mockImplementation(({ where }: any) => {
-        if (where?.type) {
-          return Promise.resolve(
-            configs.find((c) => c.type === where.type) ?? null,
-          );
-        }
-        return Promise.resolve(null);
-      });
+      mockRepo.findOne.mockImplementation(
+        ({ where }: { where?: { type?: PaymentGatewayType } }) => {
+          if (where?.type) {
+            return Promise.resolve(
+              configs.find((c) => c.type === where.type) ?? null,
+            );
+          }
+          return Promise.resolve(null);
+        },
+      );
     });
 
     it('10 — seeds two configs (Razorpay default, Stripe non-default) → returns RazorpayGateway', async () => {

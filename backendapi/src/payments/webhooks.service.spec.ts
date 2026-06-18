@@ -14,7 +14,8 @@ describe('WebhookService', () => {
   let paymentRepo: jest.Mocked<Repository<Payment>>;
   let webhookEventRepo: jest.Mocked<Repository<WebhookEvent>>;
   let factory: jest.Mocked<PaymentGatewayFactory>;
-  let paymentsService: jest.Mocked<PaymentsService>;
+  const mockPaymentSave = jest.fn();
+  const mockCreditWallet = jest.fn();
 
   const mockGateway = {
     getName: jest.fn().mockReturnValue(PaymentGatewayType.RAZORPAY),
@@ -33,7 +34,7 @@ describe('WebhookService', () => {
           provide: getRepositoryToken(Payment),
           useValue: {
             findOne: jest.fn(),
-            save: jest.fn(),
+            save: mockPaymentSave,
           },
         },
         {
@@ -53,7 +54,7 @@ describe('WebhookService', () => {
         {
           provide: PaymentsService,
           useValue: {
-            creditProviderWallet: jest.fn(),
+            creditProviderWallet: mockCreditWallet,
           },
         },
       ],
@@ -63,7 +64,7 @@ describe('WebhookService', () => {
     paymentRepo = module.get(getRepositoryToken(Payment));
     webhookEventRepo = module.get(getRepositoryToken(WebhookEvent));
     factory = module.get(PaymentGatewayFactory);
-    paymentsService = module.get(PaymentsService);
+    void module.get(PaymentsService);
   });
 
   afterEach(() => {
@@ -107,7 +108,7 @@ describe('WebhookService', () => {
         payload: {},
         processedAt: null,
       };
-      webhookEventRepo.create.mockReturnValue(mockEventRecord as any);
+      webhookEventRepo.create.mockReturnValue(mockEventRecord as WebhookEvent);
 
       const result = await service.processWebhook(
         PaymentGatewayType.CASH,
@@ -127,7 +128,9 @@ describe('WebhookService', () => {
         status: 'success',
         rawPayload: {},
       });
-      webhookEventRepo.findOne.mockResolvedValue({ id: 'existing' } as any);
+      webhookEventRepo.findOne.mockResolvedValue({
+        id: 'existing',
+      } as WebhookEvent);
 
       const result = await service.processWebhook(
         PaymentGatewayType.RAZORPAY,
@@ -157,12 +160,12 @@ describe('WebhookService', () => {
         payload: {},
         processedAt: null,
       };
-      webhookEventRepo.create.mockReturnValue(mockEvtRecord as any);
+      webhookEventRepo.create.mockReturnValue(mockEvtRecord as WebhookEvent);
       paymentRepo.findOne.mockResolvedValue({
         id: 'pay-1',
         status: PaymentStatus.PENDING,
         gatewayOrderId: 'order_xyz',
-      } as any);
+      } as Payment);
 
       const result = await service.processWebhook(
         PaymentGatewayType.RAZORPAY,
@@ -171,10 +174,10 @@ describe('WebhookService', () => {
       );
 
       expect(result.received).toBe(true);
-      expect(paymentRepo.save).toHaveBeenCalledWith(
+      expect(mockPaymentSave).toHaveBeenCalledWith(
         expect.objectContaining({ status: PaymentStatus.SUCCESS }),
       );
-      expect(paymentsService.creditProviderWallet).toHaveBeenCalled();
+      expect(mockCreditWallet).toHaveBeenCalled();
     });
   });
 });

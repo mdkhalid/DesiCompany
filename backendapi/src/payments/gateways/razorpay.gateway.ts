@@ -62,7 +62,19 @@ export class RazorpayGateway implements PaymentGateway {
   }
 
   parseWebhookEvent(rawBody: Buffer | string | object): WebhookEvent {
-    const body = this.normalizeBody(rawBody);
+    const body = this.normalizeBody(rawBody) as {
+      event?: string;
+      payload?: {
+        payment?: {
+          entity?: {
+            id?: string;
+            order_id?: string;
+            amount?: number;
+            status?: string;
+          };
+        };
+      };
+    };
     // Razorpay webhook payload:
     // { event: 'payment.captured', payload: { payment: { entity: { id, order_id, status, amount, ... } } } }
     const event: string = body.event ?? '';
@@ -74,7 +86,7 @@ export class RazorpayGateway implements PaymentGateway {
     const eventId = `${event}:${paymentId}`;
 
     // Map Razorpay payment status to PaymentEventStatus
-    const razorpayStatus = paymentEntity.status ?? '';
+    const razorpayStatus: string = paymentEntity.status ?? '';
     const status = this.mapPaymentStatus(razorpayStatus);
 
     return {
@@ -85,7 +97,7 @@ export class RazorpayGateway implements PaymentGateway {
       gatewayOrderId: orderId,
       amount,
       status,
-      rawPayload: body as Record<string, unknown>,
+      rawPayload: body,
     };
   }
 
@@ -116,11 +128,15 @@ export class RazorpayGateway implements PaymentGateway {
     };
   }
 
-  private normalizeBody(rawBody: Buffer | string | object): any {
+  private normalizeBody(
+    rawBody: Buffer | string | object,
+  ): Record<string, unknown> {
     if (typeof rawBody === 'object' && !Buffer.isBuffer(rawBody))
-      return rawBody;
-    if (typeof rawBody === 'string') return JSON.parse(rawBody);
-    if (Buffer.isBuffer(rawBody)) return JSON.parse(rawBody.toString('utf8'));
+      return rawBody as Record<string, unknown>;
+    if (typeof rawBody === 'string')
+      return JSON.parse(rawBody) as Record<string, unknown>;
+    if (Buffer.isBuffer(rawBody))
+      return JSON.parse(rawBody.toString('utf8')) as Record<string, unknown>;
     return rawBody;
   }
 

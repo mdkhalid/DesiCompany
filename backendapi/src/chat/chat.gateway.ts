@@ -55,8 +55,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: AuthenticatedSocket) {
     try {
+      const auth = client.handshake.auth as Record<string, unknown>;
       const token =
-        client.handshake.auth?.token ||
+        (auth?.token as string) ||
         client.handshake.headers?.authorization?.replace('Bearer ', '');
 
       if (!token) {
@@ -123,7 +124,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     const room = `booking_${payload.bookingId}`;
-    client.join(room);
+    void client.join(room);
     this.logger.log(`Client ${client.id} joined room ${room}`);
 
     const messages = await this.messageRepository.find({

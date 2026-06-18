@@ -22,7 +22,7 @@ export class CashGateway implements PaymentGateway {
     return PaymentGatewayType.CASH;
   }
 
-  async createOrder(req: CreateOrderRequest): Promise<CreateOrderResponse> {
+  createOrder(req: CreateOrderRequest): CreateOrderResponse {
     // Cash has no remote order; createOrder synthesizes an order id so callers
     // can persist a Payment row immediately and reference it during the
     // customer → provider handshake.
@@ -64,7 +64,7 @@ export class CashGateway implements PaymentGateway {
     };
   }
 
-  async getStatus(gatewayPaymentId: string): Promise<PaymentStatusResult> {
+  getStatus(gatewayPaymentId: string): PaymentStatusResult {
     // Cash payments settle synchronously when provider confirms receipt;
     // any status query from the customer side returns 'succeeded'.
     return {
@@ -76,7 +76,7 @@ export class CashGateway implements PaymentGateway {
     };
   }
 
-  async refund(req: RefundRequest): Promise<RefundResult> {
+  refund(req: RefundRequest): RefundResult {
     // Refund of a cash payment is handled off-platform (provider gives money
     // back to customer directly). This no-op records the intent for the ledger
     // so downstream services can see a reversal was issued.
@@ -91,14 +91,14 @@ export class CashGateway implements PaymentGateway {
   private normalizeBody(rawBody: Buffer | string): Record<string, unknown> {
     if (typeof rawBody === 'string') {
       try {
-        return JSON.parse(rawBody);
+        return JSON.parse(rawBody) as Record<string, unknown>;
       } catch {
         return {};
       }
     }
     if (Buffer.isBuffer(rawBody)) {
       try {
-        return JSON.parse(rawBody.toString('utf8'));
+        return JSON.parse(rawBody.toString('utf8')) as Record<string, unknown>;
       } catch {
         return {};
       }
