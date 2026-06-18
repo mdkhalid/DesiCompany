@@ -330,7 +330,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         'route': '/admin-bookings',
       },
       {
-        'label': loc.tr('reviews'),
+        'label': loc.tr('admin_reviews'),
         'icon': Icons.rate_review,
         'color': const Color(0xFFE53935),
         'route': '/admin-reviews',
@@ -515,7 +515,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             ),
             _buildMoreMenuItem(
               Icons.rate_review,
-              loc.tr('reviews'),
+              loc.tr('admin_reviews'),
               () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/admin-reviews');
