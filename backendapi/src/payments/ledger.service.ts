@@ -5,7 +5,6 @@ import { Wallet } from './entities/wallet.entity';
 import { Transaction } from './entities/transaction.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { TransactionSource } from '../common/enums/transaction-source.enum';
-import { PaymentStatus } from '../common/enums/payment-status.enum';
 
 @Injectable()
 export class LedgerService {
@@ -43,7 +42,9 @@ export class LedgerService {
     const outstandingCommission = await this.transactionRepository
       .createQueryBuilder('tx')
       .where('tx.wallet_id = :walletId', { walletId: wallet.id })
-      .andWhere('tx.source = :source', { source: TransactionSource.COMMISSION_OWED })
+      .andWhere('tx.source = :source', {
+        source: TransactionSource.COMMISSION_OWED,
+      })
       .andWhere('tx.type = :type', { type: 'debit' })
       .getMany();
 

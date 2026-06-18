@@ -8,7 +8,6 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Review } from '../reviews/entities/review.entity';
 import { CommissionConfig } from '../commissions/entities/commission-config.entity';
-import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
 
 @Injectable()
@@ -36,7 +35,9 @@ export class AdminService {
     const totalProviders = await this.providerRepository.count();
     const totalBookings = await this.bookingRepository.count();
     const totalPayments = await this.paymentRepository.count();
-    const activeUsers = await this.userRepository.count({ where: { status: UserStatus.ACTIVE } });
+    const activeUsers = await this.userRepository.count({
+      where: { status: UserStatus.ACTIVE },
+    });
 
     return {
       totalUsers,
@@ -50,7 +51,11 @@ export class AdminService {
 
   async findAllBookings() {
     return this.bookingRepository.find({
-      relations: { customer: { user: true }, provider: { user: true }, providerService: true },
+      relations: {
+        customer: { user: true },
+        provider: { user: true },
+        providerService: true,
+      },
       order: { createdAt: 'DESC' },
     });
   }
@@ -63,7 +68,11 @@ export class AdminService {
 
   async findAllReviews() {
     return this.reviewRepository.find({
-      relations: { customer: { user: true }, provider: { user: true }, booking: true },
+      relations: {
+        customer: { user: true },
+        provider: { user: true },
+        booking: true,
+      },
       order: { createdAt: 'DESC' },
     });
   }

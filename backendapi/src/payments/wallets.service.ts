@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { Wallet } from './entities/wallet.entity';
 import { Transaction } from './entities/transaction.entity';
 import { User } from '../users/entities/user.entity';
-import { TransactionSource } from '../common/enums/transaction-source.enum';
 
 @Injectable()
 export class WalletsService {
@@ -27,7 +26,7 @@ export class WalletsService {
         throw new NotFoundException('User not found');
       }
       wallet = this.walletRepository.create({
-        user: { id: userId } as any,
+        user: { id: userId },
         balance: 0,
       });
       wallet = await this.walletRepository.save(wallet);
@@ -39,11 +38,7 @@ export class WalletsService {
     };
   }
 
-  async getTransactions(
-    userId: string,
-    page = 1,
-    limit = 20,
-  ) {
+  async getTransactions(userId: string, page = 1, limit = 20) {
     const wallet = await this.walletRepository.findOne({
       where: { user: { id: userId } },
     });
@@ -51,12 +46,14 @@ export class WalletsService {
       return { transactions: [], total: 0, page, limit };
     }
 
-    const [transactions, total] = await this.transactionRepository.findAndCount({
-      where: { wallet: { id: wallet.id } },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const [transactions, total] = await this.transactionRepository.findAndCount(
+      {
+        where: { wallet: { id: wallet.id } },
+        order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      },
+    );
 
     return {
       transactions: transactions.map((tx) => ({

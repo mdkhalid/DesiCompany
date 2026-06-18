@@ -93,13 +93,17 @@ export class BookingsService {
   }
 
   async findByCustomerUser(userId: string) {
-    const customer = await this.customerRepository.findOne({ where: { user: { id: userId } } });
+    const customer = await this.customerRepository.findOne({
+      where: { user: { id: userId } },
+    });
     if (!customer) return [];
     return this.findByCustomer(customer.id);
   }
 
   async findByProviderUser(userId: string) {
-    const provider = await this.providerRepository.findOne({ where: { user: { id: userId } } });
+    const provider = await this.providerRepository.findOne({
+      where: { user: { id: userId } },
+    });
     if (!provider) return [];
     return this.findByProvider(provider.id);
   }
@@ -158,7 +162,7 @@ export class BookingsService {
     booking.status = dto.status;
     const saved = await this.bookingRepository.save(booking);
 
-    await this.sendStatusNotification(saved, dto.status, role);
+    await this.sendStatusNotification(saved, dto.status);
 
     if (dto.status === BookingStatus.COMPLETED) {
       return this.recalculateTotals(saved.id);
@@ -167,11 +171,17 @@ export class BookingsService {
     return saved;
   }
 
-  private async sendStatusNotification(booking: Booking, status: BookingStatus, actorRole: UserRole) {
+  private async sendStatusNotification(
+    booking: Booking,
+    status: BookingStatus,
+  ) {
     const providerName = `${booking.provider.firstName} ${booking.provider.lastName}`;
     const customerUser = booking.customer.user;
 
-    const messages: Record<string, { userId: string; title: string; message: string }> = {
+    const messages: Record<
+      string,
+      { userId: string; title: string; message: string }
+    > = {
       [BookingStatus.ACCEPTED]: {
         userId: customerUser.id,
         title: 'Booking Accepted',
@@ -206,7 +216,11 @@ export class BookingsService {
 
     const notification = messages[status];
     if (notification) {
-      await this.notificationsService.create(notification.userId, notification.title, notification.message);
+      await this.notificationsService.create(
+        notification.userId,
+        notification.title,
+        notification.message,
+      );
     }
   }
 

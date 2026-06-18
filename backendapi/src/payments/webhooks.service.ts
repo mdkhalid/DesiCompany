@@ -5,7 +5,6 @@ import { Payment } from './entities/payment.entity';
 import { WebhookEvent } from './entities/webhook-event.entity';
 import { PaymentGatewayFactory } from './gateways/payment-gateway.factory';
 import { PaymentGatewayType } from '../common/enums/payment-gateway-type.enum';
-import { PaymentMethod } from '../common/enums/payment-method.enum';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { PaymentsService } from './payments.service';
 
@@ -42,7 +41,9 @@ export class WebhookService {
     try {
       parsedEvent = gw.parseWebhookEvent(rawBody);
     } catch (err) {
-      this.logger.warn(`Failed to parse webhook payload for ${gateway}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Failed to parse webhook payload for ${gateway}: ${(err as Error).message}`,
+      );
       return { received: false };
     }
 
@@ -55,7 +56,9 @@ export class WebhookService {
       where: { gateway: parsedEvent.gateway, eventId: parsedEvent.eventId },
     });
     if (existing) {
-      this.logger.debug(`Duplicate webhook event ignored: ${parsedEvent.eventId}`);
+      this.logger.debug(
+        `Duplicate webhook event ignored: ${parsedEvent.eventId}`,
+      );
       return { received: true, eventId: parsedEvent.eventId };
     }
 
@@ -72,7 +75,9 @@ export class WebhookService {
         await this.handleSuccessfulPayment(parsedEvent);
       }
     } catch (err) {
-      this.logger.error(`Error processing webhook event ${parsedEvent.eventId}: ${(err as Error).message}`);
+      this.logger.error(
+        `Error processing webhook event ${parsedEvent.eventId}: ${(err as Error).message}`,
+      );
     }
 
     eventRecord.processedAt = new Date();
@@ -89,7 +94,9 @@ export class WebhookService {
       relations: { booking: true },
     });
     if (!payment) {
-      this.logger.warn(`No payment found for gatewayOrderId: ${event.gatewayOrderId}`);
+      this.logger.warn(
+        `No payment found for gatewayOrderId: ${event.gatewayOrderId}`,
+      );
       return;
     }
     if (payment.status === PaymentStatus.SUCCESS) {
