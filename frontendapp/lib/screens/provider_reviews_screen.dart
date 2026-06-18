@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
@@ -37,7 +36,12 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
 
       double totalRating = 0;
       for (final r in reviews) {
-        totalRating += (r['rating'] as num).toDouble();
+        final rating = r['rating'];
+        if (rating is num) {
+          totalRating += rating.toDouble();
+        } else if (rating is String) {
+          totalRating += double.tryParse(rating) ?? 0;
+        }
       }
 
       if (mounted) {
@@ -177,7 +181,9 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
     final user = customer?['user'] ?? {};
     final name = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
     final phone = user['phone'] ?? '';
-    final rating = (review['rating'] as num).toDouble();
+    final rating = (review['rating'] is num)
+        ? (review['rating'] as num).toDouble()
+        : double.tryParse('${review['rating']}') ?? 0;
     final comment = review['comment'] as String?;
     final createdAt = review['createdAt'] as String?;
 

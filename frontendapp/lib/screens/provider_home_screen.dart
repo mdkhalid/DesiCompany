@@ -97,7 +97,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                           () => Navigator.pushNamed(context, '/provider-kyc-upload')),
                         _buildHeaderButton(Icons.account_balance_wallet, loc.tr('header_wallet'),
                           () => Navigator.pushNamed(context, '/wallet')),
-                        _buildHeaderButton(Icons.feedback, loc.tr('private_feedback'),
+                        _buildHeaderButton(Icons.feedback, loc.tr('my_quotes'),
                           () => Navigator.pushNamed(context, '/provider-my-quotes')),
                         _buildHeaderButton(Icons.logout, loc.tr('header_logout'),
                           () => Navigator.pushReplacementNamed(context, '/login')),
