@@ -43,6 +43,9 @@ export class Provider extends BaseEntity {
   @Column({ type: 'decimal', precision: 10, scale: 6, nullable: true })
   longitude: number;
 
+  @Column({ type: 'decimal', precision: 5, scale: 1, default: 10 })
+  serviceRadiusKm: number;
+
   @Column({ default: false })
   isVerified: boolean;
 

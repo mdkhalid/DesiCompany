@@ -91,6 +91,8 @@ async function seed() {
       city: 'Delhi',
       state: 'Delhi',
       pincode: '110001',
+      latitude: 28.6139,
+      longitude: 77.209,
     });
     await customerRepository.save(customer);
     console.log('Sample customer created');
@@ -117,6 +119,8 @@ async function seed() {
       city: 'Delhi',
       state: 'Delhi',
       pincode: '110001',
+      latitude: 28.628,
+      longitude: 77.2195,
       isVerified: true,
       averageRating: 4.5,
       totalReviews: 12,
@@ -207,6 +211,8 @@ async function seed() {
       fixedRate: 600,
       hourlyRate: 300,
       city: 'Delhi',
+      latitude: 28.6507,
+      longitude: 77.2334,
     },
     {
       phone: '9876543213',
@@ -217,6 +223,8 @@ async function seed() {
       fixedRate: 350,
       hourlyRate: 180,
       city: 'Delhi',
+      latitude: 28.58,
+      longitude: 77.31,
     },
     {
       phone: '9876543214',
@@ -227,6 +235,8 @@ async function seed() {
       fixedRate: 800,
       hourlyRate: 400,
       city: 'Delhi',
+      latitude: 28.7041,
+      longitude: 77.1025,
     },
     {
       phone: '9876543215',
@@ -237,6 +247,8 @@ async function seed() {
       fixedRate: 450,
       hourlyRate: 220,
       city: 'Delhi',
+      latitude: 28.5494,
+      longitude: 77.2676,
     },
     {
       phone: '9876543216',
@@ -247,6 +259,8 @@ async function seed() {
       fixedRate: 500,
       hourlyRate: 250,
       city: 'Mumbai',
+      latitude: 19.076,
+      longitude: 72.8777,
     },
     {
       phone: '9876543217',
@@ -257,6 +271,8 @@ async function seed() {
       fixedRate: 700,
       hourlyRate: 350,
       city: 'Mumbai',
+      latitude: 19.0596,
+      longitude: 72.8295,
     },
   ];
 
@@ -281,6 +297,8 @@ async function seed() {
         city: pData.city,
         state: 'India',
         pincode: '110001',
+        latitude: pData.latitude,
+        longitude: pData.longitude,
         isVerified: true,
         averageRating: +(Math.random() * 2 + 3).toFixed(1),
         totalReviews: Math.floor(Math.random() * 30),

@@ -4,8 +4,10 @@ import { JwtService } from '@nestjs/jwt';
 import { Socket, Server } from 'socket.io';
 import { ChatGateway } from './chat.gateway';
 import { Message } from './entities/message.entity';
+import { DirectMessage } from './entities/direct-message.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
+import { Provider } from '../users/entities/provider.entity';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
@@ -17,11 +19,21 @@ describe('ChatGateway', () => {
     update: jest.fn(),
   };
 
+  const mockDirectMessageRepo = {
+    find: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+  };
+
   const mockBookingRepo = {
     findOne: jest.fn(),
   };
 
   const mockUserRepo = {
+    findOne: jest.fn(),
+  };
+
+  const mockProviderRepo = {
     findOne: jest.fn(),
   };
 
@@ -34,8 +46,13 @@ describe('ChatGateway', () => {
       providers: [
         ChatGateway,
         { provide: getRepositoryToken(Message), useValue: mockMessageRepo },
+        {
+          provide: getRepositoryToken(DirectMessage),
+          useValue: mockDirectMessageRepo,
+        },
         { provide: getRepositoryToken(Booking), useValue: mockBookingRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
+        { provide: getRepositoryToken(Provider), useValue: mockProviderRepo },
         { provide: JwtService, useValue: mockJwtService },
       ],
     }).compile();

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/location_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
+import '../widgets/distance_badge.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -19,6 +21,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   int _unreadCount = 0;
+  String _locationText = 'Set location';
+  double? _latitude;
+  double? _longitude;
+  double _radiusKm = 5;
 
   static const _categoryIcons = {
     'plumber': {'icon': Icons.plumbing, 'color': Color(0xFF2196F3)},
@@ -45,6 +51,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _initLocation();
   }
 
   @override
@@ -56,18 +63,43 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Future<void> _loadData() async {
     try {
       final cats = await ApiService.get('/services/categories');
-      final provs = await ApiService.get('/services/providers');
       if (!mounted) return;
       setState(() {
         _categories = (cats as List).map((c) => ServiceCategory.fromJson(c)).toList();
+      });
+      await _loadProviders();
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadProviders() async {
+    try {
+      List provs;
+      if (_latitude != null && _longitude != null && _radiusKm > 0) {
+        final path = '/services/search?latitude=$_latitude&longitude=$_longitude&radiusKm=$_radiusKm';
+        provs = await ApiService.get(path);
+      } else {
+        provs = await ApiService.get('/services/providers');
+      }
+      if (!mounted) return;
+      setState(() {
         _allProviders = provs as List;
-        _filteredProviders = _allProviders;
+        _applyFilters();
         _loading = false;
       });
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
-    _loadUnreadCount();
+  }
+
+  void _onRadiusChanged(double radius) {
+    setState(() {
+      _radiusKm = radius;
+      _loading = true;
+    });
+    _loadProviders();
   }
 
   Future<void> _loadUnreadCount() async {
@@ -75,6 +107,22 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       final data = await ApiService.get('/notifications/unread-count');
       if (mounted) setState(() => _unreadCount = data as int);
     } catch (e) {}
+  }
+
+  Future<void> _initLocation() async {
+    final position = await LocationService.getCurrentLocation();
+    if (!mounted) return;
+    if (position != null) {
+      _latitude = position.latitude;
+      _longitude = position.longitude;
+      final address = await LocationService.getAddressFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      if (!mounted) return;
+      setState(() => _locationText = address);
+      _loadProviders();
+    }
   }
 
   void _selectCategory(String? id) {
@@ -106,6 +154,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       }).toList();
     }
 
+    results.sort((a, b) {
+      final da = a['distance'] as num?;
+      final db = b['distance'] as num?;
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da.compareTo(db);
+    });
+
     _filteredProviders = results;
   }
 
@@ -126,6 +183,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             children: [
               _buildHeader(),
               _buildSearchBar(),
+              _buildRadiusFilter(),
               Expanded(
                 child: _loading
                     ? const Center(child: CircularProgressIndicator(color: Colors.white))
@@ -145,43 +203,48 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
+          GestureDetector(
+            onTap: _locationText == 'Set location'
+                ? () => Navigator.pushNamed(context, '/profile')
+                : null,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.location_on, color: Colors.white, size: 18),
                     ),
-                    child: const Icon(Icons.location_on, color: Colors.white, size: 18),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Delhi, India',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 12,
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _locationText,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                      const Text(
-                        'Find Services',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                        const Text(
+                          'Find Services',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           Row(
             children: [
@@ -249,7 +312,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -291,6 +354,47 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRadiusFilter() {
+    final options = [
+      {'label': '2 km', 'value': 2.0},
+      {'label': '5 km', 'value': 5.0},
+      {'label': '10 km', 'value': 10.0},
+      {'label': '25 km', 'value': 25.0},
+      {'label': 'All', 'value': 0.0},
+    ];
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: options.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final opt = options[index];
+          final value = opt['value'] as double;
+          final isSelected = _radiusKm == value;
+          return ChoiceChip(
+            label: Text(
+              opt['label'] as String,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+              ),
+            ),
+            selected: isSelected,
+            selectedColor: AppTheme.primary,
+            backgroundColor: Colors.white,
+            side: BorderSide(
+              color: isSelected ? AppTheme.primary : Colors.grey.shade300,
+            ),
+            onSelected: (_) => _onRadiusChanged(value),
+          );
+        },
       ),
     );
   }
@@ -543,6 +647,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                             ),
                           ],
                         ),
+                      const SizedBox(height: 2),
+                      if (p['distance'] != null)
+                        DistanceBadge(distanceMeters: (p['distance'] as num).toDouble()),
                       const SizedBox(height: 8),
                       if (services.isNotEmpty)
                         Wrap(

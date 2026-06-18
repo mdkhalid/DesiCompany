@@ -39,8 +39,14 @@ class DesiCompanyApp extends StatelessWidget {
           );
         }
         if (settings.name == '/chat') {
+          final args = settings.arguments as Map<String, dynamic>?;
           return MaterialPageRoute(
-            builder: (_) => const ChatScreen(bookingId: ''),
+            builder: (_) => ChatScreen(
+              bookingId: args?['bookingId'] as String?,
+              providerId: args?['providerId'] as String?,
+              mode: args?['mode'] as String? ?? 'booking',
+              providerName: args?['providerName'] as String?,
+            ),
           );
         }
         if (settings.name == '/my-bookings') {

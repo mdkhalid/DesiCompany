@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../widgets/distance_badge.dart';
 
 class ProviderDetailScreen extends StatefulWidget {
   final Map provider;
@@ -15,6 +17,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
   bool _loading = true;
   String? _error;
   Set<String> _bookedServiceIds = {};
+  double? _distanceMeters;
 
   @override
   void initState() {
@@ -28,6 +31,52 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
     }
     _loadExistingBookings();
     _loadReviews();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_distanceMeters == null) _calculateDistance();
+  }
+
+  void _calculateDistance() {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final customerLat = args is Map ? args['customerLatitude'] as double? : null;
+    final customerLng = args is Map ? args['customerLongitude'] as double? : null;
+    final providerLat = (widget.provider['latitude'] as num?)?.toDouble();
+    final providerLng = (widget.provider['longitude'] as num?)?.toDouble();
+    if (customerLat != null && customerLng != null && providerLat != null && providerLng != null) {
+      _distanceMeters = DistanceBadge.calculateDistance(
+        lat1: customerLat, lon1: customerLng,
+        lat2: providerLat, lon2: providerLng,
+      );
+    }
+  }
+
+  String _getTravelTimeEstimate() {
+    if (_distanceMeters == null) return '';
+    final km = _distanceMeters! / 1000;
+    if (km < 1) return 'Walking distance';
+    if (km < 5) return '~5-10 min by car';
+    if (km < 15) return '~15-30 min by car';
+    return '~30+ min by car';
+  }
+
+  Future<void> _openDirections() async {
+    final providerLat = (widget.provider['latitude'] as num?)?.toDouble();
+    final providerLng = (widget.provider['longitude'] as num?)?.toDouble();
+    if (providerLat == null || providerLng == null) return;
+    final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$providerLat,$providerLng');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _openDirectChat() {
+    Navigator.pushNamed(context, '/chat', arguments: {
+      'providerId': widget.provider['id'],
+      'mode': 'direct_chat',
+    });
   }
 
   Future<void> _loadExistingBookings() async {
@@ -139,6 +188,47 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
             ? const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
             : SliverList(
                 delegate: SliverChildListDelegate([
+                  if (_distanceMeters != null) ...[
+                    DistanceBadge(distanceMeters: _distanceMeters),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getTravelTimeEstimate(),
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (widget.provider['latitude'] != null && widget.provider['longitude'] != null) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _openDirections,
+                        icon: const Icon(Icons.directions, size: 18),
+                        label: const Text('Get Directions'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.deepPurple,
+                          side: const BorderSide(color: Colors.deepPurple),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _openDirectChat,
+                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                      label: const Text('Ask a Question'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   const Text('Services', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                   if (_error != null)
                     Container(

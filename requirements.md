@@ -285,6 +285,36 @@ npm run start:dev
 - [x] React admin dashboard (TailwindCSS)
 - [ ] Polish, testing, deployment prep
 
+### Phase 6 — Location-Based Provider Discovery ✅ COMPLETED
+- [x] GPS location capture (Flutter)
+  - `geolocator` + `permission_handler` packages
+  - Location permission request flow
+  - Save GPS coordinates to profile via `PATCH /users/profile`
+- [x] Backend location support
+  - `latitude`/`longitude` fields in `UpdateProfileDto`
+  - `users.service.ts` saves coordinates for both customer and provider
+  - Seed data with real Delhi/Mumbai coordinates
+  - `serviceRadiusKm` column on Provider entity (default 10km)
+- [x] Nearby provider discovery
+  - Customer home uses `GET /services/search` with lat/lng/radius
+  - Radius filter chips (2km / 5km / 10km / 25km / All)
+  - Distance displayed on provider cards ("2.3 km away")
+  - Haversine distance calculation
+  - Nearest-first sorting
+- [x] Provider detail enhancements
+  - Distance badge ("2.3 km from you")
+  - Estimated travel time
+  - "Get Directions" button (opens Google Maps)
+  - "Ask a Question" button (pre-booking chat)
+- [x] Pre-booking direct chat
+  - `DirectMessage` entity (customer ↔ provider without booking)
+  - Socket events: `start_direct_chat`, `send_direct_message`, `join_direct_chat`
+  - Flutter chat screen supports `direct` mode
+- [x] Live location sharing
+  - `share_location` / `customer_share_location` socket events
+  - `provider_location` / `customer_location` broadcast events
+  - Real-time location during active bookings
+
 ---
 
 ## 8. Notes for Implementation

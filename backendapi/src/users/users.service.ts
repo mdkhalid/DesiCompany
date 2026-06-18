@@ -66,6 +66,10 @@ export class UsersService {
         user.customer.state = updateProfileDto.state;
       if (updateProfileDto.pincode !== undefined)
         user.customer.pincode = updateProfileDto.pincode;
+      if (updateProfileDto.latitude !== undefined)
+        user.customer.latitude = updateProfileDto.latitude;
+      if (updateProfileDto.longitude !== undefined)
+        user.customer.longitude = updateProfileDto.longitude;
       await this.customerRepository.save(user.customer);
     }
 
@@ -82,6 +86,12 @@ export class UsersService {
         user.provider.state = updateProfileDto.state;
       if (updateProfileDto.pincode !== undefined)
         user.provider.pincode = updateProfileDto.pincode;
+      if (updateProfileDto.latitude !== undefined)
+        user.provider.latitude = updateProfileDto.latitude;
+      if (updateProfileDto.longitude !== undefined)
+        user.provider.longitude = updateProfileDto.longitude;
+      if (updateProfileDto.serviceRadiusKm !== undefined)
+        user.provider.serviceRadiusKm = updateProfileDto.serviceRadiusKm;
       await this.providerRepository.save(user.provider);
     }
 

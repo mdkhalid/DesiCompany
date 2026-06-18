@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/location_service.dart';
 import '../theme.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -114,6 +115,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update profile: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _captureLocation() async {
+    try {
+      final position = await LocationService.getCurrentLocation();
+      if (!mounted) return;
+      if (position == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permission denied or unavailable')),
+        );
+        return;
+      }
+      await ApiService.patch('/users/profile', body: {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+      });
+      if (!mounted) return;
+      await _loadProfile();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location saved')),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save location: $e')),
         );
       }
     }
@@ -272,6 +301,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _infoTile(Icons.location_city, 'City', userData?['city'] ?? 'Not provided'),
         _infoTile(Icons.map, 'State', userData?['state'] ?? 'Not provided'),
         _infoTile(Icons.markunread_mailbox, 'Pincode', userData?['pincode'] ?? 'Not provided'),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: _captureLocation,
+            icon: const Icon(Icons.my_location, size: 18),
+            label: const Text('Set My Location', style: TextStyle(fontSize: 14)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.primary,
+              side: BorderSide(color: AppTheme.primary),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
       ],
     );
   }

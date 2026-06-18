@@ -3,11 +3,30 @@ class User {
   final String phone;
   final String role;
   final String? token;
+  final double? latitude;
+  final double? longitude;
+  final double? serviceRadiusKm;
 
-  User({required this.id, required this.phone, required this.role, this.token});
+  User({
+    required this.id,
+    required this.phone,
+    required this.role,
+    this.token,
+    this.latitude,
+    this.longitude,
+    this.serviceRadiusKm,
+  });
 
   factory User.fromJson(Map<String, dynamic> json, {String? token}) {
-    return User(id: json['id'], phone: json['phone'], role: json['role'], token: token);
+    return User(
+      id: json['id'],
+      phone: json['phone'],
+      role: json['role'],
+      token: token,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      serviceRadiusKm: (json['serviceRadiusKm'] as num?)?.toDouble(),
+    );
   }
 
   bool get isCustomer => role == 'customer';
