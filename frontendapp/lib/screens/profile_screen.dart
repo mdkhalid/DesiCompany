@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
@@ -76,6 +77,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     _emailController.text = _profile!['email'] ?? '';
     _selectedLanguage = _profile!['language'] ?? 'en';
+    // Sync locale provider with saved language
+    DesiCompanyApp.localeProvider?.setLocale(_selectedLanguage);
     if (userData != null) {
       _addressController.text = userData['address'] ?? '';
       _cityController.text = userData['city'] ?? '';
@@ -501,6 +504,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       onTap: () {
         setState(() => _selectedLanguage = code);
         DesiCompanyApp.localeProvider?.setLocale(code);
+        // Persist language choice
+        SharedPreferences.getInstance().then((prefs) => prefs.setString('app_language', code));
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),

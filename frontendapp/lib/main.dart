@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'l10n/strings.dart';
 import 'theme.dart';
 import 'screens/login_screen.dart';
@@ -14,10 +15,17 @@ import 'screens/notifications_screen.dart';
 import 'screens/write_review_screen.dart';
 import 'screens/provider_reviews_screen.dart';
 
-void main() => runApp(const DesiCompanyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final savedLanguage = prefs.getString('app_language') ?? 'en';
+  runApp(DesiCompanyApp(initialLanguage: savedLanguage));
+}
 
 class DesiCompanyApp extends StatefulWidget {
-  const DesiCompanyApp({super.key});
+  const DesiCompanyApp({super.key, this.initialLanguage = 'en'});
+
+  final String initialLanguage;
 
   static LocalizationProvider? _localeProvider;
 
@@ -28,7 +36,7 @@ class DesiCompanyApp extends StatefulWidget {
 }
 
 class _DesiCompanyAppState extends State<DesiCompanyApp> {
-  final _localeProvider = LocalizationProvider();
+  late final _localeProvider = LocalizationProvider(initialLocale: widget.initialLanguage);
 
   @override
   void initState() {
