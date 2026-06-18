@@ -11,6 +11,7 @@ const links = [
   { to: '/commissions', label: 'Commissions', icon: '💰' },
   { to: '/refunds', label: 'Refunds', icon: '↩️' },
   { to: '/reviews', label: 'Reviews', icon: '⭐' },
+  { to: '/customer-feedback', label: 'Customer Feedback', icon: '💬' },
 ];
 
 export default function Sidebar() {

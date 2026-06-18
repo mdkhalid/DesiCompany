@@ -11,6 +11,7 @@ import PaymentGateways from './pages/PaymentGateways';
 import Commissions from './pages/Commissions';
 import Refunds from './pages/Refunds';
 import Reviews from './pages/Reviews';
+import CustomerFeedback from './pages/CustomerFeedback';
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/commissions" element={<ProtectedRoute><Layout><Commissions /></Layout></ProtectedRoute>} />
         <Route path="/refunds" element={<ProtectedRoute><Layout><Refunds /></Layout></ProtectedRoute>} />
         <Route path="/reviews" element={<ProtectedRoute><Layout><Reviews /></Layout></ProtectedRoute>} />
+        <Route path="/customer-feedback" element={<ProtectedRoute><Layout><CustomerFeedback /></Layout></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );

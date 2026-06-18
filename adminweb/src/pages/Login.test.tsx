@@ -72,4 +72,42 @@ describe('Login Page', () => {
       expect(screen.getByText('Verify & Login')).toBeInTheDocument();
     });
   });
+
+  it('limits phone input to 10 digits and strips non-digits', async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    const phoneInput = screen.getByPlaceholderText('Phone number') as HTMLInputElement;
+
+    await user.type(phoneInput, '12345abc67890def');
+    expect(phoneInput.value).toBe('1234567890');
+    expect(phoneInput.value).toHaveLength(10);
+  });
+
+  it('disables Send OTP button when phone is not 10 digits', async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    const phoneInput = screen.getByPlaceholderText('Phone number');
+    const sendButton = screen.getByText('Send OTP');
+
+    await user.type(phoneInput, '12345');
+    expect(sendButton).toBeDisabled();
+
+    await user.type(phoneInput, '67890');
+    expect(sendButton).not.toBeDisabled();
+  });
+
+  it('limits OTP input to 6 digits', async () => {
+    const user = userEvent.setup();
+    mockAuthService.sendOtp.mockResolvedValue({ message: 'OTP sent' });
+    renderLogin();
+
+    await user.type(screen.getByPlaceholderText('Phone number'), '9999999999');
+    await user.click(screen.getByText('Send OTP'));
+
+    await waitFor(() => screen.getByPlaceholderText('Enter OTP'));
+    const otpInput = screen.getByPlaceholderText('Enter OTP') as HTMLInputElement;
+
+    await user.type(otpInput, '123abc4567890');
+    expect(otpInput.value).toHaveLength(6);
+  });
 });
