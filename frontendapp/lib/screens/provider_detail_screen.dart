@@ -86,7 +86,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [color, color.withOpacity(0.7), AppTheme.secondary],
+                  colors: [color, color.withValues(alpha: 0.7), AppTheme.secondary],
                 ),
               ),
               child: SafeArea(
@@ -95,7 +95,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                   Container(
                     width: 72, height: 72,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Center(child: Text((p['firstName'] ?? '?')[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold))),
@@ -146,7 +146,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                       decoration: BoxDecoration(
                         color: isBooked ? Colors.grey.shade100 : Colors.white,
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
@@ -154,7 +154,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: isBooked ? Colors.grey.shade200 : color.withOpacity(0.1),
+                              color: isBooked ? Colors.grey.shade200 : color.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Icon(Icons.check_circle, color: isBooked ? Colors.green : color, size: 28),

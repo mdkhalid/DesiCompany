@@ -105,10 +105,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     final isRead = n['isRead'] == true;
                     return Container(
                       decoration: BoxDecoration(
-                        color: isRead ? Colors.white : AppTheme.primary.withOpacity(0.04),
+                        color: isRead ? Colors.white : AppTheme.primary.withValues(alpha: 0.04),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: isRead ? Colors.grey.shade200 : AppTheme.primary.withOpacity(0.2),
+                          color: isRead ? Colors.grey.shade200 : AppTheme.primary.withValues(alpha: 0.2),
                         ),
                       ),
                       child: ListTile(
@@ -117,7 +117,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: _notifColor(n['title'] ?? '').withOpacity(0.1),
+                            color: _notifColor(n['title'] ?? '').withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(_notifIcon(n['title'] ?? ''), color: _notifColor(n['title'] ?? ''), size: 22),

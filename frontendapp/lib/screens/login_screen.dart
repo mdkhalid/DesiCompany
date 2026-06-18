@@ -66,20 +66,20 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.15)),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.15)),
                   child: const Icon(Icons.handyman, size: 64, color: Colors.white),
                 ),
                 const SizedBox(height: 20),
                 const Text('DesiCompany', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2)),
                 const SizedBox(height: 4),
-                Text('Local Service Marketplace', style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8))),
+                Text('Local Service Marketplace', style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8))),
                 const SizedBox(height: 40),
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, 10))],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, offset: const Offset(0, 10))],
                   ),
                   child: Column(children: [
                     if (_error.isNotEmpty)
@@ -113,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Row(children: [
                           Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                            decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                             child: const Icon(Icons.check_circle, color: AppTheme.secondary, size: 20),
                           ),
                           const SizedBox(width: 12),

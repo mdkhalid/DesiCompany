@@ -153,7 +153,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.location_on, color: Colors.white, size: 18),
@@ -165,7 +165,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       Text(
                         'Delhi, India',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 12,
                         ),
                       ),
@@ -201,7 +201,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(icon, color: Colors.white, size: 20),
@@ -221,7 +221,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 20),
@@ -257,7 +257,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           border: Border.all(color: Colors.grey.shade200, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -377,7 +377,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: (isSelected ? color : Colors.black).withOpacity(0.08),
+              color: (isSelected ? color : Colors.black).withValues(alpha: 0.08),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -389,7 +389,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withOpacity(0.2) : color.withOpacity(0.1),
+                color: isSelected ? Colors.white.withValues(alpha: 0.2) : color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: isSelected ? Colors.white : color, size: 20),
@@ -454,7 +454,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -494,7 +494,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         border: Border.all(color: Colors.grey.shade200, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -552,7 +552,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: AppTheme.primary.withOpacity(0.08),
+                                color: AppTheme.primary.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
@@ -588,7 +588,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         gradient: LinearGradient(
           colors: [
             AppTheme.primary,
-            AppTheme.primary.withOpacity(0.7),
+            AppTheme.primary.withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -596,7 +596,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withOpacity(0.3),
+            color: AppTheme.primary.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -646,7 +646,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -677,7 +677,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: active
             ? BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               )
             : null,

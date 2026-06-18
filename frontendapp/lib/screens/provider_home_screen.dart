@@ -88,7 +88,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
@@ -97,7 +97,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                                     Text('Booking #${b['id'].toString().substring(0, 8)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                                      decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
                                       child: Text(_statusLabel(b['status'] ?? ''), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
                                     ),
                                   ]),
@@ -152,7 +152,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -4))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -4))],
         ),
         child: SafeArea(
           child: Padding(
