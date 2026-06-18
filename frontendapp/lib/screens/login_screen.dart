@@ -49,7 +49,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final user = await AuthService.verifyOtp(_phoneController.text.trim(), _otpController.text.trim());
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, user.isProvider ? '/provider-home' : '/customer-home');
+      Navigator.pushReplacementNamed(context,
+        user.isAdmin ? '/admin-home' :
+        user.isProvider ? '/provider-home' : '/customer-home');
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
     }

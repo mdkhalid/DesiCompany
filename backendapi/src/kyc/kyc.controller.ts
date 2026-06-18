@@ -33,6 +33,12 @@ export class KycController {
     return this.kycService.uploadDocument(providerId, documentType, file.path);
   }
 
+  @Get()
+  @Roles(UserRole.ADMIN)
+  findAll() {
+    return this.kycService.findAll();
+  }
+
   @Get('provider/:providerId')
   findByProvider(@Param('providerId') providerId: string) {
     return this.kycService.findByProvider(providerId);

@@ -38,4 +38,11 @@ class ApiService {
     if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
     return jsonDecode(res.body);
   }
+
+  static Future<dynamic> delete(String path) async {
+    final res = await http.delete(Uri.parse('$baseUrl$path'), headers: await _headers());
+    if (res.statusCode == 401) throw Exception('Unauthorized');
+    if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
+    return jsonDecode(res.body);
+  }
 }

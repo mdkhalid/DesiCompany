@@ -14,6 +14,12 @@ import 'screens/profile_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/write_review_screen.dart';
 import 'screens/provider_reviews_screen.dart';
+import 'screens/admin_home_screen.dart';
+import 'screens/admin_bookings_screen.dart';
+import 'screens/admin_reviews_screen.dart';
+import 'screens/admin_users_screen.dart';
+import 'screens/admin_kyc_screen.dart';
+import 'screens/admin_gateways_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -85,10 +91,16 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
             '/login': (_) => const LoginScreen(),
             '/customer-home': (_) => const CustomerHomeScreen(),
             '/provider-home': (_) => const ProviderHomeScreen(),
+            '/admin-home': (_) => const AdminHomeScreen(),
+            '/admin-users': (_) => const AdminUsersScreen(),
+            '/admin-kyc': (_) => const AdminKycScreen(),
+            '/admin-gateways': (_) => const AdminGatewaysScreen(),
             '/wallet': (_) => const WalletScreen(),
             '/profile': (_) => const ProfileScreen(),
             '/notifications': (_) => const NotificationsScreen(),
             '/provider-reviews': (_) => const ProviderReviewsScreen(),
+            '/admin-bookings': (_) => const AdminBookingsScreen(),
+            '/admin-reviews': (_) => const AdminReviewsScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name == '/provider-detail') {

@@ -31,6 +31,7 @@ class User {
 
   bool get isCustomer => role == 'customer';
   bool get isProvider => role == 'provider';
+  bool get isAdmin => role == 'admin';
 }
 
 class ServiceCategory {

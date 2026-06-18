@@ -44,6 +44,13 @@ export class KycService {
     return this.kycRepository.save(document);
   }
 
+  async findAll() {
+    return this.kycRepository.find({
+      relations: { provider: { user: true } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async findByProvider(providerId: string) {
     return this.kycRepository.find({
       where: { provider: { id: providerId } },

@@ -18,6 +18,9 @@ class AppStrings {
       'retry': 'Retry',
       'no_data': 'No data available',
 
+      // Admin
+      'user_management': 'User Management',
+
       // Auth
       'phone_hint': 'Phone Number',
       'send_otp': 'Send OTP',
@@ -151,6 +154,25 @@ class AppStrings {
       // Distance
       'meters_from_you': '{meters} m from you',
       'km_from_you': '{km} km from you',
+
+      // Admin Dashboard
+      'admin_dashboard': 'Admin Dashboard',
+      'overview': 'Overview',
+      'total_users': 'Total Users',
+      'total_providers': 'Total Providers',
+      'total_bookings': 'Total Bookings',
+      'total_payments': 'Total Payments',
+      'active_users': 'Active Users',
+      'quick_actions': 'Quick Actions',
+      'manage_users': 'Manage Users',
+      'kyc_approvals': 'KYC Approvals',
+      'bookings': 'Bookings',
+      'reviews': 'Reviews',
+      'payment_gateways': 'Payment Gateways',
+      'nav_dashboard': 'Dashboard',
+      'nav_users': 'Users',
+      'nav_kyc': 'KYC',
+      'nav_more': 'More',
     },
     'hi': {
       // General
@@ -167,6 +189,9 @@ class AppStrings {
       'back': 'वापस',
       'retry': 'पुनः प्रयास करें',
       'no_data': 'कोई डेटा उपलब्ध नहीं',
+
+      // Admin
+      'user_management': 'उपयोगकर्ता प्रबंधन',
 
       // Auth
       'phone_hint': 'फ़ोन नंबर',
@@ -301,6 +326,25 @@ class AppStrings {
       // Distance
       'meters_from_you': 'आपसे {meters} मीटर दूर',
       'km_from_you': 'आपसे {km} किमी दूर',
+
+      // Admin Dashboard
+      'admin_dashboard': 'एडमिन डैशबोर्ड',
+      'overview': 'अवलोकन',
+      'total_users': 'कुल उपयोगकर्ता',
+      'total_providers': 'कुल प्रदाता',
+      'total_bookings': 'कुल बुकिंग',
+      'total_payments': 'कुल भुगतान',
+      'active_users': 'सक्रिय उपयोगकर्ता',
+      'quick_actions': 'त्वरित कार्य',
+      'manage_users': 'उपयोगकर्ता प्रबंधित करें',
+      'kyc_approvals': 'KYC अनुमोदन',
+      'bookings': 'बुकिंग',
+      'reviews': 'समीक्षाएं',
+      'payment_gateways': 'भुगतान गेटवे',
+      'nav_dashboard': 'डैशबोर्ड',
+      'nav_users': 'उपयोगकर्ता',
+      'nav_kyc': 'KYC',
+      'nav_more': 'और',
     },
   };
 
