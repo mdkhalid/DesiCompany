@@ -102,9 +102,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           ),
           Row(
             children: [
-              _buildIconButton(Icons.refresh, _loadDashboard),
+              _buildIconButton(Icons.refresh, _loadDashboard, tooltipKey: 'header_refresh'),
               const SizedBox(width: 8),
-              _buildIconButton(Icons.logout, () => Navigator.pushReplacementNamed(context, '/login')),
+              _buildIconButton(
+                Icons.logout,
+                () => Navigator.pushReplacementNamed(context, '/login'),
+                tooltipKey: 'header_logout',
+              ),
             ],
           ),
         ],
@@ -112,8 +116,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 
-  Widget _buildIconButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
+  Widget _buildIconButton(IconData icon, VoidCallback onTap, {String? tooltipKey}) {
+    final loc = LocalizationProvider.of(context);
+    final button = GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
@@ -124,6 +129,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
+    if (tooltipKey == null) return button;
+    return Tooltip(message: loc.tr(tooltipKey), child: button);
   }
 
   Widget _buildContent() {

@@ -252,7 +252,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             children: [
               _buildNotificationButton(),
               const SizedBox(width: 8),
-              _buildIconButton(Icons.logout, () => Navigator.pushReplacementNamed(context, '/login')),
+              _buildIconButton(
+                Icons.logout,
+                () => Navigator.pushReplacementNamed(context, '/login'),
+                tooltipKey: 'header_logout',
+              ),
             ],
           ),
         ],
@@ -260,8 +264,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     );
   }
 
-  Widget _buildIconButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
+  Widget _buildIconButton(IconData icon, VoidCallback onTap, {String? tooltipKey}) {
+    final loc = LocalizationProvider.of(context);
+    final button = GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
@@ -272,42 +277,48 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
+    if (tooltipKey == null) return button;
+    return Tooltip(message: loc.tr(tooltipKey), child: button);
   }
 
   Widget _buildNotificationButton() {
-    return GestureDetector(
-      onTap: () async {
-        await Navigator.pushNamed(context, '/notifications');
-        _loadUnreadCount();
-      },
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+    final loc = LocalizationProvider.of(context);
+    return Tooltip(
+      message: loc.tr('header_notifications'),
+      child: GestureDetector(
+        onTap: () async {
+          await Navigator.pushNamed(context, '/notifications');
+          _loadUnreadCount();
+        },
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 20),
             ),
-            child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 20),
-          ),
-          if (_unreadCount > 0)
-            Positioned(
-              right: -2,
-              top: -2,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE53935),
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  _unreadCount > 9 ? '9+' : '$_unreadCount',
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+            if (_unreadCount > 0)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE53935),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    _unreadCount > 9 ? '9+' : '$_unreadCount',
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

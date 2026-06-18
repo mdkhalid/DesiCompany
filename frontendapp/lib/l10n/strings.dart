@@ -135,6 +135,12 @@ class AppStrings {
       'wallet': 'Wallet',
       'balance': 'Balance',
       'transactions': 'Transactions',
+      'available_balance': 'Available Balance',
+      'total_earned': 'Total Earned',
+      'total_spent': 'Total Spent',
+      'no_transactions_yet': 'No transactions yet',
+      'add_money': 'Add Money',
+      'withdraw': 'Withdraw',
 
       // Notifications
       'notifications': 'Notifications',
@@ -225,6 +231,18 @@ class AppStrings {
       'kyc_pending': 'PENDING',
       'kyc_approved': 'APPROVED',
       'kyc_rejected': 'REJECTED',
+
+      // Header labels (for LabeledIconButton / Tooltip)
+      'header_services': 'Services',
+      'header_reviews': 'Reviews',
+      'header_kyc': 'KYC',
+      'header_wallet': 'Wallet',
+      'header_logout': 'Logout',
+      'header_refresh': 'Refresh',
+      'header_back': 'Back',
+      'header_edit': 'Edit',
+      'header_cancel_edit': 'Cancel Edit',
+      'header_notifications': 'Notifications',
     },
     'hi': {
       // General
@@ -359,6 +377,12 @@ class AppStrings {
       'wallet': 'वॉलेट',
       'balance': 'शेष राशि',
       'transactions': 'लेनदेन',
+      'available_balance': 'उपलब्ध शेष राशि',
+      'total_earned': 'कुल कमाई',
+      'total_spent': 'कुल खर्च',
+      'no_transactions_yet': 'अभी तक कोई लेनदेन नहीं',
+      'add_money': 'पैसे जोड़ें',
+      'withdraw': 'निकालें',
 
       // Notifications
       'notifications': 'सूचनाएं',
@@ -449,6 +473,18 @@ class AppStrings {
       'kyc_pending': 'लंबित',
       'kyc_approved': 'स्वीकृत',
       'kyc_rejected': 'अस्वीकृत',
+
+      // Header labels (for LabeledIconButton / Tooltip)
+      'header_services': 'सेवाएं',
+      'header_reviews': 'समीक्षाएं',
+      'header_kyc': 'KYC',
+      'header_wallet': 'वॉलेट',
+      'header_logout': 'लॉगआउट',
+      'header_refresh': 'रिफ्रेश',
+      'header_back': 'वापस',
+      'header_edit': 'संपादित करें',
+      'header_cancel_edit': 'संपादन रद्द करें',
+      'header_notifications': 'सूचनाएं',
     },
   };
 

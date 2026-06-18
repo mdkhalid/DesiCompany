@@ -3,6 +3,7 @@ import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../widgets/labeled_icon_button.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -64,11 +65,45 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                   Text(loc.tr('manage_bookings'), style: const TextStyle(color: Colors.white70, fontSize: 14)),
                 ]),
                 Row(children: [
-                  IconButton(icon: const Icon(Icons.miscellaneous_services, color: Colors.white70), onPressed: () => Navigator.pushNamed(context, '/provider-services')),
-                  IconButton(icon: const Icon(Icons.reviews, color: Colors.white70), onPressed: () => Navigator.pushNamed(context, '/provider-reviews')),
-                  IconButton(icon: const Icon(Icons.verified_user, color: Colors.white70), onPressed: () => Navigator.pushNamed(context, '/provider-kyc-upload')),
-                  IconButton(icon: const Icon(Icons.wallet, color: Colors.white70), onPressed: () => Navigator.pushNamed(context, '/wallet')),
-                  IconButton(icon: const Icon(Icons.logout, color: Colors.white70), onPressed: () => Navigator.pushReplacementNamed(context, '/login')),
+                  LabeledIconButton(
+                    icon: Icons.handyman,
+                    label: loc.tr('header_services'),
+                    iconColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    onTap: () => Navigator.pushNamed(context, '/provider-services'),
+                  ),
+                  const SizedBox(width: 6),
+                  LabeledIconButton(
+                    icon: Icons.star_rate,
+                    label: loc.tr('header_reviews'),
+                    iconColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    onTap: () => Navigator.pushNamed(context, '/provider-reviews'),
+                  ),
+                  const SizedBox(width: 6),
+                  LabeledIconButton(
+                    icon: Icons.verified_user,
+                    label: loc.tr('header_kyc'),
+                    iconColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    onTap: () => Navigator.pushNamed(context, '/provider-kyc-upload'),
+                  ),
+                  const SizedBox(width: 6),
+                  LabeledIconButton(
+                    icon: Icons.account_balance_wallet,
+                    label: loc.tr('header_wallet'),
+                    iconColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    onTap: () => Navigator.pushNamed(context, '/wallet'),
+                  ),
+                  const SizedBox(width: 6),
+                  LabeledIconButton(
+                    icon: Icons.logout,
+                    label: loc.tr('header_logout'),
+                    iconColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    onTap: () => Navigator.pushReplacementNamed(context, '/login'),
+                  ),
                 ]),
               ]),
             ),

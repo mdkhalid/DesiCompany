@@ -196,9 +196,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.fromLTRB(8, 16, 20, 0),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
+                    Tooltip(
+                      message: loc.tr('header_back'),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ),
                     Text(
                       loc.tr('my_profile'),
@@ -209,21 +212,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const Spacer(),
-                    IconButton(
-                      icon: Icon(
-                        _editing ? Icons.close : Icons.edit,
-                        color: Colors.white70,
+                    Tooltip(
+                      message: loc.tr(_editing ? 'header_cancel_edit' : 'header_edit'),
+                      child: IconButton(
+                        icon: Icon(
+                          _editing ? Icons.close : Icons.edit,
+                          color: Colors.white70,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _editing = !_editing;
+                            if (!_editing) _populateFields();
+                          });
+                        },
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _editing = !_editing;
-                          if (!_editing) _populateFields();
-                        });
-                      },
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.logout, color: Colors.white70),
-                      onPressed: _logout,
+                    Tooltip(
+                      message: loc.tr('header_logout'),
+                      child: IconButton(
+                        icon: const Icon(Icons.logout, color: Colors.white70),
+                        onPressed: _logout,
+                      ),
                     ),
                   ],
                 ),
