@@ -8,6 +8,7 @@ import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 import { CommissionsModule } from '../commissions/commissions.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CommissionsModule } from '../commissions/commissions.module';
       ProviderService,
     ]),
     CommissionsModule,
+    NotificationsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService],

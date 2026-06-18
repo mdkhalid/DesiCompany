@@ -14,6 +14,7 @@ import { ProviderService } from '../services/entities/provider-service.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 import { CommissionService } from '../commissions/commission.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateBookingDto,
   UpdateBookingStatusDto,
@@ -35,6 +36,7 @@ export class BookingsService {
     @InjectRepository(ProviderService)
     private readonly providerServiceRepository: Repository<ProviderService>,
     private readonly commissionService: CommissionService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async createByUser(userId: string, dto: CreateBookingDto) {
@@ -156,11 +158,56 @@ export class BookingsService {
     booking.status = dto.status;
     const saved = await this.bookingRepository.save(booking);
 
+    await this.sendStatusNotification(saved, dto.status, role);
+
     if (dto.status === BookingStatus.COMPLETED) {
       return this.recalculateTotals(saved.id);
     }
 
     return saved;
+  }
+
+  private async sendStatusNotification(booking: Booking, status: BookingStatus, actorRole: UserRole) {
+    const providerName = `${booking.provider.firstName} ${booking.provider.lastName}`;
+    const customerUser = booking.customer.user;
+
+    const messages: Record<string, { userId: string; title: string; message: string }> = {
+      [BookingStatus.ACCEPTED]: {
+        userId: customerUser.id,
+        title: 'Booking Accepted',
+        message: `${providerName} has accepted your booking.`,
+      },
+      [BookingStatus.REJECTED]: {
+        userId: customerUser.id,
+        title: 'Booking Rejected',
+        message: `${providerName} has rejected your booking.`,
+      },
+      [BookingStatus.ON_THE_WAY]: {
+        userId: customerUser.id,
+        title: 'Provider On The Way',
+        message: `${providerName} is on the way to your location.`,
+      },
+      [BookingStatus.WORKING]: {
+        userId: customerUser.id,
+        title: 'Service Started',
+        message: `${providerName} has started working on your service.`,
+      },
+      [BookingStatus.COMPLETED]: {
+        userId: customerUser.id,
+        title: 'Booking Completed',
+        message: `${providerName} has completed your booking. Please rate your experience.`,
+      },
+      [BookingStatus.CANCELLED]: {
+        userId: booking.provider.user.id,
+        title: 'Booking Cancelled',
+        message: 'A booking has been cancelled by the customer.',
+      },
+    };
+
+    const notification = messages[status];
+    if (notification) {
+      await this.notificationsService.create(notification.userId, notification.title, notification.message);
+    }
   }
 
   async reschedule(
