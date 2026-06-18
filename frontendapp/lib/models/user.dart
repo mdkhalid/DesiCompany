@@ -23,9 +23,9 @@ class User {
       phone: json['phone'],
       role: json['role'],
       token: token,
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
-      serviceRadiusKm: (json['serviceRadiusKm'] as num?)?.toDouble(),
+      latitude: double.tryParse('${json['latitude'] ?? ''}'),
+      longitude: double.tryParse('${json['longitude'] ?? ''}'),
+      serviceRadiusKm: double.tryParse('${json['serviceRadiusKm'] ?? ''}'),
     );
   }
 

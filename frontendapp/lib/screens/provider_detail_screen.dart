@@ -42,10 +42,10 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
 
   void _calculateDistance() {
     final args = ModalRoute.of(context)?.settings.arguments;
-    final customerLat = args is Map ? args['customerLatitude'] as double? : null;
-    final customerLng = args is Map ? args['customerLongitude'] as double? : null;
-    final providerLat = (widget.provider['latitude'] as num?)?.toDouble();
-    final providerLng = (widget.provider['longitude'] as num?)?.toDouble();
+    final customerLat = args is Map ? (args['customerLatitude'] as num?)?.toDouble() : null;
+    final customerLng = args is Map ? (args['customerLongitude'] as num?)?.toDouble() : null;
+    final providerLat = double.tryParse('${widget.provider['latitude'] ?? ''}');
+    final providerLng = double.tryParse('${widget.provider['longitude'] ?? ''}');
     if (customerLat != null && customerLng != null && providerLat != null && providerLng != null) {
       _distanceMeters = DistanceBadge.calculateDistance(
         lat1: customerLat, lon1: customerLng,
@@ -65,8 +65,8 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
   }
 
   Future<void> _openDirections() async {
-    final providerLat = (widget.provider['latitude'] as num?)?.toDouble();
-    final providerLng = (widget.provider['longitude'] as num?)?.toDouble();
+    final providerLat = double.tryParse('${widget.provider['latitude'] ?? ''}');
+    final providerLng = double.tryParse('${widget.provider['longitude'] ?? ''}');
     if (providerLat == null || providerLng == null) return;
     final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$providerLat,$providerLng');
     if (await canLaunchUrl(url)) {

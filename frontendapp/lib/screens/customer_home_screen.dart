@@ -656,7 +656,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         ),
                       const SizedBox(height: 2),
                       if (p['distance'] != null)
-                        DistanceBadge(distanceMeters: (p['distance'] as num).toDouble()),
+                        DistanceBadge(distanceMeters: double.tryParse('${p['distance']}') ?? 0),
                       const SizedBox(height: 8),
                       if (services.isNotEmpty)
                         Wrap(
