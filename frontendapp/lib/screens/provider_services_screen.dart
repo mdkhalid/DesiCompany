@@ -76,7 +76,8 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
         existingCategoryIds: _services
             .map((s) => s['categoryId']?.toString())
             .where((id) => id != null)
-            .toList(),
+            .toList()
+            .cast<String>(),
       ),
     );
     if (result == true && mounted) {
@@ -94,7 +95,8 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
         existingCategoryIds: _services
             .map((s) => s['categoryId']?.toString())
             .where((id) => id != null)
-            .toList(),
+            .toList()
+            .cast<String>(),
         existing: service,
       ),
     );
