@@ -1,0 +1,406 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Brackets, Repository } from 'typeorm';
+import { Booking } from '../bookings/entities/booking.entity';
+import { BookingStatus } from '../common/enums/booking-status.enum';
+import { Customer } from '../users/entities/customer.entity';
+import { Provider } from '../users/entities/provider.entity';
+import { ServiceCategory } from '../services/entities/service-category.entity';
+import { ProviderService } from '../services/entities/provider-service.entity';
+import { CreateJobRequestDto } from './dto/create-job-request.dto';
+import { CreateQuoteDto } from './dto/create-quote.dto';
+import { UpdateQuoteDto } from './dto/update-quote.dto';
+import { JobRequest } from './entities/job-request.entity';
+import { JobRequestStatus } from './entities/job-request-status.enum';
+import { Quote } from './entities/quote.entity';
+import { QuoteStatus } from './entities/quote-status.enum';
+
+@Injectable()
+export class QuotesService {
+  constructor(
+    @InjectRepository(JobRequest)
+    private readonly jobRequestRepository: Repository<JobRequest>,
+    @InjectRepository(Quote)
+    private readonly quoteRepository: Repository<Quote>,
+    @InjectRepository(Customer)
+    private readonly customerRepository: Repository<Customer>,
+    @InjectRepository(Provider)
+    private readonly providerRepository: Repository<Provider>,
+    @InjectRepository(ServiceCategory)
+    private readonly categoryRepository: Repository<ServiceCategory>,
+    @InjectRepository(ProviderService)
+    private readonly providerServiceRepository: Repository<ProviderService>,
+    @InjectRepository(Booking)
+    private readonly bookingRepository: Repository<Booking>,
+  ) {}
+
+  async createJobRequest(dto: CreateJobRequestDto, userId: string) {
+    const customer = await this.customerRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!customer) {
+      throw new NotFoundException('Customer profile not found for this user');
+    }
+
+    const category = await this.categoryRepository.findOne({
+      where: { id: dto.categoryId },
+    });
+    if (!category) {
+      throw new NotFoundException('Service category not found');
+    }
+
+    const jobRequest = this.jobRequestRepository.create({
+      customer,
+      category,
+      title: dto.title,
+      description: dto.description,
+      address: dto.address,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      budgetMin: dto.budgetMin,
+      budgetMax: dto.budgetMax,
+      preferredDate: dto.preferredDate
+        ? new Date(dto.preferredDate)
+        : undefined,
+      status: JobRequestStatus.OPEN,
+    });
+
+    return this.jobRequestRepository.save(jobRequest);
+  }
+
+  async findOpenJobRequests(
+    categoryId?: string,
+    lat?: number,
+    lng?: number,
+    radiusKm?: number,
+  ) {
+    const query = this.jobRequestRepository
+      .createQueryBuilder('jobRequest')
+      .leftJoinAndSelect('jobRequest.category', 'category')
+      .leftJoinAndSelect('jobRequest.customer', 'customer')
+      .leftJoinAndSelect('customer.user', 'customerUser')
+      .leftJoinAndSelect('jobRequest.quotes', 'quotes')
+      .where(
+        new Brackets((qb) => {
+          qb.where('jobRequest.status = :open', {
+            open: JobRequestStatus.OPEN,
+          }).orWhere(
+            '(jobRequest.status = :quoted AND jobRequest.updatedAt >= :recent)',
+            {
+              quoted: JobRequestStatus.QUOTED,
+              recent: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+            },
+          );
+        }),
+      );
+
+    if (categoryId) {
+      query.andWhere('category.id = :categoryId', { categoryId });
+    }
+
+    if (lat !== undefined && lng !== undefined && radiusKm) {
+      const radius = radiusKm * 1000;
+      query.addSelect(
+        `6371000 * acos(
+          cos(radians(:lat)) * cos(radians(jobRequest.latitude)) *
+          cos(radians(jobRequest.longitude) - radians(:lng)) +
+          sin(radians(:lat)) * sin(radians(jobRequest.latitude))
+        )`,
+        'distance',
+      );
+      query.setParameters({ lat, lng });
+      query.andWhere(
+        `6371000 * acos(
+          cos(radians(:lat)) * cos(radians(jobRequest.latitude)) *
+          cos(radians(jobRequest.longitude) - radians(:lng)) +
+          sin(radians(:lat)) * sin(radians(jobRequest.latitude))
+        ) <= :radius`,
+        { radius },
+      );
+      query.orderBy('distance', 'ASC');
+    } else {
+      query.orderBy('jobRequest.createdAt', 'DESC');
+    }
+
+    return query.getMany();
+  }
+
+  async findMyJobRequests(userId: string) {
+    const customer = await this.customerRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!customer) return [];
+
+    return this.jobRequestRepository.find({
+      where: { customer: { id: customer.id } },
+      relations: { category: true, customer: { user: true } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findJobRequestById(id: string) {
+    const jobRequest = await this.jobRequestRepository.findOne({
+      where: { id },
+      relations: {
+        customer: { user: true },
+        category: true,
+        quotes: { provider: { user: true } },
+      },
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found');
+    }
+    return jobRequest;
+  }
+
+  async cancelJobRequest(id: string, userId: string) {
+    const jobRequest = await this.jobRequestRepository.findOne({
+      where: { id },
+      relations: { customer: { user: true } },
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found');
+    }
+
+    if (jobRequest.customer.user.id !== userId) {
+      throw new ForbiddenException('You can only cancel your own job requests');
+    }
+
+    if (jobRequest.status === JobRequestStatus.ACCEPTED) {
+      throw new BadRequestException(
+        'Cannot cancel a job request that has been accepted',
+      );
+    }
+
+    if (
+      jobRequest.status === JobRequestStatus.CANCELLED ||
+      jobRequest.status === JobRequestStatus.CLOSED
+    ) {
+      throw new BadRequestException(
+        `Job request is already ${jobRequest.status}`,
+      );
+    }
+
+    jobRequest.status = JobRequestStatus.CANCELLED;
+    return this.jobRequestRepository.save(jobRequest);
+  }
+
+  async createQuote(
+    jobRequestId: string,
+    dto: CreateQuoteDto,
+    providerUserId: string,
+  ) {
+    const provider = await this.providerRepository.findOne({
+      where: { user: { id: providerUserId } },
+    });
+    if (!provider) {
+      throw new NotFoundException('Provider profile not found');
+    }
+
+    const jobRequest = await this.jobRequestRepository.findOne({
+      where: { id: jobRequestId },
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found');
+    }
+
+    if (
+      jobRequest.status !== JobRequestStatus.OPEN &&
+      jobRequest.status !== JobRequestStatus.QUOTED
+    ) {
+      throw new BadRequestException(
+        `Cannot quote on a ${jobRequest.status} job request`,
+      );
+    }
+
+    const existing = await this.quoteRepository.findOne({
+      where: {
+        jobRequest: { id: jobRequest.id },
+        provider: { id: provider.id },
+      },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'You have already submitted a quote for this job request',
+      );
+    }
+
+    const quote = this.quoteRepository.create({
+      jobRequest,
+      provider,
+      amount: dto.amount,
+      message: dto.message,
+      estimatedHours: dto.estimatedHours,
+      validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
+      status: QuoteStatus.PENDING,
+    });
+
+    const saved = await this.quoteRepository.save(quote);
+
+    if (jobRequest.status === JobRequestStatus.OPEN) {
+      jobRequest.status = JobRequestStatus.QUOTED;
+      await this.jobRequestRepository.save(jobRequest);
+    }
+
+    return saved;
+  }
+
+  async findQuotesForJobRequest(jobRequestId: string) {
+    return this.quoteRepository.find({
+      where: { jobRequest: { id: jobRequestId } },
+      relations: { provider: { user: true }, jobRequest: { category: true } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findMyQuotes(userId: string) {
+    const provider = await this.providerRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!provider) return [];
+
+    return this.quoteRepository.find({
+      where: { provider: { id: provider.id } },
+      relations: { jobRequest: { category: true, customer: { user: true } } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async updateQuote(
+    quoteId: string,
+    dto: UpdateQuoteDto,
+    providerUserId: string,
+  ) {
+    const quote = await this.quoteRepository.findOne({
+      where: { id: quoteId },
+      relations: { provider: { user: true } },
+    });
+    if (!quote) {
+      throw new NotFoundException('Quote not found');
+    }
+
+    if (quote.provider.user.id !== providerUserId) {
+      throw new ForbiddenException('You can only edit your own quotes');
+    }
+
+    if (quote.status !== QuoteStatus.PENDING) {
+      throw new BadRequestException(`Cannot edit a ${quote.status} quote`);
+    }
+
+    if (dto.amount !== undefined) quote.amount = dto.amount;
+    if (dto.message !== undefined) quote.message = dto.message;
+    if (dto.estimatedHours !== undefined)
+      quote.estimatedHours = dto.estimatedHours;
+    if (dto.validUntil !== undefined)
+      quote.validUntil = new Date(dto.validUntil);
+
+    return this.quoteRepository.save(quote);
+  }
+
+  async withdrawQuote(quoteId: string, userId: string) {
+    const quote = await this.quoteRepository.findOne({
+      where: { id: quoteId },
+      relations: { provider: { user: true } },
+    });
+    if (!quote) {
+      throw new NotFoundException('Quote not found');
+    }
+
+    if (quote.provider.user.id !== userId) {
+      throw new ForbiddenException('You can only withdraw your own quotes');
+    }
+
+    if (quote.status !== QuoteStatus.PENDING) {
+      throw new BadRequestException(`Cannot withdraw a ${quote.status} quote`);
+    }
+
+    quote.status = QuoteStatus.WITHDRAWN;
+    return this.quoteRepository.save(quote);
+  }
+
+  async acceptQuote(quoteId: string, userId: string) {
+    const quote = await this.quoteRepository.findOne({
+      where: { id: quoteId },
+      relations: {
+        jobRequest: { customer: { user: true }, category: true },
+        provider: true,
+      },
+    });
+    if (!quote) {
+      throw new NotFoundException('Quote not found');
+    }
+
+    const jobRequest = quote.jobRequest;
+    if (jobRequest.customer.user.id !== userId) {
+      throw new ForbiddenException(
+        'Only the job request owner can accept quotes',
+      );
+    }
+
+    if (quote.status !== QuoteStatus.PENDING) {
+      throw new BadRequestException(`Quote is already ${quote.status}`);
+    }
+
+    if (
+      jobRequest.status !== JobRequestStatus.OPEN &&
+      jobRequest.status !== JobRequestStatus.QUOTED
+    ) {
+      throw new BadRequestException(
+        `Cannot accept a quote on a ${jobRequest.status} job request`,
+      );
+    }
+
+    quote.status = QuoteStatus.ACCEPTED;
+    await this.quoteRepository.save(quote);
+
+    await this.quoteRepository
+      .createQueryBuilder()
+      .update(Quote)
+      .set({ status: QuoteStatus.REJECTED })
+      .where('job_request_id = :jobRequestId', { jobRequestId: jobRequest.id })
+      .andWhere('id != :quoteId', { quoteId: quote.id })
+      .andWhere('status = :pending', { pending: QuoteStatus.PENDING })
+      .execute();
+
+    jobRequest.status = JobRequestStatus.ACCEPTED;
+    jobRequest.acceptedQuoteId = quote.id;
+    await this.jobRequestRepository.save(jobRequest);
+
+    const providerService = await this.providerServiceRepository.findOne({
+      where: {
+        provider: { id: quote.provider.id },
+        category: { id: jobRequest.category.id },
+        isActive: true,
+      },
+    });
+
+    const totalAmount = Number(quote.amount);
+
+    const booking = this.bookingRepository.create({
+      customer: jobRequest.customer,
+      provider: quote.provider,
+      providerService: providerService ?? undefined,
+      scheduledDate: jobRequest.preferredDate ?? new Date(),
+      description: jobRequest.description,
+      estimatedHours: quote.estimatedHours ?? undefined,
+      totalAmount,
+      status: BookingStatus.REQUESTED,
+    });
+
+    const savedBooking = await this.bookingRepository.save(booking);
+    return this.bookingRepository.findOne({
+      where: { id: savedBooking.id },
+      relations: {
+        customer: { user: true },
+        provider: { user: true },
+        providerService: { category: true },
+        charges: true,
+      },
+    });
+  }
+}

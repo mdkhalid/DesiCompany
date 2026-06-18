@@ -16,6 +16,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ChatModule } from './chat/chat.module';
 import { FeedbacksModule } from './feedbacks/feedbacks.module';
+import { QuotesModule } from './quotes/quotes.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -50,6 +51,7 @@ import { CustomerFeedback } from './feedbacks/entities/customer-feedback.entity'
     NotificationsModule,
     ChatModule,
     FeedbacksModule,
+    QuotesModule,
     TypeOrmModule.forFeature([
       User,
       Customer,

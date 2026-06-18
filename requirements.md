@@ -394,3 +394,27 @@ npm run start:dev
 | Amit Kumar | 9876543211 | provider |
 
 **Mock OTP Code:** `123456` (for all users in dev)
+
+---
+
+## 10. Suggested Future Features
+
+### High‑Priority, Low‑Effort
+- **Provider Earnings Dashboard** – visual charts (weekly/monthly) with CSV export.
+- **Cancellation & Penalty Policy** – configurable fees based on cancellation window.
+- **Referral / Invite‑Rewards System** – wallet credits for successful referrals (both sides).
+- **Push‑Notification Preferences** – user‑controllable toggles for each event type.
+
+### Medium‑Effort, High‑Value Enhancements
+- **Advanced Search Filters** – price‑range slider, rating percentile, calendar availability.
+- **Multi‑Language Expansion** – add Marathi, Tamil with dynamic language switching.
+- **Provider Calendar Integration** – sync accepted bookings to Google Calendar / Outlook.
+- **Offline Mode for Mobile** – cache bookings/status updates, auto‑sync when back online.
+- **AI‑Powered Service Recommendations** – lightweight server‑side inference to suggest services based on history and location.
+
+### Long‑Term Strategic Work
+- **Live Video Call Support** – WebRTC integration for remote assistance.
+- **Dynamic Pricing / Surge** – adjust provider rates based on demand or time‑of‑day.
+- **Multi‑Currency & Tax Support** – handle INR, USD, AED with automatic tax calculations.
+- **Audit‑Log Export & Compliance Dashboard** – CSV/JSON export, GDPR/CCPA tooling.
+- **Chat Translation** – real‑time translation between provider and customer languages.
