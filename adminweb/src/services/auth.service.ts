@@ -5,8 +5,8 @@ export async function sendOtp(phone: string) {
 }
 
 export async function verifyOtp(phone: string, otp: string) {
-  const data = await api.post<{ accessToken: string; refreshToken: string; user: any }>('/auth/login', { phone, otp });
-  localStorage.setItem('token', data.accessToken);
+  const data = await api.post<{ user: any; tokens: { accessToken: string; refreshToken: string } }>('/auth/login', { phone, otp });
+  localStorage.setItem('token', data.tokens.accessToken);
   localStorage.setItem('user', JSON.stringify(data.user));
   return data;
 }
