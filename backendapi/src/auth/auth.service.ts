@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,9 +26,23 @@ interface LoginDto {
   otp: string;
 }
 
+interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface JwtPayload {
+  sub: string;
+  phone: string;
+  role: UserRole;
+}
+
 @Injectable()
 export class AuthService {
-  private readonly otpStore = new Map<string, { code: string; expiresAt: Date }>();
+  private readonly otpStore = new Map<
+    string,
+    { code: string; expiresAt: Date }
+  >();
 
   constructor(
     @InjectRepository(User)
@@ -36,7 +55,10 @@ export class AuthService {
   ) {}
 
   async requestOtp(phone: string): Promise<{ message: string }> {
-    const code = process.env.OTP_MOCK === 'true' ? process.env.OTP_MOCK_CODE || '123456' : this.generateOtp();
+    const code =
+      process.env.OTP_MOCK === 'true'
+        ? process.env.OTP_MOCK_CODE || '123456'
+        : this.generateOtp();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     this.otpStore.set(phone, { code, expiresAt });
@@ -45,8 +67,12 @@ export class AuthService {
     return { message: `OTP sent to ${phone}` };
   }
 
-  async register(registerDto: RegisterDto): Promise<{ user: User; tokens: any }> {
-    const existingUser = await this.userRepository.findOne({ where: { phone: registerDto.phone } });
+  async register(
+    registerDto: RegisterDto,
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    const existingUser = await this.userRepository.findOne({
+      where: { phone: registerDto.phone },
+    });
     if (existingUser) {
       throw new ConflictException('User already exists');
     }
@@ -80,8 +106,10 @@ export class AuthService {
     return { user: savedUser, tokens };
   }
 
-  async login(loginDto: LoginDto): Promise<{ user: User; tokens: any }> {
-    const user = await this.userRepository.findOne({ where: { phone: loginDto.phone } });
+  async login(loginDto: LoginDto): Promise<{ user: User; tokens: AuthTokens }> {
+    const user = await this.userRepository.findOne({
+      where: { phone: loginDto.phone },
+    });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -110,13 +138,15 @@ export class AuthService {
     return { user, tokens };
   }
 
-  async refreshToken(refreshToken: string): Promise<{ tokens: any }> {
+  async refreshToken(refreshToken: string): Promise<{ tokens: AuthTokens }> {
     try {
       const payload = this.jwtService.verify(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
 
-      const user = await this.userRepository.findOne({ where: { id: payload.sub } as any });
+      const user = await this.userRepository.findOne({
+        where: { id: payload.sub },
+      });
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
@@ -128,14 +158,18 @@ export class AuthService {
     }
   }
 
-  private generateTokens(user: User): any {
-    const payload = { sub: user.id, phone: user.phone, role: user.role };
+  private generateTokens(user: User): AuthTokens {
+    const payload: JwtPayload = {
+      sub: user.id,
+      phone: user.phone,
+      role: user.role,
+    };
 
     return {
-      accessToken: this.jwtService.sign(payload as any, {
+      accessToken: this.jwtService.sign(payload, {
         secret: process.env.JWT_SECRET,
       }),
-      refreshToken: this.jwtService.sign(payload as any, {
+      refreshToken: this.jwtService.sign(payload, {
         secret: process.env.JWT_REFRESH_SECRET,
         expiresIn: '7d',
       }),

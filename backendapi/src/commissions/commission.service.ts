@@ -12,7 +12,10 @@ export class CommissionService {
   ) {}
 
   async getCommission(totalAmount: number, scope: string, scopeId?: string) {
-    const where: any = { scope, isActive: true };
+    const where: { scope: string; isActive: boolean; scopeId?: string } = {
+      scope,
+      isActive: true,
+    };
     if (scopeId) {
       where.scopeId = scopeId;
     }
@@ -26,7 +29,11 @@ export class CommissionService {
     }
 
     if (!config) {
-      return { type: CommissionType.PERCENTAGE, value: 10, amount: totalAmount * 0.1 };
+      return {
+        type: CommissionType.PERCENTAGE,
+        value: 10,
+        amount: totalAmount * 0.1,
+      };
     }
 
     let amount = 0;

@@ -11,6 +11,10 @@ import type { Request, Response } from 'express';
 import { WebhookService } from './webhooks.service';
 import { PaymentGatewayType } from '../common/enums/payment-gateway-type.enum';
 
+interface RawBodyRequest extends Request {
+  rawBody?: Buffer;
+}
+
 @Controller('webhooks')
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);
@@ -19,9 +23,9 @@ export class WebhooksController {
 
   @Post('razorpay')
   @HttpCode(HttpStatus.OK)
-  async razorpayWebhook(@Req() req: Request, @Res() res: Response) {
+  async razorpayWebhook(@Req() req: RawBodyRequest, @Res() res: Response) {
     const signature = req.headers['x-razorpay-signature'] as string | undefined;
-    const rawBody = (req as any).rawBody as Buffer | undefined;
+    const rawBody = req.rawBody;
 
     if (!rawBody) {
       this.logger.warn('Razorpay webhook missing rawBody');
@@ -43,9 +47,9 @@ export class WebhooksController {
 
   @Post('stripe')
   @HttpCode(HttpStatus.OK)
-  async stripeWebhook(@Req() req: Request, @Res() res: Response) {
+  async stripeWebhook(@Req() req: RawBodyRequest, @Res() res: Response) {
     const signature = req.headers['stripe-signature'] as string | undefined;
-    const rawBody = (req as any).rawBody as Buffer | undefined;
+    const rawBody = req.rawBody;
 
     if (!rawBody) {
       this.logger.warn('Stripe webhook missing rawBody');

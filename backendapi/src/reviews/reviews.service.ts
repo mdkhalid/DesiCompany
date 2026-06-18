@@ -109,7 +109,7 @@ export class ReviewsService {
       .select('AVG(review.rating)', 'avg')
       .addSelect('COUNT(review.id)', 'count')
       .where('review.provider_id = :providerId', { providerId })
-      .getRawOne();
+      .getRawOne<{ avg: string | null; count: string }>();
 
     const avgRating = stats?.avg ? Number(Number(stats.avg).toFixed(2)) : 0;
     const totalReviews = Number(stats?.count ?? 0);
