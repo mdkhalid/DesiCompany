@@ -13,11 +13,13 @@ import { Provider } from '../users/entities/provider.entity';
     TypeOrmModule.forFeature([User, Customer, Provider]),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: `${Number(process.env.JWT_EXPIRATION_MINUTES) || 15}m` },
+      signOptions: {
+        expiresIn: `${Number(process.env.JWT_EXPIRATION_MINUTES) || 15}m`,
+      },
     }),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtStrategy],
+  exports: [AuthService, JwtStrategy, JwtModule],
 })
 export class AuthModule {}
