@@ -7,9 +7,9 @@ import {
   Patch,
   UseGuards,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { KycService } from './kyc.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -24,13 +24,25 @@ export class KycController {
 
   @Post('upload')
   @Roles(UserRole.PROVIDER)
-  @UseInterceptors(FileInterceptor('document'))
-  uploadDocument(
+  @UseInterceptors(FilesInterceptor('documents', 10))
+  async uploadDocuments(
     @Body('providerId') providerId: string,
     @Body('documentType') documentType: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
-    return this.kycService.uploadDocument(providerId, documentType, file.path);
+    if (!files || files.length === 0) {
+      return [];
+    }
+    const results = [];
+    for (const file of files) {
+      const doc = await this.kycService.uploadDocument(
+        providerId,
+        documentType,
+        file.path,
+      );
+      results.push(doc);
+    }
+    return results;
   }
 
   @Get()

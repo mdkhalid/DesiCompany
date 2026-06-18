@@ -7,6 +7,7 @@ import 'screens/login_screen.dart';
 import 'screens/customer_home_screen.dart';
 import 'screens/provider_home_screen.dart';
 import 'screens/provider_detail_screen.dart';
+import 'screens/provider_services_screen.dart';
 import 'screens/wallet_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/my_bookings_screen.dart';
@@ -22,6 +23,7 @@ import 'screens/admin_customer_feedbacks_screen.dart';
 import 'screens/admin_users_screen.dart';
 import 'screens/admin_kyc_screen.dart';
 import 'screens/admin_gateways_screen.dart';
+import 'screens/provider_kyc_upload_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -101,6 +103,8 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
             '/profile': (_) => const ProfileScreen(),
             '/notifications': (_) => const NotificationsScreen(),
             '/provider-reviews': (_) => const ProviderReviewsScreen(),
+            '/provider-services': (_) => const ProviderServicesScreen(),
+            '/provider-kyc-upload': (_) => const ProviderKycUploadScreen(),
             '/admin-bookings': (_) => const AdminBookingsScreen(),
             '/admin-reviews': (_) => const AdminReviewsScreen(),
             '/admin-customer-feedbacks': (_) => const AdminCustomerFeedbacksScreen(),
