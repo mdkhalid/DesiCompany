@@ -95,6 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (_cityController.text.isNotEmpty) 'city': _cityController.text,
         if (_stateController.text.isNotEmpty) 'state': _stateController.text,
         if (_pincodeController.text.isNotEmpty) 'pincode': _pincodeController.text,
+        'language': _selectedLanguage,
       });
 
       if (!mounted) return;
@@ -258,6 +259,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       userData = _profile?['provider'];
     }
+    final lang = _profile?['language'] == 'hi' ? 'Hindi' : 'English';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,6 +267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _infoTile(Icons.person, 'Name', '${userData?['firstName'] ?? ''} ${userData?['lastName'] ?? ''}'.trim()),
         _infoTile(Icons.email, 'Email', _profile?['email'] ?? 'Not provided'),
         _infoTile(Icons.phone, 'Phone', _profile?['phone'] ?? 'Not provided'),
+        _infoTile(Icons.language, 'Language', lang),
         _infoTile(Icons.location_on, 'Address', userData?['address'] ?? 'Not provided'),
         _infoTile(Icons.location_city, 'City', userData?['city'] ?? 'Not provided'),
         _infoTile(Icons.map, 'State', userData?['state'] ?? 'Not provided'),
@@ -337,6 +340,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildTextField(_cityController, 'City', Icons.location_city),
           _buildTextField(_stateController, 'State', Icons.map),
           _buildTextField(_pincodeController, 'Pincode', Icons.markunread_mailbox, keyboardType: TextInputType.number),
+          const SizedBox(height: 16),
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.language, color: AppTheme.primary, size: 20),
+                    const SizedBox(width: 12),
+                    const Text('Language', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildLanguageOption('en', 'English'),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildLanguageOption('hi', 'Hindi'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -398,6 +441,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageOption(String code, String label) {
+    final isSelected = _selectedLanguage == code;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedLanguage = code),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppTheme.primary : Colors.grey.shade300,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? Colors.white : AppTheme.textPrimary,
+            ),
+          ),
         ),
       ),
     );
