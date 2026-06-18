@@ -161,6 +161,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               _navItem(Icons.book_online, 'Bookings', true, () {}),
               _navItem(Icons.wallet, 'Wallet', false, () => Navigator.pushNamed(context, '/wallet')),
               _navItem(Icons.chat, 'Chat', false, () => Navigator.pushNamed(context, '/chat')),
+              _navItem(Icons.person, 'Profile', false, () => Navigator.pushNamed(context, '/profile')),
             ]),
           ),
         ),

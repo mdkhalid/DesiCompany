@@ -125,118 +125,85 @@ async function seed() {
     console.log('Sample provider created');
   }
 
+  const providerServiceRepository = dataSource.getRepository(ProviderService);
+  const availabilityRepository = dataSource.getRepository(ProviderAvailability);
+
   const provider = await providerRepository.findOne({
     where: { user: { phone: '9876543211' } },
     relations: { user: true },
   });
   if (provider) {
-    const providerServiceRepository = dataSource.getRepository(ProviderService);
-    const availabilityRepository =
-      dataSource.getRepository(ProviderAvailability);
-
-    const plumberCategory = await categoryRepository.findOne({
-      where: { nameEn: 'Plumber' },
-    });
-    const electricianCategory = await categoryRepository.findOne({
-      where: { nameEn: 'Electrician' },
-    });
+    const plumberCategory = await categoryRepository.findOne({ where: { nameEn: 'Plumber' } });
+    const electricianCategory = await categoryRepository.findOne({ where: { nameEn: 'Electrician' } });
 
     if (plumberCategory) {
-      const plumberServiceExists = await providerServiceRepository.findOne({
-        where: {
-          provider: { id: provider.id },
-          category: { id: plumberCategory.id },
-        },
-      });
-      if (!plumberServiceExists) {
-        await providerServiceRepository.save(
-          providerServiceRepository.create({
-            provider,
-            category: plumberCategory,
-            fixedRate: 500,
-            hourlyRate: 250,
-          }),
-        );
+      const exists = await providerServiceRepository.findOne({ where: { provider: { id: provider.id }, category: { id: plumberCategory.id } } });
+      if (!exists) {
+        await providerServiceRepository.save(providerServiceRepository.create({ provider, category: plumberCategory, fixedRate: 500, hourlyRate: 250 }));
         console.log('Plumber service created for sample provider');
       }
     }
-
     if (electricianCategory) {
-      const electricianServiceExists = await providerServiceRepository.findOne({
-        where: {
-          provider: { id: provider.id },
-          category: { id: electricianCategory.id },
-        },
-      });
-      if (!electricianServiceExists) {
-        await providerServiceRepository.save(
-          providerServiceRepository.create({
-            provider,
-            category: electricianCategory,
-            fixedRate: 400,
-            hourlyRate: 200,
-          }),
-        );
+      const exists = await providerServiceRepository.findOne({ where: { provider: { id: provider.id }, category: { id: electricianCategory.id } } });
+      if (!exists) {
+        await providerServiceRepository.save(providerServiceRepository.create({ provider, category: electricianCategory, fixedRate: 400, hourlyRate: 200 }));
         console.log('Electrician service created for sample provider');
       }
     }
 
-    const existingAvailability = await availabilityRepository.findOne({
-      where: { provider: { id: provider.id } },
-    });
+    const existingAvailability = await availabilityRepository.findOne({ where: { provider: { id: provider.id } } });
     if (!existingAvailability) {
-      const availabilitySlots = [
-        { dayOfWeek: 1, startTime: '09:00', endTime: '18:00' },
-        { dayOfWeek: 2, startTime: '09:00', endTime: '18:00' },
-        { dayOfWeek: 3, startTime: '09:00', endTime: '18:00' },
-        { dayOfWeek: 4, startTime: '09:00', endTime: '18:00' },
-        { dayOfWeek: 5, startTime: '09:00', endTime: '18:00' },
-      ];
-      for (const slot of availabilitySlots) {
-        await availabilityRepository.save(
-          availabilityRepository.create({ provider, ...slot }),
-        );
+      for (const day of [1, 2, 3, 4, 5]) {
+        await availabilityRepository.save(availabilityRepository.create({ provider, dayOfWeek: day, startTime: '09:00', endTime: '18:00' }));
       }
       console.log('Availability slots created for sample provider');
     }
   }
 
+  const moreProviders = [
+    { phone: '9876543212', firstName: 'Suresh', lastName: 'Singh', bio: 'Professional carpenter with 8 years experience', category: 'Carpenter', fixedRate: 600, hourlyRate: 300, city: 'Delhi' },
+    { phone: '9876543213', firstName: 'Priya', lastName: 'Verma', bio: 'Expert in home cleaning services', category: 'Cleaning', fixedRate: 350, hourlyRate: 180, city: 'Delhi' },
+    { phone: '9876543214', firstName: 'Rajesh', lastName: 'Gupta', bio: 'AC repair and maintenance specialist', category: 'AC Repair', fixedRate: 800, hourlyRate: 400, city: 'Delhi' },
+    { phone: '9876543215', firstName: 'Vikram', lastName: 'Yadav', bio: 'Skilled painter for residential and commercial', category: 'Painter', fixedRate: 450, hourlyRate: 220, city: 'Delhi' },
+    { phone: '9876543216', firstName: 'Neha', lastName: 'Patel', bio: 'Professional salon services at home', category: 'Salon', fixedRate: 500, hourlyRate: 250, city: 'Mumbai' },
+    { phone: '9876543217', firstName: 'Mohit', lastName: 'Joshi', bio: 'Expert pest control services', category: 'Pest Control', fixedRate: 700, hourlyRate: 350, city: 'Mumbai' },
+  ];
+
+  for (const pData of moreProviders) {
+    const userExists = await userRepository.findOne({ where: { phone: pData.phone } });
+    if (!userExists) {
+      const pUser = userRepository.create({ phone: pData.phone, email: `${pData.firstName.toLowerCase()}@example.com`, role: UserRole.PROVIDER, status: UserStatus.ACTIVE });
+      const savedPUser = await userRepository.save(pUser);
+      const p = providerRepository.create({ user: savedPUser, firstName: pData.firstName, lastName: pData.lastName, bio: pData.bio, experienceYears: Math.floor(Math.random() * 10) + 1, city: pData.city, state: 'India', pincode: '110001', isVerified: true, averageRating: +(Math.random() * 2 + 3).toFixed(1), totalReviews: Math.floor(Math.random() * 30) });
+      const savedProvider = await providerRepository.save(p);
+      const cat = await categoryRepository.findOne({ where: { nameEn: pData.category } });
+      if (cat) {
+        await providerServiceRepository.save(providerServiceRepository.create({ provider: savedProvider, category: cat, fixedRate: pData.fixedRate, hourlyRate: pData.hourlyRate }));
+        for (const day of [1, 2, 3, 4, 5]) {
+          await availabilityRepository.save(availabilityRepository.create({ provider: savedProvider, dayOfWeek: day, startTime: '09:00', endTime: '18:00' }));
+        }
+      }
+      console.log(`Provider created: ${pData.firstName} ${pData.lastName}`);
+    }
+  }
+
   const categories = [
-    {
-      nameEn: 'Plumber',
-      nameHi: 'प्लंबर',
-      icon: 'plumber',
-      commissionType: CommissionType.PERCENTAGE,
-      commissionValue: 10,
-    },
-    {
-      nameEn: 'Electrician',
-      nameHi: 'इलेक्ट्रीशियन',
-      icon: 'electrician',
-      commissionType: CommissionType.PERCENTAGE,
-      commissionValue: 10,
-    },
-    {
-      nameEn: 'Computer Repair',
-      nameHi: 'कंप्यूटर रिपेयर',
-      icon: 'computer',
-      commissionType: CommissionType.PERCENTAGE,
-      commissionValue: 10,
-    },
-    {
-      nameEn: 'Electronics Service',
-      nameHi: 'इलेक्ट्रॉनिक्स सर्विस',
-      icon: 'electronics',
-      commissionType: CommissionType.PERCENTAGE,
-      commissionValue: 10,
-    },
-    {
-      nameEn: 'Daily Wage Labour',
-      nameHi: 'दैनिक मजदूर',
-      icon: 'labour',
-      commissionType: CommissionType.PERCENTAGE,
-      commissionValue: 5,
-    },
+    { nameEn: 'Plumber', nameHi: 'प्लंबर', icon: 'plumbing', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Electrician', nameHi: 'इलेक्ट्रीशियन', icon: 'electrical', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Carpenter', nameHi: 'बढ़ई', icon: 'carpentry', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Painter', nameHi: 'पेंटर', icon: 'painting', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Cleaning', nameHi: 'सफाई', icon: 'cleaning', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Driver', nameHi: 'चालक', icon: 'driving', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'AC Repair', nameHi: 'एसी रिपेयर', icon: 'ac repair', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Pest Control', nameHi: 'कीट नियंत्रण', icon: 'pest control', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Shifting', nameHi: 'शिफ्टिंग', icon: 'shifting', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Laundry', nameHi: 'लॉन्ड्री', icon: 'laundry', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Appliance Repair', nameHi: 'उपकरण मरम्मत', icon: 'appliance', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Salon', nameHi: 'सैलून', icon: 'salon', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Photography', nameHi: 'फोटोग्राफी', icon: 'photography', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Tutoring', nameHi: 'ट्यूशन', icon: 'tutoring', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Fitness Trainer', nameHi: 'फिटनेस ट्रेनर', icon: 'fitness', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
+    { nameEn: 'Computer Repair', nameHi: 'कंप्यूटर रिपेयर', icon: 'computer', commissionType: CommissionType.PERCENTAGE, commissionValue: 10 },
   ];
 
   for (const category of categories) {

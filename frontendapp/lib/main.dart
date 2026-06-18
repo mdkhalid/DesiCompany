@@ -7,6 +7,7 @@ import 'screens/provider_detail_screen.dart';
 import 'screens/wallet_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/my_bookings_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() => runApp(const DesiCompanyApp());
 
@@ -24,6 +25,7 @@ class DesiCompanyApp extends StatelessWidget {
         '/customer-home': (_) => const CustomerHomeScreen(),
         '/provider-home': (_) => const ProviderHomeScreen(),
         '/wallet': (_) => const WalletScreen(),
+        '/profile': (_) => const ProfileScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/provider-detail') {
