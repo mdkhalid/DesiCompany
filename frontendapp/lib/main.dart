@@ -9,6 +9,8 @@ import 'screens/chat_screen.dart';
 import 'screens/my_bookings_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/write_review_screen.dart';
+import 'screens/provider_reviews_screen.dart';
 
 void main() => runApp(const DesiCompanyApp());
 
@@ -28,6 +30,7 @@ class DesiCompanyApp extends StatelessWidget {
         '/wallet': (_) => const WalletScreen(),
         '/profile': (_) => const ProfileScreen(),
         '/notifications': (_) => const NotificationsScreen(),
+        '/provider-reviews': (_) => const ProviderReviewsScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/provider-detail') {
@@ -43,6 +46,16 @@ class DesiCompanyApp extends StatelessWidget {
         if (settings.name == '/my-bookings') {
           return MaterialPageRoute(
             builder: (_) => const MyBookingsScreen(),
+          );
+        }
+        if (settings.name == '/write-review') {
+          final args = settings.arguments as Map<String, String>;
+          return MaterialPageRoute(
+            builder: (_) => WriteReviewScreen(
+              bookingId: args['bookingId']!,
+              providerName: args['providerName']!,
+              providerId: args['providerId']!,
+            ),
           );
         }
         return null;

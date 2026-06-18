@@ -61,6 +61,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                   Text('Manage your bookings', style: TextStyle(color: Colors.white70, fontSize: 14)),
                 ]),
                 Row(children: [
+                  IconButton(icon: const Icon(Icons.reviews, color: Colors.white70), onPressed: () => Navigator.pushNamed(context, '/provider-reviews')),
                   IconButton(icon: const Icon(Icons.wallet, color: Colors.white70), onPressed: () => Navigator.pushNamed(context, '/wallet')),
                   IconButton(icon: const Icon(Icons.logout, color: Colors.white70), onPressed: () => Navigator.pushReplacementNamed(context, '/login')),
                 ]),

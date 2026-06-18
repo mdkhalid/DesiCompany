@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import 'write_review_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -11,6 +12,7 @@ class MyBookingsScreen extends StatefulWidget {
 class _MyBookingsScreenState extends State<MyBookingsScreen> {
   List _bookings = [];
   bool _loading = true;
+  final Set<String> _reviewedBookingIds = {};
 
   @override
   void initState() {
@@ -21,8 +23,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   Future<void> _loadBookings() async {
     try {
       final data = await ApiService.get('/bookings/customer/me');
-      if (mounted) setState(() { _bookings = data as List; _loading = false; });
-    } catch (e) { if (mounted) setState(() => _loading = false); }
+      if (!mounted) return;
+      setState(() { _bookings = data as List; _loading = false; });
+      _checkReviewedBookings();
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _checkReviewedBookings() async {
+    for (final b in _bookings) {
+      if (b['status'] == 'completed') {
+        try {
+          await ApiService.get('/reviews/booking/${b['id']}');
+          if (mounted) setState(() => _reviewedBookingIds.add(b['id'] as String));
+        } catch (_) {}
+      }
+    }
   }
 
   Color _statusColor(String status) {
@@ -39,6 +56,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   String _statusLabel(String status) {
     return status.replaceAll('_', ' ').toUpperCase();
+  }
+
+  void _openWriteReview(Map booking) {
+    final provider = booking['provider'] ?? {};
+    final user = provider['user'] ?? {};
+    final providerName = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WriteReviewScreen(
+          bookingId: booking['id'] as String,
+          providerName: providerName.isNotEmpty ? providerName : 'Provider',
+          providerId: provider['id'] as String? ?? '',
+        ),
+      ),
+    ).then((_) {
+      _loadBookings();
+    });
   }
 
   @override
@@ -63,7 +99,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   itemCount: _bookings.length,
                   itemBuilder: (_, i) {
                     final b = _bookings[i];
-                    final statusColor = _statusColor(b['status'] ?? '');
+                    final status = b['status'] ?? '';
+                    final statusColor = _statusColor(status);
+                    final isCompleted = status == 'completed';
+                    final isReviewed = _reviewedBookingIds.contains(b['id']);
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
@@ -79,7 +119,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                              child: Text(_statusLabel(b['status'] ?? ''), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                              child: Text(_statusLabel(status), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
                             ),
                           ]),
                           const SizedBox(height: 8),
@@ -87,6 +127,43 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             const Icon(Icons.currency_rupee, size: 16, color: AppTheme.textSecondary),
                             Text('${b['totalAmount'] ?? 0}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                           ]),
+                          if (isCompleted) ...[
+                            const SizedBox(height: 12),
+                            if (isReviewed)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.secondary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.check_circle, size: 14, color: AppTheme.secondary),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Reviewed',
+                                      style: TextStyle(color: AppTheme.secondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _openWriteReview(b),
+                                  icon: const Icon(Icons.rate_review_outlined, size: 18),
+                                  label: const Text('Write Review'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppTheme.primary,
+                                    side: const BorderSide(color: AppTheme.primary),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ]),
                       ),
                     );

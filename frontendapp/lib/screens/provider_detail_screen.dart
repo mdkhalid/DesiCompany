@@ -11,6 +11,7 @@ class ProviderDetailScreen extends StatefulWidget {
 
 class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
   List _services = [];
+  List _reviews = [];
   bool _loading = true;
   String? _error;
   Set<String> _bookedServiceIds = {};
@@ -26,6 +27,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
       _loadServices();
     }
     _loadExistingBookings();
+    _loadReviews();
   }
 
   Future<void> _loadExistingBookings() async {
@@ -52,6 +54,13 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
     }
   }
 
+  Future<void> _loadReviews() async {
+    try {
+      final data = await ApiService.get('/reviews/provider/${widget.provider['id']}');
+      if (mounted) setState(() { _reviews = data as List; });
+    } catch (_) {}
+  }
+
   Future<void> _bookService(Map service) async {
     final now = DateTime.now().add(const Duration(days: 1));
     final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}T10:00:00Z';
@@ -75,6 +84,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
   Widget build(BuildContext context) {
     final p = widget.provider;
     final color = Colors.deepPurple;
+    final totalReviews = p['totalReviews'] ?? _reviews.length;
     return Scaffold(
       body: CustomScrollView(slivers: [
         SliverAppBar(
@@ -106,7 +116,10 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     const Icon(Icons.star, color: Color(0xFFFFD600), size: 18),
                     const SizedBox(width: 4),
-                    Text('${p['averageRating'] ?? 0}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                    Text(
+                      '${p['averageRating'] ?? 0} ($totalReviews ${totalReviews == 1 ? "review" : "reviews"})',
+                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
                     if (p['city'] != null) ...[
                       const SizedBox(width: 16),
                       const Icon(Icons.location_on, color: Colors.white70, size: 16),
@@ -179,10 +192,114 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                       ),
                     );
                   }),
+                  if (_reviews.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text('Reviews ($totalReviews)', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                    const SizedBox(height: 12),
+                    ..._reviews.map((r) => _buildReviewCard(r)),
+                  ],
                 ]),
               ),
         ),
       ]),
+    );
+  }
+
+  Widget _buildReviewCard(Map review) {
+    final customer = review['customer'];
+    final user = customer?['user'] ?? {};
+    final name = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
+    final phone = user['phone'] ?? '';
+    final rating = (review['rating'] as num).toDouble();
+    final comment = review['comment'] as String?;
+    final createdAt = review['createdAt'] as String?;
+
+    String dateStr = '';
+    if (createdAt != null) {
+      try {
+        final date = DateTime.parse(createdAt);
+        dateStr = '${date.day}/${date.month}/${date.year}';
+      } catch (_) {}
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                    child: Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : '?',
+                      style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name.isNotEmpty ? name : phone,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                      if (dateStr.isNotEmpty)
+                        Text(
+                          dateStr,
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              _buildStars(rating),
+            ],
+          ),
+          if (comment != null && comment.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              comment,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade700,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStars(double rating) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        final starNumber = index + 1;
+        if (starNumber <= rating) {
+          return const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFD600));
+        } else if (starNumber - rating < 1) {
+          return const Icon(Icons.star_half_rounded, size: 16, color: Color(0xFFFFD600));
+        }
+        return Icon(Icons.star_outline_rounded, size: 16, color: Colors.grey.shade300);
+      }),
     );
   }
 }
