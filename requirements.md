@@ -315,25 +315,34 @@ npm run start:dev
   - `provider_location` / `customer_location` broadcast events
   - Real-time location during active bookings
 
-### Phase 7 — Reviews & Private Provider Feedback 🔄 IN PROGRESS
+### Phase 7 — Reviews & Private Provider Feedback ✅ COMPLETED
 - [x] Customer → Provider public reviews (existing)
   - Customer rates provider after completed booking
   - Affects provider `averageRating` and `totalReviews`
   - Visible to customer, provider, and admin
 - [x] Admin mobile reviews screen (existing)
 - [x] Private provider feedback plan approved
-- [ ] **Provider → Customer private feedback** (this phase)
+- [x] **Provider → Customer private feedback**
   - `CustomerFeedback` entity: provider-only feedback about customer
   - Fields: booking, provider, customer, rating, comment, tags
   - Tags: `paid_on_time`, `cancelled_last_minute`, `no_show`, `rude_behavior`, `good_customer`, `changed_location`
   - Visible only to provider + admin
   - **Does NOT affect public customer rating**
   - API endpoints:
-    - `POST /feedbacks/customer` — provider submits feedback
-    - `GET /feedbacks/customer/provider/me` — provider lists own feedback
+    - `POST /feedbacks` — provider submits feedback (returns array)
+    - `GET /feedbacks/provider/me` — provider lists own feedback
     - `GET /admin/customer-feedbacks` — admin views all
-- [ ] Flutter provider app: "Add Private Feedback" on completed bookings
-- [ ] Flutter admin app: "Customer Feedback" section
+- [x] Flutter provider app: "Add Private Feedback" on completed bookings
+  - `provider_customer_feedback_screen.dart` with rating, comment, tag chips
+  - Shows previous feedback history
+- [x] Flutter admin app: "Customer Feedback" section
+  - `admin_customer_feedbacks_screen.dart` with provider, customer, tags, ratings
+- [x] Admin web: Customer Feedback page with sidebar link
+  - `adminweb/src/pages/CustomerFeedback.tsx`
+- [x] Backend tests for CustomerFeedbacksService (11 new tests)
+  - Create: success, provider not found, booking not found, wrong provider, not completed, duplicate, default tags
+  - findByProvider, findByProviderUser, findAll
+  - **Backend tests: 212/212 passing**
 
 ### Why Private Feedback?
 - Provider has a voice about risky/difficult customers.
