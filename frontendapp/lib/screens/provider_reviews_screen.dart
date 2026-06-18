@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../l10n/strings.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
@@ -53,9 +55,10 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = DesiCompanyApp.localeProvider!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Reviews'),
+        title: Text(loc.tr('my_reviews')),
         flexibleSpace: Container(decoration: AppTheme.gradientBackground),
       ),
       body: _loading
@@ -67,6 +70,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final loc = DesiCompanyApp.localeProvider!;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -74,12 +78,12 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
           Icon(Icons.reviews_outlined, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
           Text(
-            'No reviews yet',
+            loc.tr('no_reviews'),
             style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
           ),
           const SizedBox(height: 8),
           Text(
-            'Complete bookings to receive reviews from customers',
+            loc.tr('complete_bookings_hint'),
             style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
           ),
         ],
@@ -104,6 +108,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
   }
 
   Widget _buildSummaryCard() {
+    final loc = DesiCompanyApp.localeProvider!;
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
@@ -139,7 +144,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
               _buildStars(_averageRating, size: 20),
               const SizedBox(height: 4),
               Text(
-                '$_totalReviews ${_totalReviews == 1 ? "review" : "reviews"}',
+                '$_totalReviews ${_totalReviews == 1 ? loc.tr('review') : loc.tr('reviews')}',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 14,

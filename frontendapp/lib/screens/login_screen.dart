@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/strings.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
 
@@ -23,9 +24,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _sendOtp() async {
+    final loc = LocalizationProvider.of(context);
     final phone = _phoneController.text.trim();
     if (phone.length != 10 || !RegExp(r'^\d{10}$').hasMatch(phone)) {
-      setState(() => _error = 'Enter a valid 10-digit phone number');
+      setState(() => _error = loc.tr('invalid_phone'));
       return;
     }
     setState(() { _error = ''; _loading = true; });
@@ -38,8 +40,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _verifyOtp() async {
+    final loc = LocalizationProvider.of(context);
     if (_otpController.text.trim().isEmpty) {
-      setState(() => _error = 'Enter the OTP');
+      setState(() => _error = loc.tr('enter_otp'));
       return;
     }
     setState(() { _error = ''; _loading = true; });
@@ -54,6 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = LocalizationProvider.of(context);
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -70,9 +74,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: const Icon(Icons.handyman, size: 64, color: Colors.white),
                 ),
                 const SizedBox(height: 20),
-                const Text('DesiCompany', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2)),
+                Text(loc.tr('app_name'), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2)),
                 const SizedBox(height: 4),
-                Text('Local Service Marketplace', style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8))),
+                Text(loc.tr('app_tagline'), style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8))),
                 const SizedBox(height: 40),
                 Container(
                   padding: const EdgeInsets.all(24),
@@ -94,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Column(children: [
                         TextField(
                           controller: _phoneController,
-                          decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone_android)),
+                          decoration: InputDecoration(labelText: loc.tr('phone_hint'), prefixIcon: const Icon(Icons.phone_android)),
                           keyboardType: TextInputType.phone,
                           maxLength: 10,
                         ),
@@ -104,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 52,
                           child: ElevatedButton(
                             onPressed: _loading ? null : _sendOtp,
-                            child: _loading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Send OTP'),
+                            child: _loading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(loc.tr('send_otp')),
                           ),
                         ),
                       ])
@@ -117,12 +121,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: const Icon(Icons.check_circle, color: AppTheme.secondary, size: 20),
                           ),
                           const SizedBox(width: 12),
-                          Expanded(child: Text('OTP sent to ${_phoneController.text}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
+                          Expanded(child: Text(loc.tr('otp_sent', params: {'phone': _phoneController.text}), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
                         ]),
                         const SizedBox(height: 20),
                         TextField(
                           controller: _otpController,
-                          decoration: const InputDecoration(labelText: 'Enter OTP', prefixIcon: Icon(Icons.lock_outline)),
+                          decoration: InputDecoration(labelText: loc.tr('otp_hint'), prefixIcon: const Icon(Icons.lock_outline)),
                           keyboardType: TextInputType.number,
                           maxLength: 6,
                         ),
@@ -132,13 +136,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 52,
                           child: ElevatedButton(
                             onPressed: _loading ? null : _verifyOtp,
-                            child: _loading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Verify & Login'),
+                            child: _loading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(loc.tr('verify_login')),
                           ),
                         ),
                         const SizedBox(height: 12),
                         TextButton(
                           onPressed: () => setState(() { _otpSent = false; _error = ''; _otpController.clear(); }),
-                          child: const Text('← Wrong number? Edit phone'),
+                          child: Text(loc.tr('wrong_number')),
                         ),
                       ]),
                   ]),

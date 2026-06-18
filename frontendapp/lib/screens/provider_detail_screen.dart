@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 import '../widgets/distance_badge.dart';
@@ -55,11 +56,12 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
 
   String _getTravelTimeEstimate() {
     if (_distanceMeters == null) return '';
+    final loc = LocalizationProvider.of(context);
     final km = _distanceMeters! / 1000;
-    if (km < 1) return 'Walking distance';
-    if (km < 5) return '~5-10 min by car';
-    if (km < 15) return '~15-30 min by car';
-    return '~30+ min by car';
+    if (km < 1) return loc.tr('walking_distance');
+    if (km < 5) return loc.tr('car_5_10');
+    if (km < 15) return loc.tr('car_15_30');
+    return loc.tr('car_30_plus');
   }
 
   Future<void> _openDirections() async {
@@ -122,7 +124,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
       });
       if (!mounted) return;
       setState(() => _bookedServiceIds.add(service['id'] as String));
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking requested!')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(LocalizationProvider.of(context).tr('booking_requested'))));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -131,6 +133,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = LocalizationProvider.of(context);
     final p = widget.provider;
     final color = Colors.deepPurple;
     final totalReviews = p['totalReviews'] ?? _reviews.length;
@@ -166,7 +169,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                     const Icon(Icons.star, color: Color(0xFFFFD600), size: 18),
                     const SizedBox(width: 4),
                     Text(
-                      '${p['averageRating'] ?? 0} ($totalReviews ${totalReviews == 1 ? "review" : "reviews"})',
+                      '${p['averageRating'] ?? 0} ${loc.tr('reviews_count', params: {'count': totalReviews.toString()})}',
                       style: const TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                     if (p['city'] != null) ...[
@@ -203,7 +206,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _openDirections,
                         icon: const Icon(Icons.directions, size: 18),
-                        label: const Text('Get Directions'),
+                        label: Text(loc.tr('get_directions')),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.deepPurple,
                           side: const BorderSide(color: Colors.deepPurple),
@@ -219,7 +222,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _openDirectChat,
                       icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                      label: const Text('Ask a Question'),
+                      label: Text(loc.tr('ask_question')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
@@ -229,19 +232,19 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Services', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  Text(loc.tr('services'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                   if (_error != null)
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(color: Color(0xFFFFE0E0), borderRadius: BorderRadius.circular(12)),
-                      child: Text('Could not load services', style: TextStyle(color: Colors.red.shade700, fontSize: 13)),
+                      child: Text(loc.tr('could_not_load_services'), style: TextStyle(color: Colors.red.shade700, fontSize: 13)),
                     ),
                   const SizedBox(height: 12),
                   ..._services.map((s) {
                     final pricing = [
-                      if (s['fixedRate'] != null) 'Fixed: ₹${s['fixedRate']}',
-                      if (s['hourlyRate'] != null) 'Hourly: ₹${s['hourlyRate']}/hr',
-                      if (s['dailyRate'] != null) 'Daily: ₹${s['dailyRate']}/day',
+                      if (s['fixedRate'] != null) loc.tr('fixed_price', params: {'price': '${s['fixedRate']}'}),
+                      if (s['hourlyRate'] != null) loc.tr('hourly_price', params: {'price': '${s['hourlyRate']}'}),
+                      if (s['dailyRate'] != null) loc.tr('daily_price', params: {'price': '${s['dailyRate']}'}),
                     ].join(' | ');
                     final isBooked = _bookedServiceIds.contains(s['id']);
                     return Container(
@@ -264,9 +267,9 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(s['category']?['nameEn'] ?? 'Service', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isBooked ? AppTheme.textSecondary : AppTheme.textPrimary)),
+                            Text(s['category']?['nameEn'] ?? loc.tr('service'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isBooked ? AppTheme.textSecondary : AppTheme.textPrimary)),
                             const SizedBox(height: 4),
-                            Text(isBooked ? 'Already booked' : pricing, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                            Text(isBooked ? loc.tr('already_booked') : pricing, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
                           ])),
                           ElevatedButton(
                             onPressed: isBooked ? null : () => _bookService(s),
@@ -276,7 +279,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
-                            child: Text(isBooked ? 'Booked' : 'Book', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            child: Text(isBooked ? loc.tr('booked') : loc.tr('book'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                           ),
                         ]),
                       ),
@@ -284,7 +287,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                   }),
                   if (_reviews.isNotEmpty) ...[
                     const SizedBox(height: 24),
-                    Text('Reviews ($totalReviews)', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                    Text(loc.tr('reviews_count', params: {'count': totalReviews.toString()}), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                     const SizedBox(height: 12),
                     ..._reviews.map((r) => _buildReviewCard(r)),
                   ],

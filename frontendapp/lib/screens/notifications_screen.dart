@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../l10n/strings.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
@@ -67,11 +69,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = DesiCompanyApp.localeProvider!;
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
-        title: const Text('Notifications', style: TextStyle(color: Colors.white)),
+        title: Text(loc.tr('notifications'), style: const TextStyle(color: Colors.white)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -79,7 +82,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         actions: [
           TextButton(
             onPressed: _markAllAsRead,
-            child: const Text('Read All', style: TextStyle(color: Colors.white70)),
+            child: Text(loc.tr('read_all'), style: const TextStyle(color: Colors.white70)),
           ),
         ],
       ),
@@ -92,7 +95,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       Icon(Icons.notifications_none, size: 64, color: Colors.grey.shade300),
                       const SizedBox(height: 16),
-                      Text('No notifications', style: TextStyle(fontSize: 16, color: Colors.grey.shade500)),
+                      Text(loc.tr('no_notifications'), style: TextStyle(fontSize: 16, color: Colors.grey.shade500)),
                     ],
                   ),
                 )

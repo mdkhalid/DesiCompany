@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 import 'write_review_screen.dart';
@@ -79,9 +80,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = LocalizationProvider.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Bookings'),
+        title: Text(loc.tr('my_bookings')),
         flexibleSpace: Container(decoration: AppTheme.gradientBackground),
       ),
       body: _loading
@@ -91,7 +93,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.book_online, size: 64, color: Colors.grey.shade300),
                     const SizedBox(height: 16),
-                    const Text('No bookings yet', style: TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
+                    Text(loc.tr('no_bookings'), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16)),
                   ]),
                 )
               : ListView.builder(
@@ -115,7 +117,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            Text('Booking #${b['id'].toString().substring(0, 8)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
+                            Text('${loc.tr('booking_number')}${b['id'].toString().substring(0, 8)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
@@ -136,13 +138,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                                   color: AppTheme.secondary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.check_circle, size: 14, color: AppTheme.secondary),
-                                    SizedBox(width: 4),
+                                    const Icon(Icons.check_circle, size: 14, color: AppTheme.secondary),
+                                    const SizedBox(width: 4),
                                     Text(
-                                      'Reviewed',
+                                      loc.tr('reviewed'),
                                       style: TextStyle(color: AppTheme.secondary, fontSize: 12, fontWeight: FontWeight.w600),
                                     ),
                                   ],
@@ -154,7 +156,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                                 child: OutlinedButton.icon(
                                   onPressed: () => _openWriteReview(b),
                                   icon: const Icon(Icons.rate_review_outlined, size: 18),
-                                  label: const Text('Write Review'),
+                                  label: Text(loc.tr('write_review')),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: AppTheme.primary,
                                     side: const BorderSide(color: AppTheme.primary),

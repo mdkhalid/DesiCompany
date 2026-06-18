@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 import '../services/location_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
+import '../l10n/strings.dart';
 import '../widgets/distance_badge.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -198,6 +199,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildHeader() {
+    final loc = LocalizationProvider.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
@@ -225,14 +227,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _locationText,
+                          _locationText == 'Set location' ? loc.tr('set_location') : _locationText,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 12,
                           ),
                         ),
-                        const Text(
-                          'Find Services',
+                        Text(
+                          loc.tr('find_services'),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -311,6 +313,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildSearchBar() {
+    final loc = LocalizationProvider.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Container(
@@ -335,7 +338,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             });
           },
           decoration: InputDecoration(
-            hintText: 'Search services, providers...',
+            hintText: loc.tr('search_hint'),
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             prefixIcon: Icon(Icons.search, color: AppTheme.primary, size: 22),
             suffixIcon: _searchQuery.isNotEmpty
@@ -359,12 +362,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildRadiusFilter() {
+    final loc = LocalizationProvider.of(context);
     final options = [
-      {'label': '2 km', 'value': 2.0},
-      {'label': '5 km', 'value': 5.0},
-      {'label': '10 km', 'value': 10.0},
-      {'label': '25 km', 'value': 25.0},
-      {'label': 'All', 'value': 0.0},
+      {'label': loc.tr('km_2'), 'value': 2.0},
+      {'label': loc.tr('km_5'), 'value': 5.0},
+      {'label': loc.tr('km_10'), 'value': 10.0},
+      {'label': loc.tr('km_25'), 'value': 25.0},
+      {'label': loc.tr('km_all'), 'value': 0.0},
     ];
     return SizedBox(
       height: 40,
@@ -417,6 +421,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildCategoriesSection() {
+    final loc = LocalizationProvider.of(context);
     final displayCategories = _showAllCategories ? _categories : _categories.take(8).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,8 +429,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Services',
+            Text(
+              loc.tr('categories'),
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -439,7 +444,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     _showAllCategories = !_showAllCategories;
                   });
                 },
-                child: Text(_showAllCategories ? 'Show Less' : 'View All'),
+                child: Text(_showAllCategories ? loc.tr('show_less') : loc.tr('view_all')),
               ),
           ],
         ),
@@ -517,6 +522,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildProvidersSection() {
+    final loc = LocalizationProvider.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -524,7 +530,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Providers${_selectedCategoryId != null ? " (${_filteredProviders.length})" : ""}',
+              '${loc.tr('providers')}${_selectedCategoryId != null ? " (${_filteredProviders.length})" : ""}',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -537,7 +543,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   _selectedCategoryId = null;
                   _applyFilters();
                 }),
-                child: const Text('Clear Filter'),
+                child: Text(loc.tr('clear_filter')),
               ),
           ],
         ),
@@ -551,6 +557,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildEmptyState() {
+    final loc = LocalizationProvider.of(context);
     return Container(
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
@@ -569,7 +576,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           Icon(Icons.search_off, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
           Text(
-            'No providers found',
+            loc.tr('no_providers'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -578,7 +585,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Try adjusting your search or filters',
+            loc.tr('try_adjusting'),
             style: TextStyle(color: Colors.grey.shade500),
           ),
         ],
@@ -748,6 +755,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildBottomNav() {
+    final loc = LocalizationProvider.of(context);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -765,10 +773,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.home_rounded, 'Home', true, () {}),
-              _navItem(Icons.book_online_outlined, 'Bookings', false, () => Navigator.pushNamed(context, '/my-bookings')),
-              _navItem(Icons.chat_bubble_outline, 'Chat', false, () => Navigator.pushNamed(context, '/chat')),
-              _navItem(Icons.person_outline, 'Profile', false, () => Navigator.pushNamed(context, '/profile')),
+              _navItem(Icons.home_rounded, loc.tr('nav_home'), true, () {}),
+              _navItem(Icons.book_online_outlined, loc.tr('nav_bookings'), false, () => Navigator.pushNamed(context, '/my-bookings')),
+              _navItem(Icons.chat_bubble_outline, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/chat')),
+              _navItem(Icons.person_outline, loc.tr('nav_profile'), false, () => Navigator.pushNamed(context, '/profile')),
             ],
           ),
         ),

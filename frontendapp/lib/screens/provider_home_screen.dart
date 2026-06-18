@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../l10n/strings.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
@@ -45,6 +47,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = DesiCompanyApp.localeProvider!;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: LinearGradient(
@@ -56,9 +59,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Provider Dashboard', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('Manage your bookings', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(loc.tr('provider_dashboard'), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text(loc.tr('manage_bookings'), style: const TextStyle(color: Colors.white70, fontSize: 14)),
                 ]),
                 Row(children: [
                   IconButton(icon: const Icon(Icons.reviews, color: Colors.white70), onPressed: () => Navigator.pushNamed(context, '/provider-reviews')),
@@ -77,7 +80,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                     ),
                     child: _bookings.isEmpty
-                      ? const Center(child: Text('No bookings yet', style: TextStyle(color: AppTheme.textSecondary)))
+                      ? Center(child: Text(loc.tr('no_bookings'), style: const TextStyle(color: AppTheme.textSecondary)))
                       : ListView.builder(
                           padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
                           itemCount: _bookings.length,
@@ -95,7 +98,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                                 padding: const EdgeInsets.all(16),
                                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                    Text('Booking #${b['id'].toString().substring(0, 8)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
+                                    Text('${loc.tr('booking_number')}${b['id'].toString().substring(0, 8)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
@@ -113,32 +116,32 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       Expanded(child: ElevatedButton(
                         onPressed: () => _updateStatus(b['id'], 'accepted'),
                         style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF43A047), padding: const EdgeInsets.symmetric(vertical: 12)),
-                        child: const Text('Accept', style: TextStyle(fontSize: 13)),
+                        child: Text(loc.tr('accept'), style: const TextStyle(fontSize: 13)),
                       )),
                       const SizedBox(width: 12),
                       Expanded(child: OutlinedButton(
                         onPressed: () => _updateStatus(b['id'], 'rejected'),
                         style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFE53935), side: const BorderSide(color: Color(0xFFE53935)), padding: const EdgeInsets.symmetric(vertical: 12)),
-                        child: const Text('Reject', style: TextStyle(fontSize: 13)),
+                        child: Text(loc.tr('reject'), style: const TextStyle(fontSize: 13)),
                       )),
                     ]),
                                   if (b['status'] == 'accepted')
                     SizedBox(width: double.infinity, child: ElevatedButton(
                       onPressed: () => _updateStatus(b['id'], 'on_the_way'),
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C3FB4), padding: const EdgeInsets.symmetric(vertical: 12)),
-                      child: const Text('On the Way', style: TextStyle(fontSize: 13)),
+                      child: Text(loc.tr('on_the_way'), style: const TextStyle(fontSize: 13)),
                     )),
                                   if (b['status'] == 'on_the_way')
                     SizedBox(width: double.infinity, child: ElevatedButton(
                       onPressed: () => _updateStatus(b['id'], 'working'),
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00BFA5), padding: const EdgeInsets.symmetric(vertical: 12)),
-                      child: const Text('Start Working', style: TextStyle(fontSize: 13)),
+                      child: Text(loc.tr('start_working'), style: const TextStyle(fontSize: 13)),
                     )),
                                   if (b['status'] == 'working')
                     SizedBox(width: double.infinity, child: ElevatedButton(
                       onPressed: () => _updateStatus(b['id'], 'completed'),
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E88E5), padding: const EdgeInsets.symmetric(vertical: 12)),
-                      child: const Text('Mark Completed', style: TextStyle(fontSize: 13)),
+                      child: Text(loc.tr('mark_completed'), style: const TextStyle(fontSize: 13)),
                     )),
                                 ]),
                               ),
@@ -159,10 +162,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              _navItem(Icons.book_online, 'Bookings', true, () {}),
-              _navItem(Icons.wallet, 'Wallet', false, () => Navigator.pushNamed(context, '/wallet')),
-              _navItem(Icons.chat, 'Chat', false, () => Navigator.pushNamed(context, '/chat')),
-              _navItem(Icons.person, 'Profile', false, () => Navigator.pushNamed(context, '/profile')),
+              _navItem(Icons.book_online, loc.tr('nav_bookings'), true, () {}),
+              _navItem(Icons.wallet, loc.tr('nav_wallet'), false, () => Navigator.pushNamed(context, '/wallet')),
+              _navItem(Icons.chat, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/chat')),
+              _navItem(Icons.person, loc.tr('nav_profile'), false, () => Navigator.pushNamed(context, '/profile')),
             ]),
           ),
         ),

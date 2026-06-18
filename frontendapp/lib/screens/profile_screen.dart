@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../l10n/strings.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
@@ -83,6 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
+    final loc = LocalizationProvider.of(context);
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -107,26 +110,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _loadProfile();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
+          SnackBar(content: Text(loc.tr('profile_updated'))),
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update profile: $e')),
+          SnackBar(content: Text(loc.tr('profile_update_failed', params: {'error': e.toString()}))),
         );
       }
     }
   }
 
   Future<void> _captureLocation() async {
+    final loc = LocalizationProvider.of(context);
     try {
       final position = await LocationService.getCurrentLocation();
       if (!mounted) return;
       if (position == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permission denied or unavailable')),
+          SnackBar(content: Text(loc.tr('location_permission_denied'))),
         );
         return;
       }
@@ -137,12 +141,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       await _loadProfile();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location saved')),
+        SnackBar(content: Text(loc.tr('location_saved'))),
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save location: $e')),
+          SnackBar(content: Text(loc.tr('location_save_failed', params: {'error': e.toString()}))),
         );
       }
     }
@@ -172,6 +176,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = LocalizationProvider.of(context);
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -192,9 +197,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Text(
-                      'My Profile',
-                      style: TextStyle(
+                    Text(
+                      loc.tr('my_profile'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -268,7 +273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             const SizedBox(height: 24),
-                            if (_editing) _buildEditForm() else _buildProfileInfo(),
+                            if (_editing) _buildEditForm(loc) else _buildProfileInfo(loc),
                           ],
                         ),
                       ),
@@ -280,7 +285,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileInfo() {
+  Widget _buildProfileInfo(LocalizationProvider loc) {
     final role = _profile?['role'];
     Map<String, dynamic>? userData;
     if (role == 'customer') {
@@ -288,19 +293,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       userData = _profile?['provider'];
     }
-    final lang = _profile?['language'] == 'hi' ? 'Hindi' : 'English';
+    final lang = _profile?['language'] == 'hi' ? loc.tr('hindi') : loc.tr('english');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _infoTile(Icons.person, 'Name', '${userData?['firstName'] ?? ''} ${userData?['lastName'] ?? ''}'.trim()),
-        _infoTile(Icons.email, 'Email', _profile?['email'] ?? 'Not provided'),
-        _infoTile(Icons.phone, 'Phone', _profile?['phone'] ?? 'Not provided'),
-        _infoTile(Icons.language, 'Language', lang),
-        _infoTile(Icons.location_on, 'Address', userData?['address'] ?? 'Not provided'),
-        _infoTile(Icons.location_city, 'City', userData?['city'] ?? 'Not provided'),
-        _infoTile(Icons.map, 'State', userData?['state'] ?? 'Not provided'),
-        _infoTile(Icons.markunread_mailbox, 'Pincode', userData?['pincode'] ?? 'Not provided'),
+        _infoTile(Icons.person, loc.tr('name'), '${userData?['firstName'] ?? ''} ${userData?['lastName'] ?? ''}'.trim()),
+        _infoTile(Icons.email, loc.tr('email'), _profile?['email'] ?? loc.tr('not_provided')),
+        _infoTile(Icons.phone, loc.tr('phone'), _profile?['phone'] ?? loc.tr('not_provided')),
+        _infoTile(Icons.language, loc.tr('language'), lang),
+        _infoTile(Icons.location_on, loc.tr('address'), userData?['address'] ?? loc.tr('not_provided')),
+        _infoTile(Icons.location_city, loc.tr('city'), userData?['city'] ?? loc.tr('not_provided')),
+        _infoTile(Icons.map, loc.tr('state'), userData?['state'] ?? loc.tr('not_provided')),
+        _infoTile(Icons.markunread_mailbox, loc.tr('pincode'), userData?['pincode'] ?? loc.tr('not_provided')),
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
@@ -308,7 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: OutlinedButton.icon(
             onPressed: _captureLocation,
             icon: const Icon(Icons.my_location, size: 18),
-            label: const Text('Set My Location', style: TextStyle(fontSize: 14)),
+            label: Text(loc.tr('set_my_location'), style: const TextStyle(fontSize: 14)),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.primary,
               side: BorderSide(color: AppTheme.primary),
@@ -372,18 +377,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildEditForm() {
+  Widget _buildEditForm(LocalizationProvider loc) {
     return Form(
       key: _formKey,
       child: Column(
         children: [
-          _buildTextField(_firstNameController, 'First Name', Icons.person),
-          _buildTextField(_lastNameController, 'Last Name', Icons.person_outline),
-          _buildTextField(_emailController, 'Email', Icons.email, keyboardType: TextInputType.emailAddress),
-          _buildTextField(_addressController, 'Address', Icons.location_on),
-          _buildTextField(_cityController, 'City', Icons.location_city),
-          _buildTextField(_stateController, 'State', Icons.map),
-          _buildTextField(_pincodeController, 'Pincode', Icons.markunread_mailbox, keyboardType: TextInputType.number),
+          _buildTextField(_firstNameController, loc.tr('first_name'), Icons.person),
+          _buildTextField(_lastNameController, loc.tr('last_name'), Icons.person_outline),
+          _buildTextField(_emailController, loc.tr('email'), Icons.email, keyboardType: TextInputType.emailAddress),
+          _buildTextField(_addressController, loc.tr('address'), Icons.location_on),
+          _buildTextField(_cityController, loc.tr('city'), Icons.location_city),
+          _buildTextField(_stateController, loc.tr('state'), Icons.map),
+          _buildTextField(_pincodeController, loc.tr('pincode'), Icons.markunread_mailbox, keyboardType: TextInputType.number),
           const SizedBox(height: 16),
           Container(
             margin: const EdgeInsets.only(bottom: 16),
@@ -404,20 +409,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.language, color: AppTheme.primary, size: 20),
+                    const Icon(Icons.language, color: AppTheme.primary, size: 20),
                     const SizedBox(width: 12),
-                    const Text('Language', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
+                    Text(loc.tr('language'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppTheme.textPrimary)),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: _buildLanguageOption('en', 'English'),
+                      child: _buildLanguageOption('en', loc.tr('english')),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildLanguageOption('hi', 'Hindi'),
+                      child: _buildLanguageOption('hi', loc.tr('hindi')),
                     ),
                   ],
                 ),
@@ -442,9 +447,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       height: 24,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Text(
-                      'Save Changes',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  : Text(
+                      loc.tr('save_changes'),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
             ),
           ),
@@ -493,7 +498,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildLanguageOption(String code, String label) {
     final isSelected = _selectedLanguage == code;
     return GestureDetector(
-      onTap: () => setState(() => _selectedLanguage = code),
+      onTap: () {
+        setState(() => _selectedLanguage = code);
+        DesiCompanyApp.localeProvider?.setLocale(code);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(

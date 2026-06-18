@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
@@ -31,9 +32,10 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
   }
 
   Future<void> _submitReview() async {
+    final loc = LocalizationProvider.of(context);
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating')),
+        SnackBar(content: Text(loc.tr('select_rating'))),
       );
       return;
     }
@@ -54,7 +56,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit review: $e')),
+          SnackBar(content: Text(loc.tr('review_failed', params: {'error': e.toString()}))),
         );
         setState(() => _submitting = false);
       }
@@ -63,6 +65,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = LocalizationProvider.of(context);
     if (_submitted) {
       return Scaffold(
         body: Container(
@@ -83,9 +86,9 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                       child: const Icon(Icons.check_circle, color: Colors.white, size: 64),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
-                      'Thank You!',
-                      style: TextStyle(
+                    Text(
+                      loc.tr('thank_you'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -93,7 +96,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Your review for ${widget.providerName} has been submitted.',
+                      loc.tr('review_submitted', params: {'provider': widget.providerName}),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
@@ -107,7 +110,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                         backgroundColor: Colors.white,
                         foregroundColor: AppTheme.primary,
                       ),
-                      child: const Text('Done'),
+                      child: Text(loc.tr('done')),
                     ),
                   ],
                 ),
@@ -120,7 +123,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Write Review'),
+        title: Text(loc.tr('write_review')),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -135,7 +138,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
           padding: const EdgeInsets.all(20),
           children: [
             Text(
-              'How was your experience with ${widget.providerName}?',
+              loc.tr('how_was_experience', params: {'provider': widget.providerName}),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -145,9 +148,9 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
             const SizedBox(height: 24),
             _buildStarRating(),
             const SizedBox(height: 24),
-            _buildRatingLabel(),
+            _buildRatingLabel(loc),
             const SizedBox(height: 24),
-            _buildCommentField(),
+            _buildCommentField(loc),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -163,7 +166,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Submit Review'),
+                    : Text(loc.tr('submit_review')),
               ),
             ),
           ],
@@ -192,14 +195,14 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     );
   }
 
-  Widget _buildRatingLabel() {
+  Widget _buildRatingLabel(LocalizationProvider loc) {
     final labels = {
-      0: 'Tap a star to rate',
-      1: 'Poor',
-      2: 'Fair',
-      3: 'Good',
-      4: 'Very Good',
-      5: 'Excellent',
+      0: loc.tr('tap_to_rate'),
+      1: loc.tr('poor'),
+      2: loc.tr('fair'),
+      3: loc.tr('good'),
+      4: loc.tr('very_good'),
+      5: loc.tr('excellent'),
     };
     return Center(
       child: Text(
@@ -213,7 +216,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     );
   }
 
-  Widget _buildCommentField() {
+  Widget _buildCommentField(LocalizationProvider loc) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -230,7 +233,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
         controller: _commentController,
         maxLines: 4,
         decoration: InputDecoration(
-          hintText: 'Tell us about your experience (optional)',
+          hintText: loc.tr('tell_us'),
           hintStyle: TextStyle(color: Colors.grey.shade400),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),

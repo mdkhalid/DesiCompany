@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../l10n/strings.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -29,8 +31,9 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = DesiCompanyApp.localeProvider!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Wallet')),
+      appBar: AppBar(title: Text(loc.tr('wallet'))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(16), children: [
@@ -38,13 +41,13 @@ class _WalletScreenState extends State<WalletScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(32),
                   child: Column(children: [
-                    const Text('Balance', style: TextStyle(color: Colors.grey)),
+                    Text(loc.tr('balance'), style: const TextStyle(color: Colors.grey)),
                     Text('₹${_balance.toStringAsFixed(2)}', style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold)),
                   ]),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Transactions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(loc.tr('transactions'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ..._txns.map((t) => ListTile(
                 leading: Icon(t['type'] == 'credit' ? Icons.arrow_upward : Icons.arrow_downward, color: t['type'] == 'credit' ? Colors.green : Colors.red),
                 title: Text(t['description'] ?? ''),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import '../l10n/strings.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? bookingId;
@@ -69,11 +70,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = LocalizationProvider.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(_isDirect && widget.providerName != null
             ? widget.providerName!
-            : 'Chat'),
+            : loc.tr('chat')),
       ),
       body: Column(children: [
         if (_isDirect)
@@ -82,7 +84,7 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: Colors.blue.shade50,
             child: Text(
-              'Ask about availability, pricing, or timing',
+              loc.tr('ask_about'),
               style: TextStyle(color: Colors.blue.shade700, fontSize: 13),
               textAlign: TextAlign.center,
             ),
@@ -108,7 +110,7 @@ class _ChatScreenState extends State<ChatScreen> {
         Padding(
           padding: const EdgeInsets.all(8),
           child: Row(children: [
-            Expanded(child: TextField(controller: _controller, decoration: const InputDecoration(hintText: 'Type a message...', border: OutlineInputBorder()))),
+            Expanded(child: TextField(controller: _controller, decoration: InputDecoration(hintText: loc.tr('type_message'), border: const OutlineInputBorder()))),
             IconButton(onPressed: _sendMessage, icon: const Icon(Icons.send)),
           ]),
         ),

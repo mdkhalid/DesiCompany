@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../l10n/strings.dart';
 
 class DistanceBadge extends StatelessWidget {
   final double? distanceMeters;
@@ -24,22 +25,23 @@ class DistanceBadge extends StatelessWidget {
 
   static double _toRad(double deg) => deg * pi / 180;
 
-  String _formatDistance(double meters) {
+  String _formatDistance(double meters, LocalizationProvider loc) {
     final km = meters / 1000;
-    if (km < 1) return '${meters.toStringAsFixed(0)} m from you';
-    return '${km.toStringAsFixed(1)} km from you';
+    if (km < 1) return loc.tr('meters_from_you', params: {'meters': meters.toStringAsFixed(0)});
+    return loc.tr('km_from_you', params: {'km': km.toStringAsFixed(1)});
   }
 
   @override
   Widget build(BuildContext context) {
     if (distanceMeters == null) return const SizedBox.shrink();
+    final loc = LocalizationProvider.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(Icons.place, size: 14, color: Colors.deepPurple.shade300),
         const SizedBox(width: 4),
         Text(
-          _formatDistance(distanceMeters!),
+          _formatDistance(distanceMeters!, loc),
           style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
         ),
       ],
