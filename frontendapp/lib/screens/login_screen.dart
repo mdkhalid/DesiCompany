@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
+import 'profile_picker_screen.dart';
+import 'role_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -49,11 +51,35 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final user = await AuthService.verifyOtp(_phoneController.text.trim(), _otpController.text.trim());
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context,
-        user.isAdmin ? '/admin-home' :
-        user.isProvider ? '/provider-home' : '/customer-home');
+      if (user.hasMultipleRoles && !user.isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProfilePickerScreen(user: user),
+          ),
+        );
+      } else {
+        Navigator.pushReplacementNamed(context,
+          user.isAdmin ? '/admin-home' :
+          user.isProvider ? '/provider-home' : '/customer-home');
+      }
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      // If user not found (404), redirect to role selection
+      final errMsg = e.toString();
+      if (errMsg.contains('User not found') || errMsg.contains('404')) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RoleSelectionScreen(
+              phone: _phoneController.text.trim(),
+              otp: _otpController.text.trim(),
+            ),
+          ),
+        );
+      } else {
+        setState(() { _error = errMsg.replaceFirst('Exception: ', ''); _loading = false; });
+      }
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../l10n/strings.dart';
+import '../services/api_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? bookingId;
@@ -32,7 +33,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool get _isDirect => widget.mode == 'direct';
 
   void _connectSocket() {
-    _socket = io.io('http://localhost:3000/chat', <String, dynamic>{
+    _socket = io.io(ApiService.baseUrl.replaceFirst('/api/v1', '') + '/chat', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
     });

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/strings.dart';
 import '../main.dart';
+import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../theme.dart';
+import 'profile_picker_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -153,6 +155,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     }
+  }
+
+  Future<void> _switchProfile() async {
+    final roles = _profile?['roles'];
+    if (roles is! List || roles.length < 2) return;
+
+    final user = User.fromJson(_profile!);
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProfilePickerScreen(user: user),
+      ),
+    ).then((_) => _loadProfile());
   }
 
   Future<void> _logout() async {
@@ -319,6 +335,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _infoTile(Icons.map, loc.tr('state'), userData?['state'] ?? loc.tr('not_provided')),
         _infoTile(Icons.markunread_mailbox, loc.tr('pincode'), userData?['pincode'] ?? loc.tr('not_provided')),
         const SizedBox(height: 16),
+        // Switch profile button (only if user has multiple roles)
+        if (_profile?['roles'] is List && (_profile!['roles'] as List).length > 1)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: _switchProfile,
+                icon: const Icon(Icons.swap_horiz, size: 18),
+                label: Text(loc.tr('switch_profile'), style: const TextStyle(fontSize: 14)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF00BFA5),
+                  side: const BorderSide(color: Color(0xFF00BFA5)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ),
         SizedBox(
           width: double.infinity,
           height: 48,

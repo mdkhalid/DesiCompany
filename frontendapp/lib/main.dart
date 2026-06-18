@@ -31,7 +31,6 @@ import 'screens/provider_open_jobs_screen.dart';
 import 'screens/provider_submit_quote_screen.dart';
 import 'screens/provider_my_quotes_screen.dart';
 import 'screens/provider_job_detail_screen.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
@@ -117,8 +116,8 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
             '/admin-customer-feedbacks': (_) => const AdminCustomerFeedbacksScreen(),
             '/customer-jobs': (_) => const CustomerJobsScreen(),
             '/customer-post-job': (_) => const CustomerPostJobScreen(),
-            '/provider-open-jobs': (_) => const ProviderOpenJobsScreen(),
-            '/provider-my-quotes': (_) => const ProviderMyQuotesScreen(),
+          '/provider-open-jobs': (_) => const ProviderOpenJobsScreen(),
+          '/provider-my-quotes': (_) => const ProviderMyQuotesScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name == '/provider-detail') {

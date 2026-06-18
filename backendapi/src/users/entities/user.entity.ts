@@ -17,6 +17,9 @@ export class User extends BaseEntity {
   @Column()
   role: UserRole;
 
+  @Column('text', { array: true, default: [] })
+  roles: UserRole[];
+
   @Column({ default: UserStatus.ACTIVE })
   status: UserStatus;
 

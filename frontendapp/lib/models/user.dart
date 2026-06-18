@@ -2,6 +2,7 @@ class User {
   final String id;
   final String phone;
   final String role;
+  final List<String> roles;
   final String? token;
   final double? latitude;
   final double? longitude;
@@ -11,6 +12,7 @@ class User {
     required this.id,
     required this.phone,
     required this.role,
+    required this.roles,
     this.token,
     this.latitude,
     this.longitude,
@@ -18,10 +20,19 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json, {String? token}) {
+    // Parse roles array; fall back to single role
+    final rawRoles = json['roles'];
+    List<String> parsedRoles;
+    if (rawRoles is List) {
+      parsedRoles = rawRoles.cast<String>();
+    } else {
+      parsedRoles = [json['role'] as String];
+    }
     return User(
       id: json['id'],
       phone: json['phone'],
       role: json['role'],
+      roles: parsedRoles,
       token: token,
       latitude: double.tryParse('${json['latitude'] ?? ''}'),
       longitude: double.tryParse('${json['longitude'] ?? ''}'),
@@ -32,6 +43,9 @@ class User {
   bool get isCustomer => role == 'customer';
   bool get isProvider => role == 'provider';
   bool get isAdmin => role == 'admin';
+  bool get hasMultipleRoles => roles.length > 1;
+  bool get canBeCustomer => roles.contains('customer');
+  bool get canBeProvider => roles.contains('provider');
 }
 
 class ServiceCategory {

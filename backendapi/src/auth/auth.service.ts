@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,6 +16,7 @@ import { UserStatus } from '../common/enums/user-status.enum';
 
 interface RegisterDto {
   phone: string;
+  otp: string;
   role: UserRole;
   firstName?: string;
   lastName?: string;
@@ -70,16 +72,34 @@ export class AuthService {
   async register(
     registerDto: RegisterDto,
   ): Promise<{ user: User; tokens: AuthTokens }> {
+    // Validate OTP
+    const otpRecord = this.otpStore.get(registerDto.phone);
+    if (!otpRecord) {
+      throw new BadRequestException('OTP not found or expired');
+    }
+    if (otpRecord.expiresAt < new Date()) {
+      this.otpStore.delete(registerDto.phone);
+      throw new BadRequestException('OTP expired');
+    }
+    if (otpRecord.code !== registerDto.otp) {
+      throw new UnauthorizedException('Invalid OTP');
+    }
+    this.otpStore.delete(registerDto.phone);
+
+    // Check if user already exists (first role vs adding second role)
     const existingUser = await this.userRepository.findOne({
       where: { phone: registerDto.phone },
     });
+
     if (existingUser) {
       throw new ConflictException('User already exists');
     }
 
+    // First-time registration (new user)
     const user = this.userRepository.create({
       phone: registerDto.phone,
       role: registerDto.role,
+      roles: [registerDto.role],
       email: registerDto.email || undefined,
       status: UserStatus.ACTIVE,
     });
@@ -111,7 +131,7 @@ export class AuthService {
       where: { phone: loginDto.phone },
     });
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new NotFoundException('User not found');
     }
 
     if (user.status !== UserStatus.ACTIVE) {
@@ -138,6 +158,82 @@ export class AuthService {
     return { user, tokens };
   }
 
+  async switchRole(
+    userId: string,
+    activeRole: UserRole,
+  ): Promise<{ tokens: AuthTokens }> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const availableRoles = user.roles && user.roles.length > 0
+      ? user.roles
+      : [user.role];
+
+    if (!availableRoles.includes(activeRole)) {
+      throw new BadRequestException('User does not have this role');
+    }
+
+    const tokens = this.generateTokensForRole(user, activeRole);
+    return { tokens };
+  }
+
+  async addRole(
+    userId: string,
+    newRole: UserRole,
+    firstName?: string,
+    lastName?: string,
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    // Only customer and provider roles can be self-added
+    if (newRole !== UserRole.CUSTOMER && newRole !== UserRole.PROVIDER) {
+      throw new BadRequestException('Only customer and provider roles can be self-added');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: { customer: true, provider: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const currentRoles = user.roles && user.roles.length > 0
+      ? user.roles
+      : [user.role];
+
+    if (currentRoles.includes(newRole)) {
+      throw new ConflictException('User already has this role');
+    }
+
+    // Create profile FIRST, then update roles (avoid inconsistency)
+    if (newRole === UserRole.CUSTOMER && !user.customer) {
+      const customer = this.customerRepository.create({
+        user,
+        firstName: firstName || '',
+        lastName: lastName || undefined,
+      });
+      await this.customerRepository.save(customer);
+    } else if (newRole === UserRole.PROVIDER && !user.provider) {
+      const provider = this.providerRepository.create({
+        user,
+        firstName: firstName || '',
+        lastName: lastName || undefined,
+      });
+      await this.providerRepository.save(provider);
+    }
+
+    // Update roles after profile is created successfully
+    user.roles = [...currentRoles, newRole];
+    user.role = newRole;
+    await this.userRepository.save(user);
+
+    const tokens = this.generateTokens(user);
+    return { user, tokens };
+  }
+
   async refreshToken(refreshToken: string): Promise<{ tokens: AuthTokens }> {
     try {
       const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
@@ -159,10 +255,14 @@ export class AuthService {
   }
 
   private generateTokens(user: User): AuthTokens {
+    return this.generateTokensForRole(user, user.role);
+  }
+
+  private generateTokensForRole(user: User, activeRole: UserRole): AuthTokens {
     const payload: JwtPayload = {
       sub: user.id,
       phone: user.phone,
-      role: user.role,
+      role: activeRole,
     };
 
     return {

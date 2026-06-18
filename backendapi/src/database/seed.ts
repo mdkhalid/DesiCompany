@@ -14,6 +14,7 @@ import { Transaction } from '../payments/entities/transaction.entity';
 import { CommissionConfig } from '../commissions/entities/commission-config.entity';
 import { Review } from '../reviews/entities/review.entity';
 import { Notification } from '../notifications/entities/notification.entity';
+import { CustomerFeedback } from '../feedbacks/entities/customer-feedback.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
@@ -37,6 +38,7 @@ const entities = [
   CommissionConfig,
   Review,
   Notification,
+  CustomerFeedback,
 ];
 
 async function seed() {
@@ -66,6 +68,7 @@ async function seed() {
       phone: process.env.ADMIN_PHONE || '9999999999',
       email: process.env.ADMIN_EMAIL || 'admin@desicompany.com',
       role: UserRole.ADMIN,
+      roles: [UserRole.ADMIN],
       status: UserStatus.ACTIVE,
     });
     await userRepository.save(admin);
@@ -80,6 +83,7 @@ async function seed() {
       phone: '9876543210',
       email: 'customer@example.com',
       role: UserRole.CUSTOMER,
+      roles: [UserRole.CUSTOMER],
       status: UserStatus.ACTIVE,
     });
     const savedCustomerUser = await userRepository.save(customerUser);
@@ -106,6 +110,7 @@ async function seed() {
       phone: '9876543211',
       email: 'provider@example.com',
       role: UserRole.PROVIDER,
+      roles: [UserRole.PROVIDER],
       status: UserStatus.ACTIVE,
     });
     const savedProviderUser = await userRepository.save(providerUser);
@@ -201,6 +206,88 @@ async function seed() {
     }
   }
 
+  // === Dual-role user (customer AND provider) for testing profile switching ===
+  const dualRoleExists = await userRepository.findOne({
+    where: { phone: '9876543218' },
+  });
+  if (!dualRoleExists) {
+    const dualUser = userRepository.create({
+      phone: '9876543218',
+      email: 'dualrole@example.com',
+      role: UserRole.CUSTOMER,
+      roles: [UserRole.CUSTOMER, UserRole.PROVIDER],
+      status: UserStatus.ACTIVE,
+    });
+    const savedDualUser = await userRepository.save(dualUser);
+
+    // Customer profile
+    const dualCustomer = customerRepository.create({
+      user: savedDualUser,
+      firstName: 'Priya',
+      lastName: 'Agarwal',
+      city: 'Delhi',
+      state: 'Delhi',
+      latitude: 28.6100,
+      longitude: 77.2300,
+    });
+    await customerRepository.save(dualCustomer);
+
+    // Provider profile
+    const dualProvider = providerRepository.create({
+      user: savedDualUser,
+      firstName: 'Priya',
+      lastName: 'Agarwal',
+      bio: 'Home cleaning and laundry specialist',
+      experienceYears: 3,
+      city: 'Delhi',
+      state: 'Delhi',
+      latitude: 28.6100,
+      longitude: 77.2300,
+      isVerified: true,
+      averageRating: 4.2,
+      totalReviews: 8,
+    });
+    await providerRepository.save(dualProvider);
+
+    // Add services for the provider part
+    const cleaningCat = await categoryRepository.findOne({ where: { nameEn: 'Cleaning' } });
+    const laundryCat = await categoryRepository.findOne({ where: { nameEn: 'Laundry' } });
+
+    if (cleaningCat) {
+      await providerServiceRepository.save(
+        providerServiceRepository.create({
+          provider: dualProvider,
+          category: cleaningCat,
+          fixedRate: 400,
+          hourlyRate: 200,
+        }),
+      );
+    }
+    if (laundryCat) {
+      await providerServiceRepository.save(
+        providerServiceRepository.create({
+          provider: dualProvider,
+          category: laundryCat,
+          fixedRate: 300,
+          hourlyRate: 150,
+        }),
+      );
+    }
+
+    // Availability for the provider part
+    for (const day of [1, 2, 3, 4, 5, 6]) {
+      await availabilityRepository.save(
+        availabilityRepository.create({
+          provider: dualProvider,
+          dayOfWeek: day,
+          startTime: '10:00',
+          endTime: '19:00',
+        }),
+      );
+    }
+    console.log('Dual-role user created: Priya Agarwal (9876543218)');
+  }
+
   const moreProviders = [
     {
       phone: '9876543212',
@@ -285,6 +372,7 @@ async function seed() {
         phone: pData.phone,
         email: `${pData.firstName.toLowerCase()}@example.com`,
         role: UserRole.PROVIDER,
+        roles: [UserRole.PROVIDER],
         status: UserStatus.ACTIVE,
       });
       const savedPUser = await userRepository.save(pUser);

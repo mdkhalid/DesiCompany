@@ -28,6 +28,25 @@ class AppStrings {
       'invalid_phone': 'Enter a valid 10-digit phone number',
       'enter_otp': 'Enter the OTP',
 
+      // Profile Switching
+      'switch_profile_title': 'Which profile?',
+      'switch_profile_subtitle': 'You can switch anytime from Settings',
+      'switch_profile': 'Switch Profile',
+      'current_profile': 'Current',
+      'active': 'Active',
+      'new_label': 'New',
+
+      // Role Selection
+      'who_are_you': 'Who are you?',
+      'customer_title': 'I need a service',
+      'customer_desc': 'Find plumbers, electricians, cleaners & more',
+      'provider_title': 'I offer services',
+      'provider_desc': 'List your services and find customers',
+      'continue_btn': 'Continue',
+      'first_name_hint': 'First Name (optional)',
+      'last_name_hint': 'Last Name (optional)',
+      'new_user': 'New user! Tell us about yourself',
+
       // Navigation
       'nav_home': 'Home',
       'nav_bookings': 'Bookings',
@@ -318,6 +337,25 @@ class AppStrings {
       'wrong_number': '← गलत नंबर? फ़ोन बदलें',
       'invalid_phone': '10 अंकों का वैध फ़ोन नंबर दर्ज करें',
       'enter_otp': 'OTP दर्ज करें',
+
+      // Profile Switching
+      'switch_profile_title': 'कौन सा प्रोफ़ाइल?',
+      'switch_profile_subtitle': 'आप सेटिंग से कभी भी स्विच कर सकते हैं',
+      'switch_profile': 'प्रोफ़ाइल बदलें',
+      'current_profile': 'वर्तमान',
+      'active': 'सक्रिय',
+      'new_label': 'नया',
+
+      // Role Selection
+      'who_are_you': 'आप कौन हैं?',
+      'customer_title': 'मुझे सेवा चाहिए',
+      'customer_desc': 'प्लंबर, इलेक्ट्रीशियन, सफाईकर्मी और अधिक खोजें',
+      'provider_title': 'मैं सेवाएं प्रदान करता हूं',
+      'provider_desc': 'अपनी सेवाएं सूचीबद्ध करें और ग्राहक खोजें',
+      'continue_btn': 'जारी रखें',
+      'first_name_hint': 'पहला नाम (वैकल्पिक)',
+      'last_name_hint': 'अंतिम नाम (वैकल्पिक)',
+      'new_user': 'नए उपयोगकर्ता! अपने बारे में बताएं',
 
       // Navigation
       'nav_home': 'होम',

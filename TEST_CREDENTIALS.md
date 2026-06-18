@@ -15,6 +15,7 @@
 | 9876543215 | Provider | Vikram Yadav | Delhi |
 | 9876543216 | Provider | Neha Patel | Mumbai |
 | 9876543217 | Provider | Mohit Joshi | Mumbai |
+| 9876543218 | Both | Priya Agarwal | Delhi |
 
 ## Service Categories
 
