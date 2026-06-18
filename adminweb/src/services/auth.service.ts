@@ -1,11 +1,11 @@
 import { api } from './api';
 
 export async function sendOtp(phone: string) {
-  return api.post<{ message: string }>('/auth/send-otp', { phone });
+  return api.post<{ message: string }>('/auth/otp/request', { phone });
 }
 
 export async function verifyOtp(phone: string, otp: string) {
-  const data = await api.post<{ accessToken: string; user: any }>('/auth/verify-otp', { phone, otp });
+  const data = await api.post<{ accessToken: string; refreshToken: string; user: any }>('/auth/login', { phone, otp });
   localStorage.setItem('token', data.accessToken);
   localStorage.setItem('user', JSON.stringify(data.user));
   return data;
