@@ -100,14 +100,24 @@ export class UsersService {
 
   async findAll() {
     return this.userRepository.find({
-      relations: { customer: true, provider: true },
+      relations: {
+        customer: true,
+        provider: {
+          services: { category: true },
+        },
+      },
     });
   }
 
   async findOne(id: string) {
     const user = await this.userRepository.findOne({
       where: { id },
-      relations: { customer: true, provider: true },
+      relations: {
+        customer: true,
+        provider: {
+          services: { category: true },
+        },
+      },
     });
 
     if (!user) {

@@ -12,8 +12,24 @@ export default function Users() {
 
   async function toggleStatus(user: User) {
     const newStatus = user.status === 'active' ? 'suspended' : 'active';
-    await api.patch(`/users/${user.id}`, { status: newStatus });
+    await api.patch(`/users/${user.id}/status`, { status: newStatus });
     setUsers(users.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)));
+  }
+
+  function providerServices(user: User): string[] {
+    const services = (user as any).provider?.services ?? [];
+    return services
+      .map((s: any) => s.category?.nameEn)
+      .filter((name: string | undefined): name is string => !!name);
+  }
+
+  function userName(user: User): string {
+    const profile = user.role === 'customer' ? (user as any).customer : (user as any).provider;
+    if (!profile) return user.phone;
+    const first = profile.firstName ?? '';
+    const last = profile.lastName ?? '';
+    const full = `${first} ${last}`.trim();
+    return full || user.phone;
   }
 
   const filtered = filter === 'all' ? users : users.filter((u) => u.role === filter);
@@ -30,29 +46,50 @@ export default function Users() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
+              <th className="text-left p-3">Name</th>
               <th className="text-left p-3">Phone</th>
               <th className="text-left p-3">Role</th>
+              <th className="text-left p-3">Services</th>
               <th className="text-left p-3">Status</th>
               <th className="text-left p-3">Joined</th>
               <th className="text-left p-3">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((user) => (
-              <tr key={user.id} className="border-t">
-                <td className="p-3">{user.phone}</td>
-                <td className="p-3 capitalize">{user.role}</td>
-                <td className="p-3">
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{user.status}</span>
-                </td>
-                <td className="p-3 text-gray-500">{new Date(user.createdAt).toLocaleDateString()}</td>
-                <td className="p-3">
-                  <button onClick={() => toggleStatus(user)} className={`text-sm px-3 py-1 rounded ${user.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
-                    {user.status === 'active' ? 'Suspend' : 'Activate'}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((user) => {
+              const services = user.role === 'provider' ? providerServices(user) : [];
+              return (
+                <tr key={user.id} className="border-t">
+                  <td className="p-3 font-medium">{userName(user)}</td>
+                  <td className="p-3">{user.phone}</td>
+                  <td className="p-3 capitalize">{user.role}</td>
+                  <td className="p-3">
+                    {user.role === 'provider' ? (
+                      services.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {services.map((name) => (
+                            <span key={name} className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full">{name}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">No services</span>
+                      )
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{user.status}</span>
+                  </td>
+                  <td className="p-3 text-gray-500">{new Date(user.createdAt).toLocaleDateString()}</td>
+                  <td className="p-3">
+                    <button onClick={() => toggleStatus(user)} className={`text-sm px-3 py-1 rounded ${user.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                      {user.status === 'active' ? 'Suspend' : 'Activate'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
