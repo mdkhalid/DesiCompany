@@ -15,6 +15,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ChatModule } from './chat/chat.module';
+import { FeedbacksModule } from './feedbacks/feedbacks.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -28,6 +29,7 @@ import { Transaction } from './payments/entities/transaction.entity';
 import { CommissionConfig } from './commissions/entities/commission-config.entity';
 import { Review } from './reviews/entities/review.entity';
 import { Notification } from './notifications/entities/notification.entity';
+import { CustomerFeedback } from './feedbacks/entities/customer-feedback.entity';
 
 @Module({
   imports: [
@@ -47,6 +49,7 @@ import { Notification } from './notifications/entities/notification.entity';
     ReviewsModule,
     NotificationsModule,
     ChatModule,
+    FeedbacksModule,
     TypeOrmModule.forFeature([
       User,
       Customer,
@@ -61,6 +64,7 @@ import { Notification } from './notifications/entities/notification.entity';
       CommissionConfig,
       Review,
       Notification,
+      CustomerFeedback,
     ]),
   ],
   controllers: [AppController],

@@ -14,9 +14,11 @@ import 'screens/profile_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/write_review_screen.dart';
 import 'screens/provider_reviews_screen.dart';
+import 'screens/provider_customer_feedback_screen.dart';
 import 'screens/admin_home_screen.dart';
 import 'screens/admin_bookings_screen.dart';
 import 'screens/admin_reviews_screen.dart';
+import 'screens/admin_customer_feedbacks_screen.dart';
 import 'screens/admin_users_screen.dart';
 import 'screens/admin_kyc_screen.dart';
 import 'screens/admin_gateways_screen.dart';
@@ -101,6 +103,7 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
             '/provider-reviews': (_) => const ProviderReviewsScreen(),
             '/admin-bookings': (_) => const AdminBookingsScreen(),
             '/admin-reviews': (_) => const AdminReviewsScreen(),
+            '/admin-customer-feedbacks': (_) => const AdminCustomerFeedbacksScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name == '/provider-detail') {
@@ -131,6 +134,16 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
                   bookingId: args['bookingId']!,
                   providerName: args['providerName']!,
                   providerId: args['providerId']!,
+                ),
+              );
+            }
+            if (settings.name == '/provider-customer-feedback') {
+              final args = settings.arguments as Map<String, String>;
+              return MaterialPageRoute(
+                builder: (_) => ProviderCustomerFeedbackScreen(
+                  bookingId: args['bookingId']!,
+                  customerName: args['customerName']!,
+                  providerName: args['providerName']!,
                 ),
               );
             }

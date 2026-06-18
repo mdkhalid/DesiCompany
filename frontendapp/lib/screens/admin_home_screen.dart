@@ -336,6 +336,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         'route': '/admin-reviews',
       },
       {
+        'label': loc.tr('customer_feedback'),
+        'icon': Icons.feedback,
+        'color': const Color(0xFF7B1FA2),
+        'route': '/admin-customer-feedbacks',
+      },
+      {
         'label': loc.tr('payment_gateways'),
         'icon': Icons.account_balance,
         'color': const Color(0xFF2196F3),

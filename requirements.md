@@ -315,6 +315,32 @@ npm run start:dev
   - `provider_location` / `customer_location` broadcast events
   - Real-time location during active bookings
 
+### Phase 7 — Reviews & Private Provider Feedback 🔄 IN PROGRESS
+- [x] Customer → Provider public reviews (existing)
+  - Customer rates provider after completed booking
+  - Affects provider `averageRating` and `totalReviews`
+  - Visible to customer, provider, and admin
+- [x] Admin mobile reviews screen (existing)
+- [x] Private provider feedback plan approved
+- [ ] **Provider → Customer private feedback** (this phase)
+  - `CustomerFeedback` entity: provider-only feedback about customer
+  - Fields: booking, provider, customer, rating, comment, tags
+  - Tags: `paid_on_time`, `cancelled_last_minute`, `no_show`, `rude_behavior`, `good_customer`, `changed_location`
+  - Visible only to provider + admin
+  - **Does NOT affect public customer rating**
+  - API endpoints:
+    - `POST /feedbacks/customer` — provider submits feedback
+    - `GET /feedbacks/customer/provider/me` — provider lists own feedback
+    - `GET /admin/customer-feedbacks` — admin views all
+- [ ] Flutter provider app: "Add Private Feedback" on completed bookings
+- [ ] Flutter admin app: "Customer Feedback" section
+
+### Why Private Feedback?
+- Provider has a voice about risky/difficult customers.
+- Avoids misuse of public customer ratings.
+- Admin uses private feedback for abuse/fraud detection.
+- Public customer reputation is **not** implemented initially (can be added later).
+
 ---
 
 ## 8. Notes for Implementation

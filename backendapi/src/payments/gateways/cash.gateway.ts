@@ -22,6 +22,7 @@ export class CashGateway implements PaymentGateway {
     return PaymentGatewayType.CASH;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async createOrder(req: CreateOrderRequest): Promise<CreateOrderResponse> {
     // Cash has no remote order; createOrder synthesizes an order id so callers
     // can persist a Payment row immediately and reference it during the
@@ -64,6 +65,7 @@ export class CashGateway implements PaymentGateway {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async getStatus(gatewayPaymentId: string): Promise<PaymentStatusResult> {
     // Cash payments settle synchronously when provider confirms receipt;
     // any status query from the customer side returns 'succeeded'.
@@ -76,6 +78,7 @@ export class CashGateway implements PaymentGateway {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async refund(req: RefundRequest): Promise<RefundResult> {
     // Refund of a cash payment is handled off-platform (provider gives money
     // back to customer directly). This no-op records the intent for the ledger

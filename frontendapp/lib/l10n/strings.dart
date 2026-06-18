@@ -148,6 +148,20 @@ class AppStrings {
       'excellent': 'Excellent',
       'tell_us': 'Tell us about your experience (optional)',
 
+      // Provider Feedback
+      'private_feedback': 'Private Feedback',
+      'submit_feedback': 'Submit',
+      'paid_on_time': 'Paid on time',
+      'cancelled_last_minute': 'Cancelled last minute',
+      'no_show': 'No show',
+      'rude_behavior': 'Rude behavior',
+      'good_customer': 'Good customer',
+      'changed_location': 'Changed location',
+      'previous_feedback': 'Previous Feedback',
+      'no_previous_feedback': 'No previous feedback yet',
+      'feedback_submitted': 'Feedback submitted',
+      'feedback_failed': 'Failed to submit feedback: {error}',
+
       // Distance
       'meters_from_you': '{meters} m from you',
       'km_from_you': '{km} km from you',
@@ -165,6 +179,7 @@ class AppStrings {
       'kyc_approvals': 'KYC Approvals',
       'admin_bookings': 'Bookings',
       'admin_reviews': 'Reviews',
+      'customer_feedback': 'Customer Feedback',
       'payment_gateways': 'Payment Gateways',
       'nav_dashboard': 'Dashboard',
       'nav_users': 'Users',
@@ -318,6 +333,20 @@ class AppStrings {
       'excellent': 'उत्कृष्ट',
       'tell_us': 'अपने अनुभव के बारे में बताएं (वैकल्पिक)',
 
+      // Provider Feedback
+      'private_feedback': 'निजी प्रतिक्रिया',
+      'submit_feedback': 'सबमिट करें',
+      'paid_on_time': 'समय पर भुगतान किया',
+      'cancelled_last_minute': 'अंतिम क्षण में रद्द किया',
+      'no_show': 'नहीं आए',
+      'rude_behavior': 'अभद्र व्यवहार',
+      'good_customer': 'अच्छे ग्राहक',
+      'changed_location': 'स्थान बदला',
+      'previous_feedback': 'पिछली प्रतिक्रिया',
+      'no_previous_feedback': 'अभी तक कोई पिछली प्रतिक्रिया नहीं',
+      'feedback_submitted': 'प्रतिक्रिया सबमिट हो गई',
+      'feedback_failed': 'प्रतिक्रिया सबमिट करने में विफल: {error}',
+
       // Distance
       'meters_from_you': 'आपसे {meters} मीटर दूर',
       'km_from_you': 'आपसे {km} किमी दूर',
@@ -335,6 +364,7 @@ class AppStrings {
       'kyc_approvals': 'KYC अनुमोदन',
       'admin_bookings': 'बुकिंग',
       'admin_reviews': 'समीक्षाएं',
+      'customer_feedback': 'ग्राहक प्रतिक्रिया',
       'payment_gateways': 'भुगतान गेटवे',
       'nav_dashboard': 'डैशबोर्ड',
       'nav_users': 'उपयोगकर्ता',

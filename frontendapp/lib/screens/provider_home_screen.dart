@@ -143,6 +143,28 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E88E5), padding: const EdgeInsets.symmetric(vertical: 12)),
                       child: Text(loc.tr('mark_completed'), style: const TextStyle(fontSize: 13)),
                     )),
+                                  if (b['status'] == 'completed')
+                    SizedBox(width: double.infinity, child: OutlinedButton.icon(
+                      onPressed: () {
+                        final customer = b['customer'];
+                        final customerUser = customer is Map ? customer['user'] : null;
+                        final customerName = customerUser is Map
+                          ? '${customerUser['firstName'] ?? ''} ${customerUser['lastName'] ?? ''}'.trim()
+                          : 'Customer';
+                        Navigator.pushNamed(context, '/provider-customer-feedback', arguments: {
+                          'bookingId': b['id'],
+                          'customerName': customerName,
+                          'providerName': 'Provider',
+                        });
+                      },
+                      icon: const Icon(Icons.feedback_outlined, size: 16),
+                      label: Text(loc.tr('private_feedback'), style: const TextStyle(fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF6C3FB4),
+                        side: const BorderSide(color: Color(0xFF6C3FB4)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    )),
                                 ]),
                               ),
                             );
