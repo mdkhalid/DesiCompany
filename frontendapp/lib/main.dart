@@ -24,6 +24,13 @@ import 'screens/admin_users_screen.dart';
 import 'screens/admin_kyc_screen.dart';
 import 'screens/admin_gateways_screen.dart';
 import 'screens/provider_kyc_upload_screen.dart';
+import 'screens/customer_jobs_screen.dart';
+import 'screens/customer_post_job_screen.dart';
+import 'screens/customer_job_detail_screen.dart';
+import 'screens/provider_open_jobs_screen.dart';
+import 'screens/provider_submit_quote_screen.dart';
+import 'screens/provider_my_quotes_screen.dart';
+import 'screens/provider_job_detail_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -108,6 +115,10 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
             '/admin-bookings': (_) => const AdminBookingsScreen(),
             '/admin-reviews': (_) => const AdminReviewsScreen(),
             '/admin-customer-feedbacks': (_) => const AdminCustomerFeedbacksScreen(),
+            '/customer-jobs': (_) => const CustomerJobsScreen(),
+            '/customer-post-job': (_) => const CustomerPostJobScreen(),
+            '/provider-open-jobs': (_) => const ProviderOpenJobsScreen(),
+            '/provider-my-quotes': (_) => const ProviderMyQuotesScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name == '/provider-detail') {
@@ -148,6 +159,30 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
                   bookingId: args['bookingId']!,
                   customerName: args['customerName']!,
                   providerName: args['providerName']!,
+                ),
+              );
+            }
+            if (settings.name == '/customer-job-detail') {
+              final args = settings.arguments as Map<String, dynamic>;
+              return MaterialPageRoute(
+                builder: (_) => CustomerJobDetailScreen(
+                  jobRequestId: args['jobRequestId'] as String,
+                ),
+              );
+            }
+            if (settings.name == '/provider-submit-quote') {
+              final args = settings.arguments as Map<String, dynamic>;
+              return MaterialPageRoute(
+                builder: (_) => ProviderSubmitQuoteScreen(
+                  jobRequestId: args['jobRequestId'] as String,
+                ),
+              );
+            }
+            if (settings.name == '/provider-job-detail') {
+              final args = settings.arguments as Map<String, dynamic>;
+              return MaterialPageRoute(
+                builder: (_) => ProviderJobDetailScreen(
+                  jobRequestId: args['jobRequestId'] as String,
                 ),
               );
             }

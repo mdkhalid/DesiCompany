@@ -66,6 +66,14 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                 ]),
                 Row(children: [
                   LabeledIconButton(
+                    icon: Icons.work_outline,
+                    label: loc.tr('header_jobs'),
+                    iconColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    onTap: () => Navigator.pushNamed(context, '/provider-open-jobs'),
+                  ),
+                  const SizedBox(width: 6),
+                  LabeledIconButton(
                     icon: Icons.handyman,
                     label: loc.tr('header_services'),
                     iconColor: Colors.white,

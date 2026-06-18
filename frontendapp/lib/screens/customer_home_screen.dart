@@ -5,6 +5,7 @@ import '../models/user.dart';
 import '../theme.dart';
 import '../l10n/strings.dart';
 import '../widgets/distance_badge.dart';
+import '../widgets/labeled_icon_button.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -250,6 +251,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
           Row(
             children: [
+              LabeledIconButton(
+                icon: Icons.work_outline,
+                label: loc.tr('header_jobs'),
+                iconColor: Colors.white,
+                backgroundColor: Colors.white.withValues(alpha: 0.15),
+                onTap: () => Navigator.pushNamed(context, '/customer-jobs'),
+              ),
+              const SizedBox(width: 6),
               _buildNotificationButton(),
               const SizedBox(width: 8),
               _buildIconButton(
