@@ -18,9 +18,6 @@ class AppStrings {
       'retry': 'Retry',
       'no_data': 'No data available',
 
-      // Admin
-      'user_management': 'User Management',
-
       // Auth
       'phone_hint': 'Phone Number',
       'send_otp': 'Send OTP',
@@ -166,13 +163,14 @@ class AppStrings {
       'quick_actions': 'Quick Actions',
       'manage_users': 'Manage Users',
       'kyc_approvals': 'KYC Approvals',
-      'bookings': 'Bookings',
-      'reviews': 'Reviews',
+      'admin_bookings': 'Bookings',
+      'admin_reviews': 'Reviews',
       'payment_gateways': 'Payment Gateways',
       'nav_dashboard': 'Dashboard',
       'nav_users': 'Users',
       'nav_kyc': 'KYC',
       'nav_more': 'More',
+      'user_management': 'User Management',
     },
     'hi': {
       // General
@@ -189,9 +187,6 @@ class AppStrings {
       'back': 'वापस',
       'retry': 'पुनः प्रयास करें',
       'no_data': 'कोई डेटा उपलब्ध नहीं',
-
-      // Admin
-      'user_management': 'उपयोगकर्ता प्रबंधन',
 
       // Auth
       'phone_hint': 'फ़ोन नंबर',
@@ -338,13 +333,14 @@ class AppStrings {
       'quick_actions': 'त्वरित कार्य',
       'manage_users': 'उपयोगकर्ता प्रबंधित करें',
       'kyc_approvals': 'KYC अनुमोदन',
-      'bookings': 'बुकिंग',
-      'reviews': 'समीक्षाएं',
+      'admin_bookings': 'बुकिंग',
+      'admin_reviews': 'समीक्षाएं',
       'payment_gateways': 'भुगतान गेटवे',
       'nav_dashboard': 'डैशबोर्ड',
       'nav_users': 'उपयोगकर्ता',
       'nav_kyc': 'KYC',
       'nav_more': 'और',
+      'user_management': 'उपयोगकर्ता प्रबंधन',
     },
   };
 
