@@ -64,7 +64,9 @@ describe('SoftBlockService', () => {
 
   describe('checkAndBlockProviders', () => {
     it('blocks no one when no wallets exist', async () => {
-      const walletQueryBuilder = (await (service as any).walletRepository.createQueryBuilder());
+      const walletQueryBuilder = await (
+        service as any
+      ).walletRepository.createQueryBuilder();
       walletQueryBuilder.getMany.mockResolvedValue([]);
 
       const result = await service.checkAndBlockProviders();

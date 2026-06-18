@@ -26,9 +26,19 @@ export class Payment extends BaseEntity {
   @Column({ nullable: true })
   gatewayResponse: string;
 
-  @Column({ type: 'enum', enum: PaymentGatewayType, nullable: true, name: 'gateway' })
+  @Column({
+    type: 'enum',
+    enum: PaymentGatewayType,
+    nullable: true,
+    name: 'gateway',
+  })
   gateway: PaymentGatewayType;
 
-  @Column({ type: 'varchar', length: 200, nullable: true, name: 'gateway_order_id' })
+  @Column({
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+    name: 'gateway_order_id',
+  })
   gatewayOrderId: string;
 }

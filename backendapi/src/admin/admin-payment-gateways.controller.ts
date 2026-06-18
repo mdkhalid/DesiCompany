@@ -34,13 +34,17 @@ export class AdminPaymentGatewaysController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', new ParseUUIDPipe()) id: string): Promise<MaskedGatewayResponse> {
+  async findOne(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<MaskedGatewayResponse> {
     return this.service.findOne(id);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() body: CreateGatewayInput): Promise<MaskedGatewayResponse> {
+  async create(
+    @Body() body: CreateGatewayInput,
+  ): Promise<MaskedGatewayResponse> {
     return this.service.createGateway(body);
   }
 
@@ -53,7 +57,9 @@ export class AdminPaymentGatewaysController {
   }
 
   @Patch(':id/default')
-  async setDefault(@Param('id', new ParseUUIDPipe()) id: string): Promise<MaskedGatewayResponse> {
+  async setDefault(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<MaskedGatewayResponse> {
     return this.service.setAsDefault(id);
   }
 

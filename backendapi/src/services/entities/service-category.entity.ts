@@ -23,6 +23,9 @@ export class ServiceCategory extends BaseEntity {
   @Column({ default: true })
   isActive: boolean;
 
-  @OneToMany(() => ProviderService, (providerService) => providerService.category)
+  @OneToMany(
+    () => ProviderService,
+    (providerService) => providerService.category,
+  )
   providerServices?: ProviderService[];
 }

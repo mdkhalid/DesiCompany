@@ -48,7 +48,11 @@ describe('WalletsService', () => {
 
   describe('getWallet', () => {
     it('returns existing wallet', async () => {
-      walletRepo.findOne.mockResolvedValue({ id: 'wallet-1', balance: 500, user: { id: 'user-1' } } as any);
+      walletRepo.findOne.mockResolvedValue({
+        id: 'wallet-1',
+        balance: 500,
+        user: { id: 'user-1' },
+      } as any);
       const result = await service.getWallet('user-1');
       expect(result.balance).toBe(500);
     });
@@ -56,8 +60,14 @@ describe('WalletsService', () => {
     it('creates wallet if not found', async () => {
       walletRepo.findOne.mockResolvedValue(null);
       userRepo.findOne.mockResolvedValue({ id: 'user-1' } as any);
-      walletRepo.create.mockReturnValue({ id: 'wallet-new', balance: 0 } as any);
-      walletRepo.save.mockResolvedValue({ id: 'wallet-new', balance: 0 } as any);
+      walletRepo.create.mockReturnValue({
+        id: 'wallet-new',
+        balance: 0,
+      } as any);
+      walletRepo.save.mockResolvedValue({
+        id: 'wallet-new',
+        balance: 0,
+      } as any);
 
       const result = await service.getWallet('user-1');
       expect(result.balance).toBe(0);
@@ -66,7 +76,9 @@ describe('WalletsService', () => {
     it('throws NotFoundException when user not found', async () => {
       walletRepo.findOne.mockResolvedValue(null);
       userRepo.findOne.mockResolvedValue(null);
-      await expect(service.getWallet('unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.getWallet('unknown')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -80,7 +92,16 @@ describe('WalletsService', () => {
     it('returns paginated transactions', async () => {
       walletRepo.findOne.mockResolvedValue({ id: 'wallet-1' } as any);
       txRepo.findAndCount.mockResolvedValue([
-        [{ id: 'tx-1', type: 'credit', amount: 100, balanceAfter: 100, source: 'booking_payout', createdAt: new Date() } as any],
+        [
+          {
+            id: 'tx-1',
+            type: 'credit',
+            amount: 100,
+            balanceAfter: 100,
+            source: 'booking_payout',
+            createdAt: new Date(),
+          } as any,
+        ],
         1,
       ]);
 

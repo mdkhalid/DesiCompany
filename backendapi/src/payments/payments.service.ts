@@ -37,7 +37,11 @@ export class PaymentsService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async createOrderForBooking(bookingId: string, userId: string, role: UserRole) {
+  async createOrderForBooking(
+    bookingId: string,
+    userId: string,
+    role: UserRole,
+  ) {
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
       relations: {
@@ -99,7 +103,9 @@ export class PaymentsService {
   async getPaymentStatus(paymentId: string, userId: string, role: UserRole) {
     const payment = await this.paymentRepository.findOne({
       where: { id: paymentId },
-      relations: { booking: { customer: { user: true }, provider: { user: true } } },
+      relations: {
+        booking: { customer: { user: true }, provider: { user: true } },
+      },
     });
     if (!payment) {
       throw new NotFoundException('Payment not found');
@@ -123,21 +129,31 @@ export class PaymentsService {
     }
 
     try {
-      const gateway = await this.paymentGatewayFactory.getByType(payment.gateway);
+      const gateway = await this.paymentGatewayFactory.getByType(
+        payment.gateway,
+      );
       const gatewayStatus = await gateway.getStatus(payment.gatewayOrderId);
 
-      if (gatewayStatus.status === 'success' && payment.status === PaymentStatus.PENDING) {
+      if (
+        gatewayStatus.status === 'success' &&
+        payment.status === PaymentStatus.PENDING
+      ) {
         payment.status = PaymentStatus.SUCCESS;
         payment.gatewayResponse = JSON.stringify(gatewayStatus);
         await this.paymentRepository.save(payment);
         await this.creditProviderWallet(payment);
-      } else if (gatewayStatus.status === 'failed' && payment.status === PaymentStatus.PENDING) {
+      } else if (
+        gatewayStatus.status === 'failed' &&
+        payment.status === PaymentStatus.PENDING
+      ) {
         payment.status = PaymentStatus.FAILED;
         payment.gatewayResponse = JSON.stringify(gatewayStatus);
         await this.paymentRepository.save(payment);
       }
     } catch (err) {
-      this.logger.warn(`Failed to poll gateway for payment ${paymentId}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Failed to poll gateway for payment ${paymentId}: ${(err as Error).message}`,
+      );
     }
 
     return {
@@ -183,7 +199,9 @@ export class PaymentsService {
       throw new NotFoundException('Booking not found');
     }
     if (role === UserRole.PROVIDER && booking.provider.user.id !== userId) {
-      throw new ForbiddenException('You can only mark cash received for your own bookings');
+      throw new ForbiddenException(
+        'You can only mark cash received for your own bookings',
+      );
     }
 
     const payment = await this.paymentRepository.findOne({
@@ -216,7 +234,7 @@ export class PaymentsService {
     });
     if (!wallet) {
       wallet = this.walletRepository.create({
-        user: { id: providerUserId } as any,
+        user: { id: providerUserId },
         balance: 0,
       });
       wallet = await this.walletRepository.save(wallet);
@@ -238,7 +256,10 @@ export class PaymentsService {
     await this.transactionRepository.save(tx);
   }
 
-  private async createCashOrder(booking: Booking, gatewayType: PaymentGatewayType) {
+  private async createCashOrder(
+    booking: Booking,
+    gatewayType: PaymentGatewayType,
+  ) {
     const payment = this.paymentRepository.create({
       booking,
       method: PaymentMethod.CASH,

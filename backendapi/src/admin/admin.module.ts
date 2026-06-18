@@ -41,10 +41,6 @@ import { PaymentsModule } from '../payments/payments.module';
     AdminRefundsController,
     AdminConfigController,
   ],
-  providers: [
-    AdminService,
-    AdminPaymentGatewaysService,
-    AdminRefundsService,
-  ],
+  providers: [AdminService, AdminPaymentGatewaysService, AdminRefundsService],
 })
 export class AdminModule {}

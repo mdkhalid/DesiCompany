@@ -111,7 +111,7 @@ describe('credential-cipher', () => {
     // Encrypt with wrong key inside isolateModules (fresh cache + wrong env)
     const payload = jest.isolateModules(() => {
       process.env.PAYMENT_GATEWAY_ENCRYPTION_KEY = wrongKey;
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+
       const { encryptCredentials: enc } = require('./credential-cipher');
       return enc('sk_live_cross_key');
     }) as unknown as ReturnType<typeof encryptCredentials>;

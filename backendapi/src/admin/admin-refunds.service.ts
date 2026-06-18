@@ -31,7 +31,9 @@ export class AdminRefundsService {
   async processRefund(dto: AdminRefundDto) {
     const payment = await this.paymentRepository.findOne({
       where: { id: dto.paymentId },
-      relations: { booking: { customer: { user: true }, provider: { user: true } } },
+      relations: {
+        booking: { customer: { user: true }, provider: { user: true } },
+      },
     });
     if (!payment) {
       throw new NotFoundException('Payment not found');
@@ -45,12 +47,16 @@ export class AdminRefundsService {
       throw new BadRequestException('Refund amount must be positive');
     }
     if (refundAmount > Number(payment.amount)) {
-      throw new BadRequestException('Refund amount cannot exceed payment amount');
+      throw new BadRequestException(
+        'Refund amount cannot exceed payment amount',
+      );
     }
 
     if (payment.gateway && payment.transactionId) {
       try {
-        const gateway = await this.paymentGatewayFactory.getByType(payment.gateway);
+        const gateway = await this.paymentGatewayFactory.getByType(
+          payment.gateway,
+        );
         const refundResult = await gateway.refund({
           gatewayPaymentId: payment.transactionId,
           amount: Math.round(refundAmount * 100),
@@ -58,7 +64,9 @@ export class AdminRefundsService {
         });
         this.logger.log(`Gateway refund processed: ${refundResult.refundId}`);
       } catch (err) {
-        this.logger.warn(`Gateway refund failed, proceeding with wallet credit: ${(err as Error).message}`);
+        this.logger.warn(
+          `Gateway refund failed, proceeding with wallet credit: ${(err as Error).message}`,
+        );
       }
     }
 
@@ -71,7 +79,7 @@ export class AdminRefundsService {
     });
     if (!wallet) {
       wallet = this.walletRepository.create({
-        user: { id: customerUserId } as any,
+        user: { id: customerUserId },
         balance: 0,
       });
     }

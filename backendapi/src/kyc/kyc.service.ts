@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { KycDocument } from './entities/kyc-document.entity';
@@ -18,8 +22,14 @@ export class KycService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async uploadDocument(providerId: string, documentType: string, documentUrl: string) {
-    const provider = await this.providerRepository.findOne({ where: { id: providerId } });
+  async uploadDocument(
+    providerId: string,
+    documentType: string,
+    documentUrl: string,
+  ) {
+    const provider = await this.providerRepository.findOne({
+      where: { id: providerId },
+    });
     if (!provider) {
       throw new NotFoundException('Provider not found');
     }
@@ -43,7 +53,7 @@ export class KycService {
 
   async updateStatus(id: string, status: KycStatus, remarks?: string) {
     const document = await this.kycRepository.findOne({
-      where: { id } as any,
+      where: { id },
       relations: { provider: { user: true } },
     });
 

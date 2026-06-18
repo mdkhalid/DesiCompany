@@ -29,13 +29,16 @@ export class CashGateway implements PaymentGateway {
     const gatewayOrderId = `cash_${randomUUID()}`;
     return {
       gatewayOrderId,
-      keyId: '',                        // No public key — front-end renders no checkout widget
-      amount: req.amount,               // already in smallest currency unit
+      keyId: '', // No public key — front-end renders no checkout widget
+      amount: req.amount, // already in smallest currency unit
       currency: req.currency,
     };
   }
 
-  verifyWebhookSignature(_rawBody: Buffer | string, _signature: string): boolean {
+  verifyWebhookSignature(
+    _rawBody: Buffer | string,
+    _signature: string,
+  ): boolean {
     // Cash flow has no signature concept — verification is always passing.
     // Real authorization happens at the application layer (provider confirms
     // receipt via /bookings/:id/mark-cash-received).
@@ -47,9 +50,13 @@ export class CashGateway implements PaymentGateway {
     const body = this.normalizeBody(rawBody);
     return {
       gateway: 'cash',
-      eventId: (body.eventId ?? body.id ?? `cash_event_${randomUUID()}`) as string,
+      eventId: (body.eventId ??
+        body.id ??
+        `cash_event_${randomUUID()}`) as string,
       eventType: (body.eventType ?? body.type ?? 'payment.captured') as string,
-      gatewayPaymentId: (body.gatewayPaymentId ?? body.paymentId ?? '') as string,
+      gatewayPaymentId: (body.gatewayPaymentId ??
+        body.paymentId ??
+        '') as string,
       gatewayOrderId: (body.gatewayOrderId ?? body.orderId ?? '') as string,
       amount: (body.amount ?? 0) as number,
       status: (body.status ?? 'success') as PaymentEventStatus,
@@ -64,7 +71,7 @@ export class CashGateway implements PaymentGateway {
       gatewayPaymentId,
       gatewayOrderId: gatewayPaymentId,
       status: 'success',
-      amount: 0,        // amount unknown to the gateway; caller reads from Payment row
+      amount: 0, // amount unknown to the gateway; caller reads from Payment row
       method: 'cash',
     };
   }
@@ -77,16 +84,24 @@ export class CashGateway implements PaymentGateway {
       refundId: `cash_refund_${randomUUID()}`,
       gatewayPaymentId: req.gatewayPaymentId,
       amount: req.amount ?? 0,
-      status: 'processed',   // off-platform, treat as done
+      status: 'processed', // off-platform, treat as done
     };
   }
 
   private normalizeBody(rawBody: Buffer | string): Record<string, unknown> {
     if (typeof rawBody === 'string') {
-      try { return JSON.parse(rawBody); } catch { return {}; }
+      try {
+        return JSON.parse(rawBody);
+      } catch {
+        return {};
+      }
     }
     if (Buffer.isBuffer(rawBody)) {
-      try { return JSON.parse(rawBody.toString('utf8')); } catch { return {}; }
+      try {
+        return JSON.parse(rawBody.toString('utf8'));
+      } catch {
+        return {};
+      }
     }
     return {};
   }

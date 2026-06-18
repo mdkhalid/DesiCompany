@@ -5,7 +5,9 @@ import { Provider } from '../../users/entities/provider.entity';
 
 @Entity('kyc_documents')
 export class KycDocument extends BaseEntity {
-  @ManyToOne(() => Provider, (provider) => provider.kycDocuments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Provider, (provider) => provider.kycDocuments, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'provider_id' })
   provider: Provider;
 

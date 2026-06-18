@@ -204,7 +204,11 @@ export class ServicesService {
   async findAllVerifiedProviders() {
     return this.providerRepository.find({
       where: { isVerified: true },
-      relations: { user: true, services: { category: true }, availabilities: true },
+      relations: {
+        user: true,
+        services: { category: true },
+        availabilities: true,
+      },
     });
   }
 

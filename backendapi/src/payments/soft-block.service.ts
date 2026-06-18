@@ -58,11 +58,13 @@ export class SoftBlockService {
       const shouldBlock = await this.shouldSoftBlock(wallet);
       if (shouldBlock) {
         await this.providerRepository.update(
-          { user: { id: wallet.user.id as any } },
-          { isSoftBlocked: true } as any,
+          { user: { id: wallet.user.id } },
+          { isSoftBlocked: true },
         );
         blockedCount++;
-        this.logger.warn(`Provider user ${wallet.user.id} soft-blocked due to outstanding commissions`);
+        this.logger.warn(
+          `Provider user ${wallet.user.id} soft-blocked due to outstanding commissions`,
+        );
       }
     }
 
@@ -76,7 +78,9 @@ export class SoftBlockService {
     const recentCommissionTx = await this.transactionRepository
       .createQueryBuilder('tx')
       .where('tx.wallet_id = :walletId', { walletId: wallet.id })
-      .andWhere('tx.source = :source', { source: TransactionSource.COMMISSION_OWED })
+      .andWhere('tx.source = :source', {
+        source: TransactionSource.COMMISSION_OWED,
+      })
       .andWhere('tx.created_at >= :lookbackDate', { lookbackDate })
       .andWhere('tx.type = :type', { type: 'debit' })
       .getMany();

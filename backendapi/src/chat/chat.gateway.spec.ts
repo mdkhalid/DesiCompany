@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { Socket, Server } from 'socket.io';
 import { ChatGateway } from './chat.gateway';
 import { Message } from './entities/message.entity';
 import { Booking } from '../bookings/entities/booking.entity';
@@ -54,9 +55,9 @@ describe('ChatGateway', () => {
         handshake: { auth: {}, headers: {} },
         disconnect: jest.fn(),
         data: {},
-      } as any;
+      } as unknown as Socket;
 
-      gateway.handleConnection(client);
+      gateway.handleConnection(client as never);
 
       expect(client.disconnect).toHaveBeenCalled();
     });
@@ -71,9 +72,9 @@ describe('ChatGateway', () => {
         handshake: { auth: { token: 'bad-token' }, headers: {} },
         disconnect: jest.fn(),
         data: {},
-      } as any;
+      } as unknown as Socket;
 
-      gateway.handleConnection(client);
+      gateway.handleConnection(client as never);
 
       expect(client.disconnect).toHaveBeenCalled();
     });
@@ -91,9 +92,9 @@ describe('ChatGateway', () => {
         handshake: { auth: { token: 'valid-token' }, headers: {} },
         disconnect: jest.fn(),
         data: {},
-      } as any;
+      } as unknown as Socket;
 
-      await gateway.handleConnection(client);
+      await gateway.handleConnection(client as never);
 
       expect(client.disconnect).toHaveBeenCalled();
     });
@@ -112,9 +113,9 @@ describe('ChatGateway', () => {
         handshake: { auth: { token: 'valid-token' }, headers: {} },
         disconnect: jest.fn(),
         data: {},
-      } as any;
+      } as unknown as Socket;
 
-      await gateway.handleConnection(client);
+      await gateway.handleConnection(client as never);
 
       expect(client.disconnect).not.toHaveBeenCalled();
       expect(client.data.userId).toBe('user-1');
@@ -138,9 +139,9 @@ describe('ChatGateway', () => {
         },
         disconnect: jest.fn(),
         data: {},
-      } as any;
+      } as unknown as Socket;
 
-      await gateway.handleConnection(client);
+      await gateway.handleConnection(client as never);
 
       expect(mockJwtService.verify).toHaveBeenCalledWith('valid-token');
       expect(client.data.userId).toBe('user-1');
@@ -153,9 +154,9 @@ describe('ChatGateway', () => {
         id: 'socket-1',
         data: {},
         emit: jest.fn(),
-      } as any;
+      } as unknown as Socket;
 
-      await gateway.handleJoin(client, { bookingId: 'booking-1' });
+      await gateway.handleJoin(client as never, { bookingId: 'booking-1' });
 
       expect(client.emit).toHaveBeenCalledWith('error', {
         message: 'Unauthorized',
@@ -169,9 +170,9 @@ describe('ChatGateway', () => {
         id: 'socket-1',
         data: { userId: 'user-1' },
         emit: jest.fn(),
-      } as any;
+      } as unknown as Socket;
 
-      await gateway.handleJoin(client, { bookingId: 'booking-1' });
+      await gateway.handleJoin(client as never, { bookingId: 'booking-1' });
 
       expect(client.emit).toHaveBeenCalledWith('error', {
         message: 'Booking not found',
@@ -190,9 +191,9 @@ describe('ChatGateway', () => {
         data: { userId: 'user-1' },
         emit: jest.fn(),
         join: jest.fn(),
-      } as any;
+      } as unknown as Socket;
 
-      await gateway.handleJoin(client, { bookingId: 'booking-1' });
+      await gateway.handleJoin(client as never, { bookingId: 'booking-1' });
 
       expect(client.emit).toHaveBeenCalledWith('error', {
         message: 'Not a participant of this booking',
@@ -213,9 +214,9 @@ describe('ChatGateway', () => {
         data: { userId: 'user-1' },
         emit: jest.fn(),
         join: jest.fn(),
-      } as any;
+      } as unknown as Socket;
 
-      await gateway.handleJoin(client, { bookingId: 'booking-1' });
+      await gateway.handleJoin(client as never, { bookingId: 'booking-1' });
 
       expect(client.join).toHaveBeenCalledWith('booking_booking-1');
       expect(client.emit).toHaveBeenCalledWith('history', mockMessages);
@@ -228,9 +229,9 @@ describe('ChatGateway', () => {
         id: 'socket-1',
         data: {},
         emit: jest.fn(),
-      } as any;
+      } as unknown as Socket;
 
-      await gateway.handleMessage(client, {
+      await gateway.handleMessage(client as never, {
         bookingId: 'booking-1',
         content: 'hi',
       });
@@ -258,12 +259,12 @@ describe('ChatGateway', () => {
         id: 'socket-1',
         data: { userId: 'user-1' },
         emit: jest.fn(),
-      } as any;
+      } as unknown as Socket;
 
       const server = { to: jest.fn().mockReturnThis(), emit: jest.fn() };
-      gateway.server = server as any;
+      gateway.server = server as unknown as Server;
 
-      await gateway.handleMessage(client, {
+      await gateway.handleMessage(client as never, {
         bookingId: 'booking-1',
         content: 'hello',
       });
@@ -275,8 +276,11 @@ describe('ChatGateway', () => {
 
   describe('handleDisconnect', () => {
     it('logs disconnect without error', () => {
-      const client = { id: 'socket-1', data: { userId: 'user-1' } } as any;
-      expect(() => gateway.handleDisconnect(client)).not.toThrow();
+      const client = {
+        id: 'socket-1',
+        data: { userId: 'user-1' },
+      } as unknown as Socket;
+      expect(() => gateway.handleDisconnect(client as never)).not.toThrow();
     });
   });
 });

@@ -110,9 +110,17 @@ describe('RazorpayGateway', () => {
 
     it('forwards receipt from bookingId', async () => {
       const gateway = new RazorpayGateway(validCredentials());
-      mockOrdersCreate.mockResolvedValue({ id: 'order_1', amount: 5000, currency: 'INR' });
+      mockOrdersCreate.mockResolvedValue({
+        id: 'order_1',
+        amount: 5000,
+        currency: 'INR',
+      });
 
-      await gateway.createOrder({ amount: 5000, currency: 'INR', bookingId: 'ref_abc' });
+      await gateway.createOrder({
+        amount: 5000,
+        currency: 'INR',
+        bookingId: 'ref_abc',
+      });
 
       expect(mockOrdersCreate).toHaveBeenCalledWith(
         expect.objectContaining({ receipt: 'ref_abc' }),
@@ -168,7 +176,9 @@ describe('RazorpayGateway', () => {
 
     it('accepts Buffer body', () => {
       const gateway = new RazorpayGateway(validCredentials());
-      const payload = Buffer.from(JSON.stringify({ event: 'payment.captured' }));
+      const payload = Buffer.from(
+        JSON.stringify({ event: 'payment.captured' }),
+      );
       const sig = makeSignature(payload, VALID_KEY_SECRET);
 
       expect(gateway.verifyWebhookSignature(payload, sig)).toBe(true);
@@ -246,7 +256,10 @@ describe('RazorpayGateway', () => {
         ...razorpayPayload,
         payload: {
           payment: {
-            entity: { ...razorpayPayload.payload.payment.entity, status: 'failed' },
+            entity: {
+              ...razorpayPayload.payload.payment.entity,
+              status: 'failed',
+            },
           },
         },
       };
@@ -261,7 +274,10 @@ describe('RazorpayGateway', () => {
         ...razorpayPayload,
         payload: {
           payment: {
-            entity: { ...razorpayPayload.payload.payment.entity, status: 'authorized' },
+            entity: {
+              ...razorpayPayload.payload.payment.entity,
+              status: 'authorized',
+            },
           },
         },
       };
@@ -276,7 +292,10 @@ describe('RazorpayGateway', () => {
         ...razorpayPayload,
         payload: {
           payment: {
-            entity: { ...razorpayPayload.payload.payment.entity, status: 'unknown_status' },
+            entity: {
+              ...razorpayPayload.payload.payment.entity,
+              status: 'unknown_status',
+            },
           },
         },
       };
@@ -369,7 +388,13 @@ describe('RazorpayGateway', () => {
 
     it('returns raw payment data', async () => {
       const gateway = new RazorpayGateway(validCredentials());
-      const rawPayment = { id: 'pay_raw', order_id: 'order_raw', status: 'captured', amount: 9000, currency: 'INR' };
+      const rawPayment = {
+        id: 'pay_raw',
+        order_id: 'order_raw',
+        status: 'captured',
+        amount: 9000,
+        currency: 'INR',
+      };
       mockPaymentsFetch.mockResolvedValue(rawPayment);
 
       const result = await gateway.getStatus('pay_raw');
@@ -440,7 +465,10 @@ describe('RazorpayGateway', () => {
         status: 'processed',
       });
 
-      const result = await gateway.refund({ gatewayPaymentId: 'pay_1', amount: 2000 });
+      const result = await gateway.refund({
+        gatewayPaymentId: 'pay_1',
+        amount: 2000,
+      });
 
       expect(result.status).toBe('processed');
     });
@@ -454,7 +482,10 @@ describe('RazorpayGateway', () => {
         status: 'failed',
       });
 
-      const result = await gateway.refund({ gatewayPaymentId: 'pay_2', amount: 1500 });
+      const result = await gateway.refund({
+        gatewayPaymentId: 'pay_2',
+        amount: 1500,
+      });
 
       expect(result.status).toBe('failed');
     });
@@ -468,7 +499,10 @@ describe('RazorpayGateway', () => {
         // status undefined (Razorpay can return this during processing)
       });
 
-      const result = await gateway.refund({ gatewayPaymentId: 'pay_3', amount: 3000 });
+      const result = await gateway.refund({
+        gatewayPaymentId: 'pay_3',
+        amount: 3000,
+      });
 
       expect(result.status).toBe('pending');
     });
@@ -483,7 +517,10 @@ describe('RazorpayGateway', () => {
       };
       mockPaymentsRefund.mockResolvedValue(rawRefund);
 
-      const result = await gateway.refund({ gatewayPaymentId: 'pay_raw', amount: 4000 });
+      const result = await gateway.refund({
+        gatewayPaymentId: 'pay_raw',
+        amount: 4000,
+      });
 
       expect(result.refundId).toBe('rfnd_raw');
       expect(result.gatewayPaymentId).toBe('pay_raw');

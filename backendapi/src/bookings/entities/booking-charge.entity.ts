@@ -4,7 +4,9 @@ import { Booking } from './booking.entity';
 
 @Entity('booking_charges')
 export class BookingCharge extends BaseEntity {
-  @ManyToOne(() => Booking, (booking) => booking.charges, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Booking, (booking) => booking.charges, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'booking_id' })
   booking: Booking;
 

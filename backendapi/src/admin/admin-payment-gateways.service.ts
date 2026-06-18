@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { createHash } from 'crypto';
@@ -47,14 +52,19 @@ export class AdminPaymentGatewaysService {
 
   async findOne(id: string): Promise<MaskedGatewayResponse> {
     const row = await this.repo.findOne({ where: { id } });
-    if (!row) throw new NotFoundException(`Payment gateway config '${id}' not found`);
+    if (!row)
+      throw new NotFoundException(`Payment gateway config '${id}' not found`);
     return this.maskCredentials(row);
   }
 
-  async createGateway(input: CreateGatewayInput): Promise<MaskedGatewayResponse> {
+  async createGateway(
+    input: CreateGatewayInput,
+  ): Promise<MaskedGatewayResponse> {
     const existing = await this.repo.findOne({ where: { type: input.type } });
     if (existing) {
-      throw new ConflictException(`Gateway config for type '${input.type}' already exists`);
+      throw new ConflictException(
+        `Gateway config for type '${input.type}' already exists`,
+      );
     }
 
     const encrypted = encryptCredentials(JSON.stringify(input.credentials));
@@ -81,9 +91,13 @@ export class AdminPaymentGatewaysService {
     return this.maskCredentials(row);
   }
 
-  async updateGateway(id: string, input: UpdateGatewayInput): Promise<MaskedGatewayResponse> {
+  async updateGateway(
+    id: string,
+    input: UpdateGatewayInput,
+  ): Promise<MaskedGatewayResponse> {
     const row = await this.repo.findOne({ where: { id } });
-    if (!row) throw new NotFoundException(`Payment gateway config '${id}' not found`);
+    if (!row)
+      throw new NotFoundException(`Payment gateway config '${id}' not found`);
 
     if (input.displayName !== undefined) row.displayName = input.displayName;
     if (input.isActive !== undefined) row.isActive = input.isActive;
@@ -112,7 +126,8 @@ export class AdminPaymentGatewaysService {
 
   async setAsDefault(id: string): Promise<MaskedGatewayResponse> {
     const row = await this.repo.findOne({ where: { id } });
-    if (!row) throw new NotFoundException(`Payment gateway config '${id}' not found`);
+    if (!row)
+      throw new NotFoundException(`Payment gateway config '${id}' not found`);
     await this.dataSource.transaction(async (manager) => {
       await manager.update(PaymentGatewayConfig, {}, { isDefault: false });
       row.isDefault = true;
@@ -123,7 +138,8 @@ export class AdminPaymentGatewaysService {
 
   async deleteGateway(id: string): Promise<void> {
     const row = await this.repo.findOne({ where: { id } });
-    if (!row) throw new NotFoundException(`Payment gateway config '${id}' not found`);
+    if (!row)
+      throw new NotFoundException(`Payment gateway config '${id}' not found`);
     if (row.isDefault) {
       throw new BadRequestException(
         `Cannot delete the default gateway. Set another gateway as default first.`,
@@ -148,7 +164,9 @@ export class AdminPaymentGatewaysService {
   private computeFingerprint(row: PaymentGatewayConfig): string {
     // Hash the ciphertext to produce a stable fingerprint. Same ciphertext
     // always yields the same hash, so the UI can show a stable masked value.
-    const hash = createHash('sha256').update(row.encryptedCredentials).digest('hex');
+    const hash = createHash('sha256')
+      .update(row.encryptedCredentials)
+      .digest('hex');
     return `****${hash.slice(-4)}`;
   }
 }

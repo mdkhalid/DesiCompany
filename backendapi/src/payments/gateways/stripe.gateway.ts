@@ -54,16 +54,20 @@ export class StripeGateway implements PaymentGateway {
     if (!signature || typeof signature !== 'string') return false;
     const webhookSecret = this.credentials.webhook_secret;
     if (!webhookSecret) {
-      this.logger.warn('Stripe webhook_secret not configured; rejecting signature');
+      this.logger.warn(
+        'Stripe webhook_secret not configured; rejecting signature',
+      );
       return false;
     }
 
     // Parse Stripe-Signature header: "t=1234,v1=abc,v0=def"
-    const parts = signature.split(',').reduce<Record<string, string>>((acc, part) => {
-      const [k, v] = part.split('=');
-      if (k && v) acc[k] = v;
-      return acc;
-    }, {});
+    const parts = signature
+      .split(',')
+      .reduce<Record<string, string>>((acc, part) => {
+        const [k, v] = part.split('=');
+        if (k && v) acc[k] = v;
+        return acc;
+      }, {});
 
     const timestamp = parts.t;
     const v1 = parts.v1;
@@ -72,7 +76,8 @@ export class StripeGateway implements PaymentGateway {
     // Replay protection: reject if timestamp is older than tolerance
     const nowSeconds = Math.floor(Date.now() / 1000);
     const ageSeconds = Math.abs(nowSeconds - parseInt(timestamp, 10));
-    if (isNaN(ageSeconds) || ageSeconds > SIGNATURE_TOLERANCE_SECONDS) return false;
+    if (isNaN(ageSeconds) || ageSeconds > SIGNATURE_TOLERANCE_SECONDS)
+      return false;
 
     const body = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody);
     const expected = crypto
@@ -87,7 +92,7 @@ export class StripeGateway implements PaymentGateway {
   }
 
   parseWebhookEvent(rawBody: Buffer | string): WebhookEvent {
-    const body = this.normalizeBody(rawBody) as unknown as Record<string, unknown>;
+    const body = this.normalizeBody(rawBody) as Record<string, unknown>;
     const eventId: string = (body['id'] as string) ?? '';
     const eventType: string = (body['type'] as string) ?? '';
     const data = (body['data'] as Record<string, unknown>) ?? {};
@@ -113,7 +118,7 @@ export class StripeGateway implements PaymentGateway {
       gatewayOrderId: paymentId, // Stripe has no separate order concept
       amount: (intent['amount'] as number) ?? 0,
       status: unifiedStatus,
-      rawPayload: body as Record<string, unknown>,
+      rawPayload: body,
     };
   }
 
@@ -168,7 +173,7 @@ export class StripeGateway implements PaymentGateway {
     const paymentId =
       typeof refund.payment_intent === 'string'
         ? refund.payment_intent
-        : refund.payment_intent?.id ?? '';
+        : (refund.payment_intent?.id ?? '');
 
     return {
       refundId: refund.id,

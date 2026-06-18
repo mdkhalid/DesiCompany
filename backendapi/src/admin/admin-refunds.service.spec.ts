@@ -60,12 +60,18 @@ describe('AdminRefundsService', () => {
   describe('processRefund', () => {
     it('throws NotFoundException when payment not found', async () => {
       paymentRepo.findOne.mockResolvedValue(null);
-      await expect(service.processRefund({ paymentId: 'pay-1' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.processRefund({ paymentId: 'pay-1' }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws BadRequestException when payment not successful', async () => {
-      paymentRepo.findOne.mockResolvedValue({ status: PaymentStatus.PENDING } as any);
-      await expect(service.processRefund({ paymentId: 'pay-1' })).rejects.toThrow(BadRequestException);
+      paymentRepo.findOne.mockResolvedValue({
+        status: PaymentStatus.PENDING,
+      } as any);
+      await expect(
+        service.processRefund({ paymentId: 'pay-1' }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('processes refund and credits customer wallet', async () => {
@@ -75,7 +81,10 @@ describe('AdminRefundsService', () => {
         amount: 500,
         gateway: PaymentGatewayType.RAZORPAY,
         transactionId: 'tx_gateway',
-        booking: { customer: { user: { id: 'cust-user' } }, provider: { user: { id: 'prov-user' } } },
+        booking: {
+          customer: { user: { id: 'cust-user' } },
+          provider: { user: { id: 'prov-user' } },
+        },
       } as any);
       walletRepo.findOne.mockResolvedValue(null);
       walletRepo.create.mockReturnValue({ balance: 0 } as any);

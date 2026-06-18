@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { PaymentGatewayConfig } from '../payments/entities/payment-gateway-config.entity';
 import { PaymentGatewayType } from '../common/enums/payment-gateway-type.enum';
@@ -19,7 +23,12 @@ describe('AdminPaymentGatewaysService', () => {
 
   const now = new Date();
 
-  function makeRow(overrides: Partial<PaymentGatewayConfig> & { id: string; type: PaymentGatewayType }): PaymentGatewayConfig {
+  function makeRow(
+    overrides: Partial<PaymentGatewayConfig> & {
+      id: string;
+      type: PaymentGatewayType;
+    },
+  ): PaymentGatewayConfig {
     return {
       createdAt: now,
       updatedAt: now,
@@ -30,73 +39,106 @@ describe('AdminPaymentGatewaysService', () => {
       isActive: true,
       isDefault: false,
       ...overrides,
-    } as PaymentGatewayConfig;
+    };
   }
 
   beforeEach(async () => {
     rows = [];
 
     const repoMock: Partial<Repository<PaymentGatewayConfig>> = {
-      find: jest.fn(({ where, order }: any = {}) => {
-        let res = [...rows];
-        if (where?.type) res = res.filter((r) => r.type === where.type);
-        if (where?.id) res = res.filter((r) => r.id === where.id);
-        if (where?.isDefault !== undefined) res = res.filter((r) => r.isDefault === where.isDefault);
-        if (order?.createdAt === 'ASC') res.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-        return Promise.resolve(res);
-      }),
-      findOne: jest.fn(({ where }: any = {}) => {
-        let res = [...rows];
-        if (where?.type) res = res.filter((r) => r.type === where.type);
-        if (where?.id) res = res.filter((r) => r.id === where.id);
-        if (where?.isDefault !== undefined) res = res.filter((r) => r.isDefault === where.isDefault);
-        return Promise.resolve(res[0] ?? null);
-      }),
-      create: jest.fn((data?: any) => makeRow({ id: 'new-id', ...data })) as any,
-      save: jest.fn(async (entity: any) => {
+      find: jest.fn(
+        ({
+          where,
+          order,
+        }: {
+          where?: Record<string, unknown>;
+          order?: Record<string, string>;
+        } = {}) => {
+          let res = [...rows];
+          if (where?.type) res = res.filter((r) => r.type === where.type);
+          if (where?.id) res = res.filter((r) => r.id === where.id);
+          if (where?.isDefault !== undefined)
+            res = res.filter((r) => r.isDefault === where.isDefault);
+          if (order?.createdAt === 'ASC')
+            res.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+          return Promise.resolve(res);
+        },
+      ),
+      findOne: jest.fn(
+        ({ where }: { where?: Record<string, unknown> } = {}) => {
+          let res = [...rows];
+          if (where?.type) res = res.filter((r) => r.type === where.type);
+          if (where?.id) res = res.filter((r) => r.id === where.id);
+          if (where?.isDefault !== undefined)
+            res = res.filter((r) => r.isDefault === where.isDefault);
+          return Promise.resolve(res[0] ?? null);
+        },
+      ),
+      create: jest.fn((data?: Partial<PaymentGatewayConfig>) =>
+        makeRow({
+          id: 'new-id',
+          type: PaymentGatewayType.RAZORPAY,
+          ...data,
+        }),
+      ) as never,
+      save: jest.fn(async (entity: PaymentGatewayConfig) => {
         const existing = rows.findIndex((r) => r.id === entity.id);
         if (existing >= 0) rows[existing] = entity;
         else rows.push(entity);
         return entity;
       }),
-      remove: jest.fn(async (entity: any) => {
+      remove: jest.fn(async (entity: PaymentGatewayConfig) => {
         rows = rows.filter((r) => r.id !== entity.id);
         return entity;
       }),
     };
 
     const dataSourceMock: Partial<DataSource> = {
-      transaction: jest.fn(async (cb: any) => {
-        return cb({
-          update: jest.fn(async (Entity: any, where: any, partial: any) => {
-            // Apply partial update to all rows matching the where clause
-            for (const row of rows) {
-              let matches = true;
-              if (where?.id && row.id !== where.id) matches = false;
-              if (matches) Object.assign(row, partial);
-            }
-          }),
-          save: jest.fn(async (Entity: any, entity: any) => {
-            const existing = rows.findIndex((r) => r.id === entity.id);
-            if (existing >= 0) rows[existing] = entity;
-            else rows.push(entity);
-            return entity;
-          }),
-        });
-      }),
+      transaction: jest.fn(
+        async (
+          cb: (manager: Record<string, jest.Mock>) => Promise<unknown>,
+        ) => {
+          return cb({
+            update: jest.fn(
+              async (
+                _Entity: unknown,
+                where: Record<string, unknown>,
+                partial: Partial<PaymentGatewayConfig>,
+              ) => {
+                for (const row of rows) {
+                  let matches = true;
+                  if (where?.id && row.id !== where.id) matches = false;
+                  if (matches) Object.assign(row, partial);
+                }
+              },
+            ),
+            save: jest.fn(
+              async (_Entity: unknown, entity: PaymentGatewayConfig) => {
+                const existing = rows.findIndex((r) => r.id === entity.id);
+                if (existing >= 0) rows[existing] = entity;
+                else rows.push(entity);
+                return entity;
+              },
+            ),
+          });
+        },
+      ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminPaymentGatewaysService,
-        { provide: getRepositoryToken(PaymentGatewayConfig), useValue: repoMock },
+        {
+          provide: getRepositoryToken(PaymentGatewayConfig),
+          useValue: repoMock,
+        },
         { provide: DataSource, useValue: dataSourceMock },
       ],
     }).compile();
 
     service = module.get(AdminPaymentGatewaysService);
-    repo = module.get(getRepositoryToken(PaymentGatewayConfig)) as any;
-    dataSource = module.get(DataSource) as any;
+    repo = module.get(getRepositoryToken(PaymentGatewayConfig));
+    dataSource = module.get(DataSource);
   });
 
   // -------------------------------------------------------------------------
@@ -109,15 +151,17 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('returns masked configs (no plaintext credentials in response)', async () => {
-      rows.push(makeRow({
-        id: 'gw-1',
-        type: PaymentGatewayType.RAZORPAY,
-        displayName: 'Razorpay Prod',
-        encryptedCredentials: 'enc-ciphertext-value',
-        iv: 'ivvaluestring12',
-        authTag: 'authtagvalu12',
-        isDefault: false,
-      }));
+      rows.push(
+        makeRow({
+          id: 'gw-1',
+          type: PaymentGatewayType.RAZORPAY,
+          displayName: 'Razorpay Prod',
+          encryptedCredentials: 'enc-ciphertext-value',
+          iv: 'ivvaluestring12',
+          authTag: 'authtagvalu12',
+          isDefault: false,
+        }),
+      );
 
       const result = await service.findAll();
 
@@ -130,8 +174,16 @@ describe('AdminPaymentGatewaysService', () => {
 
     it('returns configs ordered by createdAt ASC', async () => {
       rows.push(
-        makeRow({ id: 'gw-older', createdAt: new Date('2024-01-01'), type: PaymentGatewayType.CASH }),
-        makeRow({ id: 'gw-newer', createdAt: new Date('2024-06-01'), type: PaymentGatewayType.STRIPE }),
+        makeRow({
+          id: 'gw-older',
+          createdAt: new Date('2024-01-01'),
+          type: PaymentGatewayType.CASH,
+        }),
+        makeRow({
+          id: 'gw-newer',
+          createdAt: new Date('2024-06-01'),
+          type: PaymentGatewayType.STRIPE,
+        }),
       );
 
       const result = await service.findAll();
@@ -146,16 +198,18 @@ describe('AdminPaymentGatewaysService', () => {
   // -------------------------------------------------------------------------
   describe('findOne', () => {
     it('returns masked config for valid id', async () => {
-      rows.push(makeRow({
-        id: 'gw-find',
-        type: PaymentGatewayType.STRIPE,
-        displayName: 'Stripe Test',
-        encryptedCredentials: 'stripe-encrypted-data',
-        iv: 'ivstripe12bytes',
-        authTag: 'authtst12bytes',
-        isActive: true,
-        isDefault: true,
-      }));
+      rows.push(
+        makeRow({
+          id: 'gw-find',
+          type: PaymentGatewayType.STRIPE,
+          displayName: 'Stripe Test',
+          encryptedCredentials: 'stripe-encrypted-data',
+          iv: 'ivstripe12bytes',
+          authTag: 'authtst12bytes',
+          isActive: true,
+          isDefault: true,
+        }),
+      );
 
       const result = await service.findOne('gw-find');
 
@@ -167,7 +221,9 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('throws NotFoundException for missing id', async () => {
-      await expect(service.findOne('non-existent-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
       await expect(service.findOne('non-existent-id')).rejects.toThrow(
         "Payment gateway config 'non-existent-id' not found",
       );
@@ -179,7 +235,10 @@ describe('AdminPaymentGatewaysService', () => {
   // -------------------------------------------------------------------------
   describe('createGateway', () => {
     it('encrypts credentials before persisting (ciphertext != plaintext)', async () => {
-      const credentials = { key_id: 'rzp_test_abc123def', key_secret: 'super-secret-value' };
+      const credentials = {
+        key_id: 'rzp_test_abc123def',
+        key_secret: 'super-secret-value',
+      };
 
       const result = await service.createGateway({
         type: PaymentGatewayType.RAZORPAY,
@@ -200,11 +259,13 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('rejects duplicate type with ConflictException', async () => {
-      rows.push(makeRow({
-        id: 'existing-gw',
-        type: PaymentGatewayType.RAZORPAY,
-        displayName: 'Existing Razorpay',
-      }));
+      rows.push(
+        makeRow({
+          id: 'existing-gw',
+          type: PaymentGatewayType.RAZORPAY,
+          displayName: 'Existing Razorpay',
+        }),
+      );
 
       await expect(
         service.createGateway({
@@ -224,11 +285,13 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('sets isDefault=true and unsets others when requested (transactional)', async () => {
-      rows.push(makeRow({
-        id: 'existing-default',
-        type: PaymentGatewayType.STRIPE,
-        isDefault: true,
-      }));
+      rows.push(
+        makeRow({
+          id: 'existing-default',
+          type: PaymentGatewayType.STRIPE,
+          isDefault: true,
+        }),
+      );
 
       const result = await service.createGateway({
         type: PaymentGatewayType.RAZORPAY,
@@ -276,16 +339,20 @@ describe('AdminPaymentGatewaysService', () => {
   // -------------------------------------------------------------------------
   describe('updateGateway', () => {
     it('updates displayName without re-encrypting', async () => {
-      rows.push(makeRow({
-        id: 'gw-upd',
-        type: PaymentGatewayType.RAZORPAY,
-        displayName: 'Old Name',
-        encryptedCredentials: 'original-ciphertext',
-        iv: 'original-iv-hex',
-        authTag: 'original-auth-tag',
-      }));
+      rows.push(
+        makeRow({
+          id: 'gw-upd',
+          type: PaymentGatewayType.RAZORPAY,
+          displayName: 'Old Name',
+          encryptedCredentials: 'original-ciphertext',
+          iv: 'original-iv-hex',
+          authTag: 'original-auth-tag',
+        }),
+      );
 
-      const result = await service.updateGateway('gw-upd', { displayName: 'New Name' });
+      const result = await service.updateGateway('gw-upd', {
+        displayName: 'New Name',
+      });
 
       expect(result.displayName).toBe('New Name');
       expect(JSON.stringify(result)).not.toContain('original-ciphertext');
@@ -293,14 +360,16 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('re-encrypts when credentials change', async () => {
-      rows.push(makeRow({
-        id: 'gw-creds',
-        type: PaymentGatewayType.RAZORPAY,
-        displayName: 'With Credentials',
-        encryptedCredentials: 'old-ciphertext',
-        iv: 'old-iv-value-12',
-        authTag: 'old-auth-tag-12',
-      }));
+      rows.push(
+        makeRow({
+          id: 'gw-creds',
+          type: PaymentGatewayType.RAZORPAY,
+          displayName: 'With Credentials',
+          encryptedCredentials: 'old-ciphertext',
+          iv: 'old-iv-value-12',
+          authTag: 'old-auth-tag-12',
+        }),
+      );
 
       const result = await service.updateGateway('gw-creds', {
         credentials: { new_key: 'new-secret-plaintext' },
@@ -314,8 +383,16 @@ describe('AdminPaymentGatewaysService', () => {
 
     it('transitions isDefault atomically', async () => {
       rows.push(
-        makeRow({ id: 'gw-a', type: PaymentGatewayType.RAZORPAY, isDefault: true }),
-        makeRow({ id: 'gw-b', type: PaymentGatewayType.STRIPE, isDefault: false }),
+        makeRow({
+          id: 'gw-a',
+          type: PaymentGatewayType.RAZORPAY,
+          isDefault: true,
+        }),
+        makeRow({
+          id: 'gw-b',
+          type: PaymentGatewayType.STRIPE,
+          isDefault: false,
+        }),
       );
 
       const result = await service.updateGateway('gw-b', { isDefault: true });
@@ -334,7 +411,13 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('does not use transaction when isDefault is not changed', async () => {
-      rows.push(makeRow({ id: 'gw-simp', type: PaymentGatewayType.RAZORPAY, isDefault: false }));
+      rows.push(
+        makeRow({
+          id: 'gw-simp',
+          type: PaymentGatewayType.RAZORPAY,
+          isDefault: false,
+        }),
+      );
 
       await service.updateGateway('gw-simp', { displayName: 'Updated' });
 
@@ -343,9 +426,17 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('sets isActive status correctly', async () => {
-      rows.push(makeRow({ id: 'gw-active', type: PaymentGatewayType.RAZORPAY, isActive: true }));
+      rows.push(
+        makeRow({
+          id: 'gw-active',
+          type: PaymentGatewayType.RAZORPAY,
+          isActive: true,
+        }),
+      );
 
-      const result = await service.updateGateway('gw-active', { isActive: false });
+      const result = await service.updateGateway('gw-active', {
+        isActive: false,
+      });
 
       expect(result.isActive).toBe(false);
     });
@@ -357,8 +448,16 @@ describe('AdminPaymentGatewaysService', () => {
   describe('setAsDefault', () => {
     it('transitions default in transaction', async () => {
       rows.push(
-        makeRow({ id: 'gw-d1', type: PaymentGatewayType.RAZORPAY, isDefault: true }),
-        makeRow({ id: 'gw-d2', type: PaymentGatewayType.STRIPE, isDefault: false }),
+        makeRow({
+          id: 'gw-d1',
+          type: PaymentGatewayType.RAZORPAY,
+          isDefault: true,
+        }),
+        makeRow({
+          id: 'gw-d2',
+          type: PaymentGatewayType.STRIPE,
+          isDefault: false,
+        }),
       );
 
       const result = await service.setAsDefault('gw-d2');
@@ -369,7 +468,9 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('throws NotFoundException for missing id', async () => {
-      await expect(service.setAsDefault('does-not-exist')).rejects.toThrow(NotFoundException);
+      await expect(service.setAsDefault('does-not-exist')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -378,7 +479,13 @@ describe('AdminPaymentGatewaysService', () => {
   // -------------------------------------------------------------------------
   describe('deleteGateway', () => {
     it('removes non-default row', async () => {
-      rows.push(makeRow({ id: 'gw-del', type: PaymentGatewayType.RAZORPAY, isDefault: false }));
+      rows.push(
+        makeRow({
+          id: 'gw-del',
+          type: PaymentGatewayType.RAZORPAY,
+          isDefault: false,
+        }),
+      );
 
       await service.deleteGateway('gw-del');
 
@@ -387,16 +494,26 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('rejects default row with BadRequestException', async () => {
-      rows.push(makeRow({ id: 'gw-def', type: PaymentGatewayType.RAZORPAY, isDefault: true }));
+      rows.push(
+        makeRow({
+          id: 'gw-def',
+          type: PaymentGatewayType.RAZORPAY,
+          isDefault: true,
+        }),
+      );
 
-      await expect(service.deleteGateway('gw-def')).rejects.toThrow(BadRequestException);
+      await expect(service.deleteGateway('gw-def')).rejects.toThrow(
+        BadRequestException,
+      );
       await expect(service.deleteGateway('gw-def')).rejects.toThrow(
         'Cannot delete the default gateway. Set another gateway as default first.',
       );
     });
 
     it('throws NotFoundException for missing id', async () => {
-      await expect(service.deleteGateway('ghost-id')).rejects.toThrow(NotFoundException);
+      await expect(service.deleteGateway('ghost-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -431,8 +548,12 @@ describe('AdminPaymentGatewaysService', () => {
       const result1 = await service.findAll();
       const result2 = await service.findAll();
 
-      const razorpayFingerprint1 = result1.find((r) => r.type === PaymentGatewayType.RAZORPAY)?.credentialFingerprint;
-      const razorpayFingerprint2 = result2.find((r) => r.type === PaymentGatewayType.RAZORPAY)?.credentialFingerprint;
+      const razorpayFingerprint1 = result1.find(
+        (r) => r.type === PaymentGatewayType.RAZORPAY,
+      )?.credentialFingerprint;
+      const razorpayFingerprint2 = result2.find(
+        (r) => r.type === PaymentGatewayType.RAZORPAY,
+      )?.credentialFingerprint;
 
       expect(razorpayFingerprint1).toBe(razorpayFingerprint2);
       expect(razorpayFingerprint1).toMatch(/^\*\*\*\*[0-9a-f]{4}$/);
@@ -448,7 +569,10 @@ describe('AdminPaymentGatewaysService', () => {
     });
 
     it('MaskedGatewayResponse never contains plaintext credentials', async () => {
-      const credentials = { key_id: 'rzp_test_abc123def', key_secret: 'super-secret-value' };
+      const credentials = {
+        key_id: 'rzp_test_abc123def',
+        key_secret: 'super-secret-value',
+      };
 
       await service.createGateway({
         type: PaymentGatewayType.CASH,

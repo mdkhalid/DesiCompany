@@ -3,8 +3,13 @@ import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 import { PaymentGatewayType } from '../../common/enums/payment-gateway-type.enum';
 import {
-  CreateOrderRequest, CreateOrderResponse, PaymentGateway,
-  RefundRequest, RefundResult, WebhookEvent, PaymentStatusResult,
+  CreateOrderRequest,
+  CreateOrderResponse,
+  PaymentGateway,
+  RefundRequest,
+  RefundResult,
+  WebhookEvent,
+  PaymentStatusResult,
 } from './payment-gateway.interface';
 
 @Injectable()
@@ -16,7 +21,9 @@ export class RazorpayGateway implements PaymentGateway {
     const key_id = this.credentials.key_id;
     const key_secret = this.credentials.key_secret;
     if (!key_id || !key_secret) {
-      throw new Error('RazorpayGateway requires key_id and key_secret in credentials');
+      throw new Error(
+        'RazorpayGateway requires key_id and key_secret in credentials',
+      );
     }
     this.client = new Razorpay({ key_id, key_secret });
   }
@@ -110,7 +117,8 @@ export class RazorpayGateway implements PaymentGateway {
   }
 
   private normalizeBody(rawBody: Buffer | string | object): any {
-    if (typeof rawBody === 'object' && !Buffer.isBuffer(rawBody)) return rawBody;
+    if (typeof rawBody === 'object' && !Buffer.isBuffer(rawBody))
+      return rawBody;
     if (typeof rawBody === 'string') return JSON.parse(rawBody);
     if (Buffer.isBuffer(rawBody)) return JSON.parse(rawBody.toString('utf8'));
     return rawBody;
@@ -128,7 +136,9 @@ export class RazorpayGateway implements PaymentGateway {
     }
   }
 
-  private mapOrderStatus(razorpayStatus: string): PaymentStatusResult['status'] {
+  private mapOrderStatus(
+    razorpayStatus: string,
+  ): PaymentStatusResult['status'] {
     switch (razorpayStatus) {
       case 'paid':
         return 'success';
@@ -139,7 +149,9 @@ export class RazorpayGateway implements PaymentGateway {
     }
   }
 
-  private mapRefundStatus(razorpayStatus: string | undefined): RefundResult['status'] {
+  private mapRefundStatus(
+    razorpayStatus: string | undefined,
+  ): RefundResult['status'] {
     switch (razorpayStatus) {
       case 'processed':
         return 'processed';

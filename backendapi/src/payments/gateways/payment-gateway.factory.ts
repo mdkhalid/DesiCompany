@@ -12,7 +12,10 @@ import { CashGateway } from './cash.gateway';
 // Static class map — stub gateways accept credentials directly.
 // Real implementations (Phase 2) may need DI-based construction;
 // at that point we'll switch to a provider token + dynamic module.
-const GATEWAY_CLASSES: Record<PaymentGatewayType, new (creds: Record<string, string>) => PaymentGateway> = {
+const GATEWAY_CLASSES: Record<
+  PaymentGatewayType,
+  new (creds: Record<string, string>) => PaymentGateway
+> = {
   [PaymentGatewayType.RAZORPAY]: RazorpayGateway,
   [PaymentGatewayType.STRIPE]: StripeGateway,
   [PaymentGatewayType.CASH]: CashGateway,
@@ -36,7 +39,9 @@ export class PaymentGatewayFactory {
   async getDefault(): Promise<PaymentGateway> {
     const all = await this.configRepo.find();
     if (all.length === 0) {
-      this.logger.warn('payment_gateway_configs is empty — falling back to CashGateway');
+      this.logger.warn(
+        'payment_gateway_configs is empty — falling back to CashGateway',
+      );
       return new GATEWAY_CLASSES[PaymentGatewayType.CASH]({});
     }
     const def = all.find((c) => c.isDefault);
@@ -46,7 +51,9 @@ export class PaymentGatewayFactory {
       );
     }
     if (!def.isActive) {
-      throw new Error(`Default gateway '${def.type}' is marked inactive. Activate it or set a different default.`);
+      throw new Error(
+        `Default gateway '${def.type}' is marked inactive. Activate it or set a different default.`,
+      );
     }
     return this.instantiate(def);
   }
@@ -58,7 +65,9 @@ export class PaymentGatewayFactory {
   async getByType(type: PaymentGatewayType): Promise<PaymentGateway> {
     const config = await this.configRepo.findOne({ where: { type } });
     if (!config) {
-      this.logger.warn(`No config for gateway type '${type}' — falling back to CashGateway`);
+      this.logger.warn(
+        `No config for gateway type '${type}' — falling back to CashGateway`,
+      );
       return new GATEWAY_CLASSES[PaymentGatewayType.CASH]({});
     }
     return this.instantiate(config);
@@ -74,7 +83,9 @@ export class PaymentGatewayFactory {
     try {
       credentials = JSON.parse(plaintext);
     } catch (err) {
-      throw new Error(`Failed to parse decrypted credentials for gateway '${config.type}': ${(err as Error).message}`);
+      throw new Error(
+        `Failed to parse decrypted credentials for gateway '${config.type}': ${(err as Error).message}`,
+      );
     }
     const GatewayClass = GATEWAY_CLASSES[config.type];
     if (!GatewayClass) {

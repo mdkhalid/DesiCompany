@@ -2,8 +2,8 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 export interface EncryptedPayload {
   ciphertext: string; // base64
-  iv: string;         // hex
-  authTag: string;    // hex
+  iv: string; // hex
+  authTag: string; // hex
 }
 
 const KEY_ENV_VAR = 'PAYMENT_GATEWAY_ENCRYPTION_KEY';
@@ -11,7 +11,9 @@ const KEY_ENV_VAR = 'PAYMENT_GATEWAY_ENCRYPTION_KEY';
 function getKeyBuffer(): Buffer {
   const envValue = process.env[KEY_ENV_VAR];
   if (!envValue) {
-    throw new Error('PAYMENT_GATEWAY_ENCRYPTION_KEY environment variable is required');
+    throw new Error(
+      'PAYMENT_GATEWAY_ENCRYPTION_KEY environment variable is required',
+    );
   }
   if (!/^[0-9a-fA-F]{64}$/.test(envValue)) {
     throw new Error(
@@ -39,7 +41,7 @@ function getCachedKey(): Buffer {
     cachedKey = getKeyBuffer();
     cachedKeyEnv = envValue;
   }
-  return cachedKey as Buffer;
+  return cachedKey;
 }
 
 export function encryptCredentials(plaintext: string): EncryptedPayload {

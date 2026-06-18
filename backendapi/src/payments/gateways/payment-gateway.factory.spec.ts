@@ -19,7 +19,9 @@ let factory: PaymentGatewayFactory;
 
 beforeAll(() => {
   process.env.PAYMENT_GATEWAY_ENCRYPTION_KEY = ENCRYPTION_KEY;
-  factory = new PaymentGatewayFactory(mockRepo as unknown as Repository<PaymentGatewayConfig>);
+  factory = new PaymentGatewayFactory(
+    mockRepo as unknown as Repository<PaymentGatewayConfig>,
+  );
 });
 
 afterAll(() => {
@@ -31,7 +33,9 @@ afterAll(() => {
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
-function buildConfig(overrides: Partial<PaymentGatewayConfig> & { type: PaymentGatewayType }): PaymentGatewayConfig {
+function buildConfig(
+  overrides: Partial<PaymentGatewayConfig> & { type: PaymentGatewayType },
+): PaymentGatewayConfig {
   return {
     id: 1,
     createdAt: new Date(),
@@ -51,9 +55,7 @@ function buildConfig(overrides: Partial<PaymentGatewayConfig> & { type: PaymentG
 // ---------------------------------------------------------------------------
 
 describe('PaymentGatewayFactory', () => {
-
   describe('getDefault()', () => {
-
     it('1 — empty table → returns CashGateway', async () => {
       mockRepo.find.mockResolvedValue([]);
       const gateway = await factory.getDefault();
@@ -66,7 +68,9 @@ describe('PaymentGatewayFactory', () => {
         buildConfig({ type: PaymentGatewayType.RAZORPAY, isDefault: false }),
         buildConfig({ type: PaymentGatewayType.STRIPE, isDefault: false }),
       ]);
-      await expect(factory.getDefault()).rejects.toThrow(/No default payment gateway/);
+      await expect(factory.getDefault()).rejects.toThrow(
+        /No default payment gateway/,
+      );
     });
 
     it('3 — default set → returns RazorpayGateway with decrypted credentials', async () => {
@@ -85,11 +89,16 @@ describe('PaymentGatewayFactory', () => {
       const gateway = await factory.getDefault();
       expect(gateway).toBeInstanceOf(RazorpayGateway);
       // credentials is a public field on the stub
-      expect((gateway as unknown as { credentials: Record<string, string> }).credentials).toEqual(creds);
+      expect(
+        (gateway as unknown as { credentials: Record<string, string> })
+          .credentials,
+      ).toEqual(creds);
     });
 
     it('4 — default set but inactive → throws', async () => {
-      const encrypted = encryptCredentials(JSON.stringify({ key_id: 'x', key_secret: 'y' }));
+      const encrypted = encryptCredentials(
+        JSON.stringify({ key_id: 'x', key_secret: 'y' }),
+      );
       mockRepo.find.mockResolvedValue([
         buildConfig({
           type: PaymentGatewayType.RAZORPAY,
@@ -115,13 +124,13 @@ describe('PaymentGatewayFactory', () => {
         authTag: encrypted.authTag,
       });
       mockRepo.find.mockResolvedValue([badConfig]);
-      await expect(factory.getDefault()).rejects.toThrow(/No gateway class registered/);
+      await expect(factory.getDefault()).rejects.toThrow(
+        /No gateway class registered/,
+      );
     });
-
   });
 
   describe('getByType()', () => {
-
     it('5 — no row for type → returns CashGateway', async () => {
       mockRepo.findOne.mockResolvedValue(null);
       const gateway = await factory.getByType(PaymentGatewayType.RAZORPAY);
@@ -143,11 +152,18 @@ describe('PaymentGatewayFactory', () => {
       );
       const gateway = await factory.getByType(PaymentGatewayType.RAZORPAY);
       expect(gateway).toBeInstanceOf(RazorpayGateway);
-      expect((gateway as unknown as { credentials: Record<string, string> }).credentials).toEqual(creds);
+      expect(
+        (gateway as unknown as { credentials: Record<string, string> })
+          .credentials,
+      ).toEqual(creds);
     });
 
     it('8 — Stripe default → returns StripeGateway with decrypted credentials', async () => {
-      const creds = { secret_key: 'sk_test_stripe', publishable_key: 'pk_test_stripe', webhook_secret: 'whsec_test' };
+      const creds = {
+        secret_key: 'sk_test_stripe',
+        publishable_key: 'pk_test_stripe',
+        webhook_secret: 'whsec_test',
+      };
       const encrypted = encryptCredentials(JSON.stringify(creds));
       mockRepo.find.mockResolvedValue([
         buildConfig({
@@ -161,17 +177,22 @@ describe('PaymentGatewayFactory', () => {
       ]);
       const gateway = await factory.getDefault();
       expect(gateway).toBeInstanceOf(StripeGateway);
-      expect((gateway as unknown as { credentials: Record<string, string> }).credentials).toEqual(creds);
+      expect(
+        (gateway as unknown as { credentials: Record<string, string> })
+          .credentials,
+      ).toEqual(creds);
     });
-
   });
 
   describe('instantiate() — tampered credentials', () => {
-
     it('7 — tampered authTag → throws on decrypt', async () => {
-      const encrypted = encryptCredentials(JSON.stringify({ key_id: 'x', key_secret: 'y' }));
+      const encrypted = encryptCredentials(
+        JSON.stringify({ key_id: 'x', key_secret: 'y' }),
+      );
       // Corrupt the authTag by flipping a character
-      const tamperedAuthTag = encrypted.authTag.replace(/^./, (c) => (c === 'a' ? 'b' : 'a'));
+      const tamperedAuthTag = encrypted.authTag.replace(/^./, (c) =>
+        c === 'a' ? 'b' : 'a',
+      );
       mockRepo.find.mockResolvedValue([
         buildConfig({
           type: PaymentGatewayType.RAZORPAY,
@@ -184,11 +205,9 @@ describe('PaymentGatewayFactory', () => {
       ]);
       await expect(factory.getDefault()).rejects.toThrow();
     });
-
   });
 
   describe('Integration — toggle default gateway', () => {
-
     // Helper: keep a mutable in-memory list of configs; mock find/findOne to read it.
     let configs: PaymentGatewayConfig[];
 
@@ -201,15 +220,24 @@ describe('PaymentGatewayFactory', () => {
       mockRepo.find.mockImplementation(() => Promise.resolve([...configs]));
       mockRepo.findOne.mockImplementation(({ where }: any) => {
         if (where?.type) {
-          return Promise.resolve(configs.find((c) => c.type === where.type) ?? null);
+          return Promise.resolve(
+            configs.find((c) => c.type === where.type) ?? null,
+          );
         }
         return Promise.resolve(null);
       });
     });
 
     it('10 — seeds two configs (Razorpay default, Stripe non-default) → returns RazorpayGateway', async () => {
-      const razorpayEnc = encrypt({ key_id: 'rzp_int_aaa', key_secret: 'rzp_secret_a' });
-      const stripeEnc = encrypt({ secret_key: 'sk_test_int_bbb', publishable_key: 'pk_test_int_bbb', webhook_secret: 'whsec_int_bbb' });
+      const razorpayEnc = encrypt({
+        key_id: 'rzp_int_aaa',
+        key_secret: 'rzp_secret_a',
+      });
+      const stripeEnc = encrypt({
+        secret_key: 'sk_test_int_bbb',
+        publishable_key: 'pk_test_int_bbb',
+        webhook_secret: 'whsec_int_bbb',
+      });
       configs.push(
         buildConfig({
           type: PaymentGatewayType.RAZORPAY,
@@ -231,15 +259,25 @@ describe('PaymentGatewayFactory', () => {
       const gateway = await factory.getDefault();
       expect(gateway).toBeInstanceOf(RazorpayGateway);
       expect(gateway.getName()).toBe('razorpay');
-      expect((gateway as unknown as { credentials: Record<string, string> }).credentials).toEqual({
+      expect(
+        (gateway as unknown as { credentials: Record<string, string> })
+          .credentials,
+      ).toEqual({
         key_id: 'rzp_int_aaa',
         key_secret: 'rzp_secret_a',
       });
     });
 
     it('11 — toggles isDefault to Stripe → factory now returns StripeGateway', async () => {
-      const razorpayEnc = encrypt({ key_id: 'rzp_int_aaa', key_secret: 'rzp_secret_a' });
-      const stripeEnc = encrypt({ secret_key: 'sk_test_int_bbb', publishable_key: 'pk_test_int_bbb', webhook_secret: 'whsec_int_bbb' });
+      const razorpayEnc = encrypt({
+        key_id: 'rzp_int_aaa',
+        key_secret: 'rzp_secret_a',
+      });
+      const stripeEnc = encrypt({
+        secret_key: 'sk_test_int_bbb',
+        publishable_key: 'pk_test_int_bbb',
+        webhook_secret: 'whsec_int_bbb',
+      });
       const razorpayCfg = buildConfig({
         type: PaymentGatewayType.RAZORPAY,
         isDefault: true,
@@ -271,7 +309,10 @@ describe('PaymentGatewayFactory', () => {
       expect(after).toBeInstanceOf(StripeGateway);
       expect(after.getName()).toBe('stripe');
       expect(after).not.toBeInstanceOf(RazorpayGateway);
-      expect((after as unknown as { credentials: Record<string, string> }).credentials).toEqual({
+      expect(
+        (after as unknown as { credentials: Record<string, string> })
+          .credentials,
+      ).toEqual({
         secret_key: 'sk_test_int_bbb',
         publishable_key: 'pk_test_int_bbb',
         webhook_secret: 'whsec_int_bbb',
@@ -279,8 +320,15 @@ describe('PaymentGatewayFactory', () => {
     });
 
     it('12 — toggles default back to Razorpay → returns RazorpayGateway again (round-trip)', async () => {
-      const razorpayEnc = encrypt({ key_id: 'rzp_int_ccc', key_secret: 'rzp_secret_c' });
-      const stripeEnc = encrypt({ secret_key: 'sk_test_int_ddd', publishable_key: 'pk_test_int_ddd', webhook_secret: 'whsec_int_ddd' });
+      const razorpayEnc = encrypt({
+        key_id: 'rzp_int_ccc',
+        key_secret: 'rzp_secret_c',
+      });
+      const stripeEnc = encrypt({
+        secret_key: 'sk_test_int_ddd',
+        publishable_key: 'pk_test_int_ddd',
+        webhook_secret: 'whsec_int_ddd',
+      });
       const razorpayCfg = buildConfig({
         type: PaymentGatewayType.RAZORPAY,
         isDefault: false,
@@ -299,16 +347,23 @@ describe('PaymentGatewayFactory', () => {
       });
       configs.push(razorpayCfg, stripeCfg);
 
-      expect((await factory.getDefault())).toBeInstanceOf(StripeGateway);
+      expect(await factory.getDefault()).toBeInstanceOf(StripeGateway);
 
       stripeCfg.isDefault = false;
       razorpayCfg.isDefault = true;
-      expect((await factory.getDefault())).toBeInstanceOf(RazorpayGateway);
+      expect(await factory.getDefault()).toBeInstanceOf(RazorpayGateway);
     });
 
     it('13 — getByType returns the correct gateway class for each registered type', async () => {
-      const razorpayEnc = encrypt({ key_id: 'rzp_get_by', key_secret: 'razorpay_secret' });
-      const stripeEnc = encrypt({ secret_key: 'sk_get_by', publishable_key: 'pk_get_by', webhook_secret: 'whsec_get_by' });
+      const razorpayEnc = encrypt({
+        key_id: 'rzp_get_by',
+        key_secret: 'razorpay_secret',
+      });
+      const stripeEnc = encrypt({
+        secret_key: 'sk_get_by',
+        publishable_key: 'pk_get_by',
+        webhook_secret: 'whsec_get_by',
+      });
       const cashEnc = encrypt({ note: 'cash has no creds' });
       configs.push(
         buildConfig({
@@ -349,7 +404,5 @@ describe('PaymentGatewayFactory', () => {
       expect(cash).toBeInstanceOf(CashGateway);
       expect(cash.getName()).toBe('cash');
     });
-
   });
-
 });

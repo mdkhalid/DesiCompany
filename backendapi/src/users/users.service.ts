@@ -54,22 +54,34 @@ export class UsersService {
     await this.userRepository.save(user);
 
     if (user.customer) {
-      if (updateProfileDto.firstName !== undefined) user.customer.firstName = updateProfileDto.firstName;
-      if (updateProfileDto.lastName !== undefined) user.customer.lastName = updateProfileDto.lastName;
-      if (updateProfileDto.address !== undefined) user.customer.address = updateProfileDto.address;
-      if (updateProfileDto.city !== undefined) user.customer.city = updateProfileDto.city;
-      if (updateProfileDto.state !== undefined) user.customer.state = updateProfileDto.state;
-      if (updateProfileDto.pincode !== undefined) user.customer.pincode = updateProfileDto.pincode;
+      if (updateProfileDto.firstName !== undefined)
+        user.customer.firstName = updateProfileDto.firstName;
+      if (updateProfileDto.lastName !== undefined)
+        user.customer.lastName = updateProfileDto.lastName;
+      if (updateProfileDto.address !== undefined)
+        user.customer.address = updateProfileDto.address;
+      if (updateProfileDto.city !== undefined)
+        user.customer.city = updateProfileDto.city;
+      if (updateProfileDto.state !== undefined)
+        user.customer.state = updateProfileDto.state;
+      if (updateProfileDto.pincode !== undefined)
+        user.customer.pincode = updateProfileDto.pincode;
       await this.customerRepository.save(user.customer);
     }
 
     if (user.provider) {
-      if (updateProfileDto.firstName !== undefined) user.provider.firstName = updateProfileDto.firstName;
-      if (updateProfileDto.lastName !== undefined) user.provider.lastName = updateProfileDto.lastName;
-      if (updateProfileDto.address !== undefined) user.provider.address = updateProfileDto.address;
-      if (updateProfileDto.city !== undefined) user.provider.city = updateProfileDto.city;
-      if (updateProfileDto.state !== undefined) user.provider.state = updateProfileDto.state;
-      if (updateProfileDto.pincode !== undefined) user.provider.pincode = updateProfileDto.pincode;
+      if (updateProfileDto.firstName !== undefined)
+        user.provider.firstName = updateProfileDto.firstName;
+      if (updateProfileDto.lastName !== undefined)
+        user.provider.lastName = updateProfileDto.lastName;
+      if (updateProfileDto.address !== undefined)
+        user.provider.address = updateProfileDto.address;
+      if (updateProfileDto.city !== undefined)
+        user.provider.city = updateProfileDto.city;
+      if (updateProfileDto.state !== undefined)
+        user.provider.state = updateProfileDto.state;
+      if (updateProfileDto.pincode !== undefined)
+        user.provider.pincode = updateProfileDto.pincode;
       await this.providerRepository.save(user.provider);
     }
 
@@ -96,7 +108,7 @@ export class UsersService {
   }
 
   async updateStatus(id: string, status: UserStatus) {
-    const user = await this.userRepository.findOne({ where: { id } as any });
+    const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException('User not found');
     }

@@ -5,7 +5,9 @@ import { Wallet } from './wallet.entity';
 
 @Entity('transactions')
 export class Transaction extends BaseEntity {
-  @ManyToOne(() => Wallet, (wallet) => wallet.transactions, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Wallet, (wallet) => wallet.transactions, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'wallet_id' })
   wallet: Wallet;
 
@@ -24,7 +26,12 @@ export class Transaction extends BaseEntity {
   // Nullable at schema level for legacy-data migration safety.
   // The LedgerService (Phase 5) always sets source explicitly for new writes,
   // preserving the audit invariant at the service layer.
-  @Column({ type: 'enum', enum: TransactionSource, nullable: true, name: 'source' })
+  @Column({
+    type: 'enum',
+    enum: TransactionSource,
+    nullable: true,
+    name: 'source',
+  })
   source: TransactionSource | null;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, name: 'balance_after' })

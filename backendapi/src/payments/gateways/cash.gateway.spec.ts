@@ -27,7 +27,9 @@ describe('CashGateway', () => {
     });
 
     it('instantiates with credentials', () => {
-      expect(() => new CashGateway({ receiptTemplate: 'tpl.pdf' })).not.toThrow();
+      expect(
+        () => new CashGateway({ receiptTemplate: 'tpl.pdf' }),
+      ).not.toThrow();
     });
   });
 
@@ -35,22 +37,38 @@ describe('CashGateway', () => {
 
   describe('createOrder', () => {
     it('returns gatewayOrderId prefixed with "cash_"', async () => {
-      const res = await gateway.createOrder({ amount: 500, currency: 'INR', bookingId: 'b1' });
+      const res = await gateway.createOrder({
+        amount: 500,
+        currency: 'INR',
+        bookingId: 'b1',
+      });
       expect(res.gatewayOrderId).toMatch(/^cash_[a-f0-9-]+$/);
     });
 
     it('returns keyId as empty string', async () => {
-      const res = await gateway.createOrder({ amount: 500, currency: 'INR', bookingId: 'b1' });
+      const res = await gateway.createOrder({
+        amount: 500,
+        currency: 'INR',
+        bookingId: 'b1',
+      });
       expect(res.keyId).toBe('');
     });
 
     it('passes amount through as-is (already in smallest currency unit)', async () => {
-      const res = await gateway.createOrder({ amount: 12345, currency: 'INR', bookingId: 'b1' });
+      const res = await gateway.createOrder({
+        amount: 12345,
+        currency: 'INR',
+        bookingId: 'b1',
+      });
       expect(res.amount).toBe(12345);
     });
 
     it('preserves currency from request', async () => {
-      const res = await gateway.createOrder({ amount: 100, currency: 'INR', bookingId: 'b1' });
+      const res = await gateway.createOrder({
+        amount: 100,
+        currency: 'INR',
+        bookingId: 'b1',
+      });
       expect(res.currency).toBe('INR');
     });
 
@@ -79,7 +97,9 @@ describe('CashGateway', () => {
     });
 
     it('returns true for Buffer input', () => {
-      expect(gateway.verifyWebhookSignature(Buffer.from('{}'), 'sig')).toBe(true);
+      expect(gateway.verifyWebhookSignature(Buffer.from('{}'), 'sig')).toBe(
+        true,
+      );
     });
   });
 
@@ -87,7 +107,11 @@ describe('CashGateway', () => {
 
   describe('parseWebhookEvent', () => {
     it('parses a JSON string', () => {
-      const raw = JSON.stringify({ eventId: 'e1', amount: 500, status: 'success' });
+      const raw = JSON.stringify({
+        eventId: 'e1',
+        amount: 500,
+        status: 'success',
+      });
       const evt = gateway.parseWebhookEvent(raw);
       expect(evt.eventId).toBe('e1');
       expect(evt.amount).toBe(500);
@@ -108,7 +132,9 @@ describe('CashGateway', () => {
     });
 
     it('returns eventId from body.eventId when present', () => {
-      const evt = gateway.parseWebhookEvent(JSON.stringify({ eventId: 'from_eventid' }));
+      const evt = gateway.parseWebhookEvent(
+        JSON.stringify({ eventId: 'from_eventid' }),
+      );
       expect(evt.eventId).toBe('from_eventid');
     });
 
@@ -135,7 +161,10 @@ describe('CashGateway', () => {
     it('returns rawPayload with parsed fields', () => {
       const raw = { eventId: 'e6', customField: 'abc' };
       const evt = gateway.parseWebhookEvent(JSON.stringify(raw));
-      expect(evt.rawPayload).toMatchObject({ eventId: 'e6', customField: 'abc' });
+      expect(evt.rawPayload).toMatchObject({
+        eventId: 'e6',
+        customField: 'abc',
+      });
     });
   });
 
@@ -168,7 +197,10 @@ describe('CashGateway', () => {
 
   describe('refund', () => {
     it('returns refundId prefixed with "cash_refund_"', async () => {
-      const res = await gateway.refund({ gatewayPaymentId: 'cash_123', amount: 100 });
+      const res = await gateway.refund({
+        gatewayPaymentId: 'cash_123',
+        amount: 100,
+      });
       expect(res.refundId).toMatch(/^cash_refund_[a-f0-9-]+$/);
     });
 
@@ -183,7 +215,10 @@ describe('CashGateway', () => {
     });
 
     it('returns amount from request', async () => {
-      const res = await gateway.refund({ gatewayPaymentId: 'cash_123', amount: 500 });
+      const res = await gateway.refund({
+        gatewayPaymentId: 'cash_123',
+        amount: 500,
+      });
       expect(res.amount).toBe(500);
     });
 

@@ -21,12 +21,13 @@ export class NotificationsService {
   }
 
   async findByUser(userId: string, page = 1, limit = 20) {
-    const [notifications, total] = await this.notificationRepository.findAndCount({
-      where: { user: { id: userId } },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const [notifications, total] =
+      await this.notificationRepository.findAndCount({
+        where: { user: { id: userId } },
+        order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
     return { notifications, total, page, limit };
   }
 
@@ -35,7 +36,9 @@ export class NotificationsService {
       { id: notificationId, user: { id: userId } },
       { isRead: true },
     );
-    return this.notificationRepository.findOne({ where: { id: notificationId } });
+    return this.notificationRepository.findOne({
+      where: { id: notificationId },
+    });
   }
 
   async markAllAsRead(userId: string) {

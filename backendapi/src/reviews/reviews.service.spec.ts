@@ -64,8 +64,9 @@ describe('ReviewsService', () => {
 
     it('throws NotFoundException when booking not found', async () => {
       bookingRepo.findOne.mockResolvedValue(null);
-      await expect(service.create(dto, userId, UserRole.CUSTOMER))
-        .rejects.toThrow(NotFoundException);
+      await expect(
+        service.create(dto, userId, UserRole.CUSTOMER),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws BadRequestException when booking not completed', async () => {
@@ -74,36 +75,46 @@ describe('ReviewsService', () => {
         status: BookingStatus.WORKING,
         customer: { id: 'cust-1' },
         provider: { id: 'prov-1' },
-      } as any);
-      await expect(service.create(dto, userId, UserRole.CUSTOMER))
-        .rejects.toThrow(BadRequestException);
+      } as unknown as Booking);
+      await expect(
+        service.create(dto, userId, UserRole.CUSTOMER),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException when booking already reviewed', async () => {
-      customerRepo.findOne.mockResolvedValue({ id: 'cust-1', user: { id: userId } } as any);
+      customerRepo.findOne.mockResolvedValue({
+        id: 'cust-1',
+        user: { id: userId },
+      } as unknown as Customer);
       bookingRepo.findOne.mockResolvedValue({
         id: 'booking-1',
         status: BookingStatus.COMPLETED,
         customer: { id: 'cust-1' },
         provider: { id: 'prov-1' },
-      } as any);
-      reviewRepo.findOne.mockResolvedValue({ id: 'existing-review' } as any);
-      await expect(service.create(dto, userId, UserRole.CUSTOMER))
-        .rejects.toThrow(BadRequestException);
+      } as unknown as Booking);
+      reviewRepo.findOne.mockResolvedValue({
+        id: 'existing-review',
+      } as unknown as Review);
+      await expect(
+        service.create(dto, userId, UserRole.CUSTOMER),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('creates a review and updates provider rating', async () => {
-      customerRepo.findOne.mockResolvedValue({ id: 'cust-1', user: { id: userId } } as any);
+      customerRepo.findOne.mockResolvedValue({
+        id: 'cust-1',
+        user: { id: userId },
+      } as unknown as Customer);
       bookingRepo.findOne.mockResolvedValue({
         id: 'booking-1',
         status: BookingStatus.COMPLETED,
         customer: { id: 'cust-1' },
         provider: { id: 'prov-1' },
-      } as any);
+      } as unknown as Booking);
       reviewRepo.findOne
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null);
-      reviewRepo.create.mockReturnValue({} as any);
+      reviewRepo.create.mockReturnValue({} as Review);
       (reviewRepo.createQueryBuilder as jest.Mock).mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
@@ -122,7 +133,9 @@ describe('ReviewsService', () => {
 
   describe('findByProvider', () => {
     it('returns reviews for a provider', async () => {
-      reviewRepo.find.mockResolvedValue([{ id: 'rev-1', rating: 5 } as any]);
+      reviewRepo.find.mockResolvedValue([
+        { id: 'rev-1', rating: 5 } as unknown as Review,
+      ]);
       const result = await service.findByProvider('prov-1');
       expect(result).toHaveLength(1);
     });

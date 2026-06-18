@@ -35,11 +35,7 @@ import { Booking } from '../bookings/entities/booking.entity';
     BookingsModule,
     CommissionsModule,
   ],
-  controllers: [
-    PaymentsController,
-    WebhooksController,
-    WalletsController,
-  ],
+  controllers: [PaymentsController, WebhooksController, WalletsController],
   providers: [
     PaymentGatewayFactory,
     PaymentsService,

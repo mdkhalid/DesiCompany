@@ -74,10 +74,14 @@ describe('WebhookService', () => {
     const rawBody = Buffer.from(JSON.stringify({ event: 'payment.captured' }));
 
     it('rejects when signature verification fails for non-cash gateway', async () => {
-      factory.getByType.mockResolvedValue(mockGateway as any);
+      factory.getByType.mockResolvedValue(mockGateway);
       mockGateway.verifyWebhookSignature.mockReturnValue(false);
 
-      const result = await service.processWebhook(PaymentGatewayType.RAZORPAY, rawBody, 'bad_sig');
+      const result = await service.processWebhook(
+        PaymentGatewayType.RAZORPAY,
+        rawBody,
+        'bad_sig',
+      );
 
       expect(result.received).toBe(false);
     });
@@ -95,18 +99,27 @@ describe('WebhookService', () => {
           rawPayload: {},
         }),
       };
-      factory.getByType.mockResolvedValue(cashGateway as any);
+      factory.getByType.mockResolvedValue(cashGateway);
       webhookEventRepo.findOne.mockResolvedValue(null);
-      const mockEventRecord = { gateway: 'cash', eventId: 'evt_cash_1', payload: {}, processedAt: null };
+      const mockEventRecord = {
+        gateway: 'cash',
+        eventId: 'evt_cash_1',
+        payload: {},
+        processedAt: null,
+      };
       webhookEventRepo.create.mockReturnValue(mockEventRecord as any);
 
-      const result = await service.processWebhook(PaymentGatewayType.CASH, rawBody, undefined);
+      const result = await service.processWebhook(
+        PaymentGatewayType.CASH,
+        rawBody,
+        undefined,
+      );
 
       expect(result.received).toBe(true);
     });
 
     it('returns received: true for duplicate events', async () => {
-      factory.getByType.mockResolvedValue(mockGateway as any);
+      factory.getByType.mockResolvedValue(mockGateway);
       mockGateway.verifyWebhookSignature.mockReturnValue(true);
       mockGateway.parseWebhookEvent.mockReturnValue({
         gateway: 'razorpay',
@@ -116,14 +129,18 @@ describe('WebhookService', () => {
       });
       webhookEventRepo.findOne.mockResolvedValue({ id: 'existing' } as any);
 
-      const result = await service.processWebhook(PaymentGatewayType.RAZORPAY, rawBody, 'valid_sig');
+      const result = await service.processWebhook(
+        PaymentGatewayType.RAZORPAY,
+        rawBody,
+        'valid_sig',
+      );
 
       expect(result.received).toBe(true);
       expect(result.eventId).toBe('evt_dup');
     });
 
     it('processes successful payment event and credits wallet', async () => {
-      factory.getByType.mockResolvedValue(mockGateway as any);
+      factory.getByType.mockResolvedValue(mockGateway);
       mockGateway.verifyWebhookSignature.mockReturnValue(true);
       mockGateway.parseWebhookEvent.mockReturnValue({
         gateway: 'razorpay',
@@ -134,7 +151,12 @@ describe('WebhookService', () => {
         rawPayload: { event: 'payment.captured' },
       });
       webhookEventRepo.findOne.mockResolvedValue(null);
-      const mockEvtRecord = { gateway: 'razorpay', eventId: 'evt_new', payload: {}, processedAt: null };
+      const mockEvtRecord = {
+        gateway: 'razorpay',
+        eventId: 'evt_new',
+        payload: {},
+        processedAt: null,
+      };
       webhookEventRepo.create.mockReturnValue(mockEvtRecord as any);
       paymentRepo.findOne.mockResolvedValue({
         id: 'pay-1',
@@ -142,7 +164,11 @@ describe('WebhookService', () => {
         gatewayOrderId: 'order_xyz',
       } as any);
 
-      const result = await service.processWebhook(PaymentGatewayType.RAZORPAY, rawBody, 'valid_sig');
+      const result = await service.processWebhook(
+        PaymentGatewayType.RAZORPAY,
+        rawBody,
+        'valid_sig',
+      );
 
       expect(result.received).toBe(true);
       expect(paymentRepo.save).toHaveBeenCalledWith(

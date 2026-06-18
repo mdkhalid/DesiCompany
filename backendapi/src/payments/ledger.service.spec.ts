@@ -47,10 +47,12 @@ describe('LedgerService', () => {
         {
           provide: DataSource,
           useValue: {
-            transaction: jest.fn(async (cb: any) => cb({
-              save: jest.fn(),
-              create: jest.fn(),
-            })),
+            transaction: jest.fn(async (cb: any) =>
+              cb({
+                save: jest.fn(),
+                create: jest.fn(),
+              }),
+            ),
           },
         },
       ],

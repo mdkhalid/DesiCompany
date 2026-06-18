@@ -1,10 +1,17 @@
 import * as crypto from 'crypto';
+import Stripe from 'stripe';
 import { StripeGateway } from './stripe.gateway';
 
 // Mocked Stripe SDK methods
-const mockPaymentIntentsCreate = jest.fn();
-const mockPaymentIntentsRetrieve = jest.fn();
-const mockRefundsCreate = jest.fn();
+
+const mockPaymentIntentsCreate = jest.fn<
+  any,
+  [Stripe.Stripe.PaymentIntentCreateParams]
+>();
+
+const mockPaymentIntentsRetrieve = jest.fn<any, [string]>();
+
+const mockRefundsCreate = jest.fn<any, [Stripe.Stripe.RefundCreateParams]>();
 
 jest.mock('stripe', () => {
   return jest.fn().mockImplementation(() => ({
@@ -30,13 +37,19 @@ beforeEach(() => {
 const WEBHOOK_SECRET = 'whsec_test_webhook_secret_32chars!!!';
 const PUBLISHABLE_KEY = 'pk_test_abcdef';
 
-function buildSignature(body: string, timestamp: number, secret = WEBHOOK_SECRET): string {
+function buildSignature(
+  body: string,
+  timestamp: number,
+  secret = WEBHOOK_SECRET,
+): string {
   const payload = `${timestamp}.${body}`;
   const sig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   return `t=${timestamp},v1=${sig}`;
 }
 
-function makeIntent(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function makeIntent(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
   return {
     id: 'pi_test_123',
     client_secret: 'pi_test_123_secret_abc',
@@ -47,7 +60,9 @@ function makeIntent(overrides: Record<string, unknown> = {}): Record<string, unk
   };
 }
 
-function makeWebhookBody(intentOverrides: Record<string, unknown> = {}): string {
+function makeWebhookBody(
+  intentOverrides: Record<string, unknown> = {},
+): string {
   return JSON.stringify({
     id: 'evt_test_456',
     type: 'payment_intent.succeeded',
@@ -87,7 +102,10 @@ describe('createOrder', () => {
   let gateway: StripeGateway;
 
   beforeEach(() => {
-    gateway = new StripeGateway({ secret_key: 'sk_test_x', publishable_key: PUBLISHABLE_KEY });
+    gateway = new StripeGateway({
+      secret_key: 'sk_test_x',
+      publishable_key: PUBLISHABLE_KEY,
+    });
   });
 
   it('calls paymentIntents.create with amount in paise (no conversion)', async () => {
@@ -148,7 +166,10 @@ describe('createOrder', () => {
 // ---------------------------------------------------------------------------
 describe('verifyWebhookSignature', () => {
   let gateway: StripeGateway;
-  const body = JSON.stringify({ id: 'evt_test', type: 'payment_intent.succeeded' });
+  const body = JSON.stringify({
+    id: 'evt_test',
+    type: 'payment_intent.succeeded',
+  });
   const now = Math.floor(Date.now() / 1000);
 
   beforeEach(() => {
@@ -169,7 +190,10 @@ describe('verifyWebhookSignature', () => {
   });
 
   it('returns false for wrong v1 signature', () => {
-    const wrong = crypto.createHmac('sha256', WEBHOOK_SECRET).update('wrong').digest('hex');
+    const wrong = crypto
+      .createHmac('sha256', WEBHOOK_SECRET)
+      .update('wrong')
+      .digest('hex');
     const sig = `t=${now},v1=${wrong}`;
     expect(gateway.verifyWebhookSignature(body, sig)).toBe(false);
   });
@@ -205,7 +229,9 @@ describe('verifyWebhookSignature', () => {
   });
 
   it('returns false when signature is not a string', () => {
-    expect(gateway.verifyWebhookSignature(body, null as unknown as string)).toBe(false);
+    expect(
+      gateway.verifyWebhookSignature(body, null as unknown as string),
+    ).toBe(false);
   });
 });
 
@@ -220,7 +246,11 @@ describe('parseWebhookEvent', () => {
   });
 
   it('parses string JSON body', () => {
-    const body = makeWebhookBody({ id: 'pi_str', status: 'succeeded', amount: 75000 });
+    const body = makeWebhookBody({
+      id: 'pi_str',
+      status: 'succeeded',
+      amount: 75000,
+    });
     const event = gateway.parseWebhookEvent(body);
 
     expect(event.eventId).toBe('evt_test_456');
@@ -234,7 +264,11 @@ describe('parseWebhookEvent', () => {
   });
 
   it('parses Buffer JSON body', () => {
-    const body = makeWebhookBody({ id: 'pi_buf', status: 'canceled', amount: 30000 });
+    const body = makeWebhookBody({
+      id: 'pi_buf',
+      status: 'canceled',
+      amount: 30000,
+    });
     const event = gateway.parseWebhookEvent(Buffer.from(body));
 
     expect(event.gatewayPaymentId).toBe('pi_buf');
@@ -263,7 +297,10 @@ describe('parseWebhookEvent', () => {
   });
 
   it('handles missing nested fields gracefully', () => {
-    const body = JSON.stringify({ id: 'evt_min', type: 'payment_intent.updated' });
+    const body = JSON.stringify({
+      id: 'evt_min',
+      type: 'payment_intent.updated',
+    });
     const event = gateway.parseWebhookEvent(body);
     expect(event.eventId).toBe('evt_min');
     expect(event.gatewayPaymentId).toBe('');
@@ -282,7 +319,9 @@ describe('getStatus', () => {
   });
 
   it('maps succeeded to success', async () => {
-    mockPaymentIntentsRetrieve.mockResolvedValue(makeIntent({ status: 'succeeded' }));
+    mockPaymentIntentsRetrieve.mockResolvedValue(
+      makeIntent({ status: 'succeeded' }),
+    );
 
     const result = await gateway.getStatus('pi_test_123');
 
@@ -292,7 +331,9 @@ describe('getStatus', () => {
   });
 
   it('maps canceled to failed', async () => {
-    mockPaymentIntentsRetrieve.mockResolvedValue(makeIntent({ status: 'canceled' }));
+    mockPaymentIntentsRetrieve.mockResolvedValue(
+      makeIntent({ status: 'canceled' }),
+    );
 
     const result = await gateway.getStatus('pi_test_123');
 
@@ -310,7 +351,9 @@ describe('getStatus', () => {
   });
 
   it('maps processing to pending', async () => {
-    mockPaymentIntentsRetrieve.mockResolvedValue(makeIntent({ status: 'processing' }));
+    mockPaymentIntentsRetrieve.mockResolvedValue(
+      makeIntent({ status: 'processing' }),
+    );
 
     const result = await gateway.getStatus('pi_test_123');
 
@@ -318,7 +361,9 @@ describe('getStatus', () => {
   });
 
   it('maps requires_capture to pending', async () => {
-    mockPaymentIntentsRetrieve.mockResolvedValue(makeIntent({ status: 'requires_capture' }));
+    mockPaymentIntentsRetrieve.mockResolvedValue(
+      makeIntent({ status: 'requires_capture' }),
+    );
 
     const result = await gateway.getStatus('pi_test_123');
 
@@ -463,8 +508,13 @@ describe('refund', () => {
       payment_intent: 'pi_reason',
     });
 
-    await gateway.refund({ gatewayPaymentId: 'pi_reason', reason: 'duplicate' });
+    await gateway.refund({
+      gatewayPaymentId: 'pi_reason',
+      reason: 'duplicate',
+    });
 
-    expect(mockRefundsCreate.mock.calls[0][0].metadata).toEqual({ reason: 'duplicate' });
+    expect(mockRefundsCreate.mock.calls[0][0].metadata).toEqual({
+      reason: 'duplicate',
+    });
   });
 });

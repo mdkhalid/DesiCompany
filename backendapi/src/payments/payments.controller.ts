@@ -41,10 +41,7 @@ export class PaymentsController {
 
   @Get(':id/status')
   @Roles(UserRole.CUSTOMER, UserRole.PROVIDER, UserRole.ADMIN)
-  async getStatus(
-    @Param('id') id: string,
-    @Req() req: AuthRequest,
-  ) {
+  async getStatus(@Param('id') id: string, @Req() req: AuthRequest) {
     return this.paymentsService.getPaymentStatus(
       id,
       req.user.id,
@@ -55,10 +52,7 @@ export class PaymentsController {
   @Post('pay-cash')
   @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
-  async payCash(
-    @Body() dto: PayCashDto,
-    @Req() req: AuthRequest,
-  ) {
+  async payCash(@Body() dto: PayCashDto, @Req() req: AuthRequest) {
     return this.paymentsService.payCash(
       dto.bookingId,
       req.user.id,

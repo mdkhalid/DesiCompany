@@ -5,11 +5,15 @@ import { ServiceCategory } from './service-category.entity';
 
 @Entity('provider_services')
 export class ProviderService extends BaseEntity {
-  @ManyToOne(() => Provider, (provider) => provider.services, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Provider, (provider) => provider.services, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'provider_id' })
   provider: Provider;
 
-  @ManyToOne(() => ServiceCategory, (category) => category.providerServices, { onDelete: 'CASCADE' })
+  @ManyToOne(() => ServiceCategory, (category) => category.providerServices, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'category_id' })
   category: ServiceCategory;
 
