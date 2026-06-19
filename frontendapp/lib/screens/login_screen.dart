@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
+import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
 import 'profile_picker_screen.dart';
@@ -49,22 +50,31 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     setState(() { _error = ''; _loading = true; });
     try {
-      final user = await AuthService.verifyOtp(_phoneController.text.trim(), _otpController.text.trim());
+      final phone = _phoneController.text.trim();
+      final otp = _otpController.text.trim();
+
+      final response = await AuthService.verifyOtpAndSelectRole(phone, otp);
       if (!mounted) return;
-      if (user.hasMultipleRoles && !user.isAdmin) {
+
+      if (response.user['role'] == 'admin') {
+        await AuthService.verifyOtp(phone, otp);
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/admin-home');
+      } else {
+        final user = User.fromJson(response.user);
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => ProfilePickerScreen(user: user),
+            builder: (_) => ProfilePickerScreen(
+              user: user,
+              phone: phone,
+              otp: otp,
+            ),
           ),
         );
-      } else {
-        Navigator.pushReplacementNamed(context,
-          user.isAdmin ? '/admin-home' :
-          user.isProvider ? '/provider-home' : '/customer-home');
       }
     } catch (e) {
-      // If user not found (404), redirect to role selection
       final errMsg = e.toString();
       if (errMsg.contains('User not found') || errMsg.contains('404')) {
         if (!mounted) return;

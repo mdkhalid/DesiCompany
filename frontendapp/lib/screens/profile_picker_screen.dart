@@ -5,10 +5,14 @@ import '../services/auth_service.dart';
 
 class ProfilePickerScreen extends StatefulWidget {
   final User user;
+  final String? phone;
+  final String? otp;
 
   const ProfilePickerScreen({
     super.key,
     required this.user,
+    this.phone,
+    this.otp,
   });
 
   @override
@@ -19,6 +23,8 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
   bool _loading = false;
   String _error = '';
 
+  bool get _isFromLogin => widget.phone != null && widget.otp != null;
+
   Future<void> _selectRole(String role) async {
     setState(() {
       _error = '';
@@ -27,11 +33,11 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
 
     try {
       User user;
-      if (widget.user.roles.contains(role)) {
-        // Already has this role — just switch active role
+      if (_isFromLogin) {
+        user = await AuthService.verifyOtp(widget.phone!, widget.otp!, role: role);
+      } else if (widget.user.roles.contains(role)) {
         user = await AuthService.switchRole(role);
       } else {
-        // Doesn't have this role yet — add it via JWT-protected endpoint
         user = await AuthService.addRole(role: role);
       }
       if (!mounted) return;

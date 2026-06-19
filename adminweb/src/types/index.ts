@@ -1,6 +1,24 @@
 export interface User {
-  id: string; phone: string; role: string; status: string;
-  createdAt: string; customer?: any; provider?: any;
+  id: string;
+  phone: string;
+  role: string;
+  status: string;
+  createdAt: string;
+  customer?: any;
+  provider?: any;
+}
+
+export interface VerifyOtpResponse {
+  user: {
+    id: string;
+    phone: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    role: string;
+  };
+  availableRoles: string[];
+  defaultRole: string;
 }
 export interface Booking {
   id: string; status: string; totalAmount: number;

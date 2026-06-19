@@ -74,14 +74,24 @@ class AuthService {
     return User.fromJson(userData, token: token);
   }
 
-  static Future<User> verifyOtp(String phone, String otp) async {
-    final data = await ApiService.post('/auth/login', body: {'phone': phone, 'otp': otp});
+  static Future<User> verifyOtp(String phone, String otp, {String? role}) async {
+    final data = await ApiService.post('/auth/login', body: {
+      'phone': phone,
+      'otp': otp,
+      if (role != null) 'role': role,
+    });
     final prefs = await SharedPreferences.getInstance();
     final token = data['tokens']['accessToken'] as String;
     final userData = data['user'] as Map<String, dynamic>;
     await prefs.setString('token', token);
     await prefs.setString('user_data', jsonEncode(userData));
     return User.fromJson(userData, token: token);
+  }
+
+  /// Verify OTP and return user info with available roles for role selection.
+  static Future<VerifyOtpResponse> verifyOtpAndSelectRole(String phone, String otp) async {
+    final data = await ApiService.post('/auth/verify-otp', body: {'phone': phone, 'otp': otp});
+    return VerifyOtpResponse.fromJson(data);
   }
 
   static Future<void> logout() async {
@@ -107,5 +117,25 @@ class AuthService {
     final userData = prefs.getString('user_data');
     if (userData == null) return null;
     return (jsonDecode(userData) as Map)['id'] as String?;
+  }
+}
+
+class VerifyOtpResponse {
+  final Map<String, dynamic> user;
+  final List<String> availableRoles;
+  final String defaultRole;
+
+  VerifyOtpResponse({
+    required this.user,
+    required this.availableRoles,
+    required this.defaultRole,
+  });
+
+  factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) {
+    return VerifyOtpResponse(
+      user: json['user'] as Map<String, dynamic>,
+      availableRoles: (json['availableRoles'] as List).cast<String>(),
+      defaultRole: json['defaultRole'] as String,
+    );
   }
 }

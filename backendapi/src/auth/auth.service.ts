@@ -26,6 +26,26 @@ interface RegisterDto {
 interface LoginDto {
   phone: string;
   otp: string;
+  role?: UserRole;
+}
+
+interface VerifyOtpDto {
+  phone: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  user: {
+    id: string;
+    phone: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    role: UserRole;
+    roles: UserRole[];
+  };
+  availableRoles: UserRole[];
+  defaultRole: UserRole;
 }
 
 export interface AuthTokens {
@@ -154,8 +174,70 @@ export class AuthService {
 
     this.otpStore.delete(loginDto.phone);
 
+    if (loginDto.role && loginDto.role !== user.role) {
+      user.role = loginDto.role;
+      await this.userRepository.save(user);
+    }
+
     const tokens = this.generateTokens(user);
     return { user, tokens };
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<VerifyOtpResponse> {
+    const user = await this.userRepository.findOne({
+      where: { phone: verifyOtpDto.phone },
+      relations: { customer: true, provider: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('User is not active');
+    }
+
+    const otpRecord = this.otpStore.get(verifyOtpDto.phone);
+    if (!otpRecord) {
+      throw new BadRequestException('OTP not found or expired');
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      this.otpStore.delete(verifyOtpDto.phone);
+      throw new BadRequestException('OTP expired');
+    }
+
+    if (otpRecord.code !== verifyOtpDto.otp) {
+      throw new UnauthorizedException('Invalid OTP');
+    }
+
+    const availableRoles: UserRole[] = [];
+
+    if (user.customer || user.roles?.includes(UserRole.CUSTOMER)) {
+      availableRoles.push(UserRole.CUSTOMER);
+    }
+    if (user.provider || user.roles?.includes(UserRole.PROVIDER)) {
+      availableRoles.push(UserRole.PROVIDER);
+    }
+
+    if (availableRoles.length === 0) {
+      availableRoles.push(user.role);
+    }
+
+    const userResponse = {
+      id: user.id,
+      phone: user.phone,
+      firstName: user.customer?.firstName,
+      lastName: user.customer?.lastName || user.provider?.lastName,
+      email: user.email,
+      role: user.role,
+      roles: availableRoles,
+    };
+
+    return {
+      user: userResponse,
+      availableRoles,
+      defaultRole: user.role,
+    };
   }
 
   async switchRole(

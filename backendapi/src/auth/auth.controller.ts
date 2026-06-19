@@ -36,8 +36,18 @@ export class AuthController {
 
   @Post('login')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  login(@Body('phone') phone: string, @Body('otp') otp: string) {
-    return this.authService.login({ phone, otp });
+  login(
+    @Body('phone') phone: string,
+    @Body('otp') otp: string,
+    @Body('role') role?: UserRole,
+  ) {
+    return this.authService.login({ phone, otp, role });
+  }
+
+  @Post('verify-otp')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  verifyOtp(@Body('phone') phone: string, @Body('otp') otp: string) {
+    return this.authService.verifyOtp({ phone, otp });
   }
 
   @Post('refresh')
