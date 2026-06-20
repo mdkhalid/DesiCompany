@@ -14,6 +14,7 @@ import { ServicesModule } from './services/services.module';
 import { CommissionsModule } from './commissions/commissions.module';
 import { AdminModule } from './admin/admin.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { RecurringBookingsModule } from './bookings/recurring-bookings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -63,6 +64,7 @@ import { ActivityLog } from './activity-logs/entities/activity-log.entity';
     CommissionsModule,
     AdminModule,
     BookingsModule,
+    RecurringBookingsModule,
     PaymentsModule,
     ReviewsModule,
     NotificationsModule,
