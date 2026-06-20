@@ -20,7 +20,10 @@ export class CreateRecurringBookingDto {
   @IsUUID()
   providerServiceId: string;
 
-  @ApiProperty({ enum: RecurrenceFrequency, example: RecurrenceFrequency.WEEKLY })
+  @ApiProperty({
+    enum: RecurrenceFrequency,
+    example: RecurrenceFrequency.WEEKLY,
+  })
   @IsEnum(RecurrenceFrequency)
   frequency: RecurrenceFrequency;
 
@@ -41,7 +44,9 @@ export class CreateRecurringBookingDto {
   @ApiPropertyOptional({ example: '10:00' })
   @IsOptional()
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'Time must be HH:MM format' })
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: 'Time must be HH:MM format',
+  })
   preferredTime?: string;
 
   @ApiPropertyOptional({ example: 'Weekly plumbing maintenance' })

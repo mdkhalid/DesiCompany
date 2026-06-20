@@ -405,7 +405,9 @@ export class ServicesService {
 
     if (dto.categoryId) {
       // Get all subcategory IDs for hierarchical search
-      const subcategoryIds = await this.getCategoryAndDescendantIds(dto.categoryId);
+      const subcategoryIds = await this.getCategoryAndDescendantIds(
+        dto.categoryId,
+      );
 
       query.andWhere('category.id IN (:...subcategoryIds)', {
         subcategoryIds,

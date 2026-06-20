@@ -92,3 +92,78 @@ export interface CommissionConfig {
   value: number;
   isActive: boolean;
 }
+
+export interface PlatformFeeConfig {
+  id: string;
+  configKey: string;
+  configValue: Record<string, any>;
+  isActive: boolean;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description?: string;
+  monthlyPrice: number;
+  benefits: Record<string, any>;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  type: string;
+  value: number;
+  maxUses?: number;
+  currentUses: number;
+  validFrom?: string;
+  validUntil?: string;
+  isActive: boolean;
+  restrictions?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromoCodeUsage {
+  id: string;
+  discountAmount: number;
+  user?: { id: string; phone: string };
+  booking?: { id: string };
+  createdAt: string;
+}
+
+export interface RevenueStats {
+  totalConvenienceFees: number;
+  totalSubscriptionRevenue: number;
+  totalDiscounts: number;
+}
+
+export interface CustomerMembershipPlan {
+  id: string;
+  name: string;
+  description?: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  benefits: Record<string, any>;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerMembership {
+  id: string;
+  customer: { id: string; phone: string };
+  plan: CustomerMembershipPlan;
+  status: string;
+  billingCycle: 'monthly' | 'yearly';
+  startDate: string;
+  endDate: string;
+  cancelledAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}

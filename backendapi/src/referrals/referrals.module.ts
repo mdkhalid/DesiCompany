@@ -8,9 +8,7 @@ import { Wallet } from '../payments/entities/wallet.entity';
 import { Transaction } from '../payments/entities/transaction.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Referral, User, Wallet, Transaction]),
-  ],
+  imports: [TypeOrmModule.forFeature([Referral, User, Wallet, Transaction])],
   controllers: [ReferralsController],
   providers: [ReferralsService],
   exports: [ReferralsService],

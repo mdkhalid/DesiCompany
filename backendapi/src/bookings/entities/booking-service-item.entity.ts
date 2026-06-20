@@ -1,13 +1,13 @@
-import {
-  Column, Entity, JoinColumn, ManyToOne, OneToMany,
-} from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { Booking } from './booking.entity';
 import { ProviderService } from '../../services/entities/provider-service.entity';
 
 @Entity('booking_services')
 export class BookingServiceItem extends BaseEntity {
-  @ManyToOne(() => Booking, (booking) => booking.serviceItems, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Booking, (booking) => booking.serviceItems, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'booking_id' })
   booking: Booking;
 

@@ -39,7 +39,12 @@ export class RecurringBooking extends BaseEntity {
   @Column({ name: 'day_of_month', type: 'int', nullable: true })
   dayOfMonth: number | null;
 
-  @Column({ name: 'preferred_time', type: 'varchar', length: 5, nullable: true })
+  @Column({
+    name: 'preferred_time',
+    type: 'varchar',
+    length: 5,
+    nullable: true,
+  })
   preferredTime: string | null;
 
   @Column({ name: 'description', type: 'text', nullable: true })

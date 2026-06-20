@@ -21,18 +21,30 @@ export interface PricingContext {
 export interface PricingResult {
   baseAmount: number;
   finalAmount: number;
-  appliedMultipliers: { rule: PricingRule; multiplier: number; description: string }[];
+  appliedMultipliers: {
+    rule: PricingRule;
+    multiplier: number;
+    description: string;
+  }[];
 }
 
 @Injectable()
 export class DynamicPricingService {
   // Multipliers (configurable via env in production)
-  private readonly peakHoursMultiplier = parseFloat(process.env.PEAK_HOURS_MULTIPLIER || '1.2');
-  private readonly weekendMultiplier = parseFloat(process.env.WEEKEND_MULTIPLIER || '1.15');
-  private readonly holidayMultiplier = parseFloat(process.env.HOLIDAY_MULTIPLIER || '1.5');
-  private readonly highDemandMultiplier = parseFloat(process.env.HIGH_DEMAND_MULTIPLIER || '1.3');
+  private readonly peakHoursMultiplier = parseFloat(
+    process.env.PEAK_HOURS_MULTIPLIER || '1.2',
+  );
+  private readonly weekendMultiplier = parseFloat(
+    process.env.WEEKEND_MULTIPLIER || '1.15',
+  );
+  private readonly holidayMultiplier = parseFloat(
+    process.env.HOLIDAY_MULTIPLIER || '1.5',
+  );
+  private readonly highDemandMultiplier = parseFloat(
+    process.env.HIGH_DEMAND_MULTIPLIER || '1.3',
+  );
   private readonly peakHoursStart = 17; // 5 PM
-  private readonly peakHoursEnd = 21;   // 9 PM
+  private readonly peakHoursEnd = 21; // 9 PM
 
   constructor(
     @InjectRepository(ServiceCategory)
@@ -105,18 +117,21 @@ export class DynamicPricingService {
     const day = date.getDate();
 
     const fixedHolidays: Array<[number, number]> = [
-      [1, 26],   // Republic Day
-      [5, 1],    // Labour Day
-      [8, 15],   // Independence Day
-      [10, 2],   // Gandhi Jayanti
-      [11, 12],  // Diwali (approximate)
-      [12, 25],  // Christmas
+      [1, 26], // Republic Day
+      [5, 1], // Labour Day
+      [8, 15], // Independence Day
+      [10, 2], // Gandhi Jayanti
+      [11, 12], // Diwali (approximate)
+      [12, 25], // Christmas
     ];
 
     return fixedHolidays.some(([m, d]) => m === month && d === day);
   }
 
-  private async checkHighDemand(categoryId: string, date: Date): Promise<boolean> {
+  private async checkHighDemand(
+    categoryId: string,
+    date: Date,
+  ): Promise<boolean> {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
@@ -138,7 +153,11 @@ export class DynamicPricingService {
     return count >= 5;
   }
 
-  async getPricingPreview(baseAmount: number, scheduledDate: Date, categoryId?: string) {
+  async getPricingPreview(
+    baseAmount: number,
+    scheduledDate: Date,
+    categoryId?: string,
+  ) {
     return this.calculatePrice({ baseAmount, scheduledDate, categoryId });
   }
 }

@@ -1,5 +1,5 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { SMS_PROVIDER } from './sms.module';
+import { SMS_PROVIDER } from './sms.constants';
 
 @Injectable()
 export class SmsService {
@@ -7,7 +7,9 @@ export class SmsService {
 
   constructor(
     @Inject(SMS_PROVIDER)
-    private readonly smsProvider: { send(phone: string, message: string): Promise<void> },
+    private readonly smsProvider: {
+      send(phone: string, message: string): Promise<void>;
+    },
   ) {}
 
   async sendOtp(phone: string, otp: string): Promise<void> {

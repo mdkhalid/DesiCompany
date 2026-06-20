@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
-import { PromotedListing, PromotedListingStatus } from './entities/promoted-listing.entity';
+import {
+  PromotedListing,
+  PromotedListingStatus,
+} from './entities/promoted-listing.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
 import { Wallet } from '../payments/entities/wallet.entity';
@@ -43,7 +50,9 @@ export class PromotionsService {
 
     let category: ServiceCategory | null = null;
     if (categoryId) {
-      category = await this.categoryRepository.findOne({ where: { id: categoryId } });
+      category = await this.categoryRepository.findOne({
+        where: { id: categoryId },
+      });
     }
 
     // Deduct from wallet
@@ -88,7 +97,9 @@ export class PromotionsService {
       .createQueryBuilder('promotion')
       .leftJoinAndSelect('promotion.provider', 'provider')
       .leftJoinAndSelect('promotion.category', 'category')
-      .where('promotion.status = :status', { status: PromotedListingStatus.ACTIVE })
+      .where('promotion.status = :status', {
+        status: PromotedListingStatus.ACTIVE,
+      })
       .andWhere('promotion.start_date <= :today', { today })
       .andWhere('promotion.end_date >= :today', { today });
 
@@ -114,7 +125,11 @@ export class PromotionsService {
   }
 
   async recordImpression(promotionId: string) {
-    await this.promotedRepository.increment({ id: promotionId }, 'impressions', 1);
+    await this.promotedRepository.increment(
+      { id: promotionId },
+      'impressions',
+      1,
+    );
   }
 
   async expireOldPromotions() {

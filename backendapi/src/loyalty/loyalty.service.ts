@@ -68,7 +68,9 @@ export class LoyaltyService {
 
     const minRedeem = 100;
     if (points < minRedeem) {
-      throw new BadRequestException(`Minimum redemption is ${minRedeem} points`);
+      throw new BadRequestException(
+        `Minimum redemption is ${minRedeem} points`,
+      );
     }
 
     const walletCredit = points / 10;

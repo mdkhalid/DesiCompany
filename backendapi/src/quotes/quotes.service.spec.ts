@@ -15,6 +15,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 import { Booking } from '../bookings/entities/booking.entity';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 type MockRepo = {
   find: jest.Mock;
@@ -127,6 +128,12 @@ describe('QuotesService', () => {
           useValue: providerServiceRepository,
         },
         { provide: getRepositoryToken(Booking), useValue: bookingRepository },
+        {
+          provide: PlatformFeesService,
+          useValue: {
+            calculateLeadQuoteFee: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

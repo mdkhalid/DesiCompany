@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PromotionsService } from './promotions.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -26,7 +34,12 @@ export class PromotionsController {
     @Query('bidAmount') bidAmount: number,
     @Query('days') days: number,
   ) {
-    return this.promotionsService.createPromotion(req.user.id, categoryId, bidAmount, days);
+    return this.promotionsService.createPromotion(
+      req.user.id,
+      categoryId,
+      bidAmount,
+      days,
+    );
   }
 
   @Get('active')

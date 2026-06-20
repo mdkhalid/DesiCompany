@@ -47,7 +47,8 @@ export class FollowUpService {
       if (existingReview) continue;
 
       const providerName = `${booking.provider.firstName} ${booking.provider.lastName}`;
-      const serviceName = booking.providerService?.category?.nameEn || 'service';
+      const serviceName =
+        booking.providerService?.category?.nameEn || 'service';
 
       await this.notificationsService.create(
         booking.customer.user.id,
@@ -100,7 +101,7 @@ export class FollowUpService {
         await this.notificationsService.create(
           customer.customer.user.id,
           'We miss you!',
-          'It\'s been a while since your last booking. Check out new providers in your area!',
+          "It's been a while since your last booking. Check out new providers in your area!",
         );
 
         this.pushNotificationsService

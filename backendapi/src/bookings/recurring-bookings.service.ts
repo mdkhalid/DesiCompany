@@ -1,14 +1,26 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual } from 'typeorm';
-import { RecurringBooking, RecurrenceFrequency, RecurrenceStatus } from './entities/recurring-booking.entity';
+import {
+  RecurringBooking,
+  RecurrenceFrequency,
+  RecurrenceStatus,
+} from './entities/recurring-booking.entity';
 import { Booking } from './entities/booking.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 import { UserRole } from '../common/enums/user-role.enum';
-import { CreateRecurringBookingDto, UpdateRecurringBookingDto } from './dto/recurring-booking.dto';
+import {
+  CreateRecurringBookingDto,
+  UpdateRecurringBookingDto,
+} from './dto/recurring-booking.dto';
 
 @Injectable()
 export class RecurringBookingsService {
@@ -56,13 +68,17 @@ export class RecurringBookingsService {
       dto.frequency === RecurrenceFrequency.BI_WEEKLY
     ) {
       if (dto.dayOfWeek === undefined) {
-        throw new BadRequestException('dayOfWeek is required for weekly/bi-weekly recurrence');
+        throw new BadRequestException(
+          'dayOfWeek is required for weekly/bi-weekly recurrence',
+        );
       }
     }
 
     if (dto.frequency === RecurrenceFrequency.MONTHLY) {
       if (dto.dayOfMonth === undefined) {
-        throw new BadRequestException('dayOfMonth is required for monthly recurrence');
+        throw new BadRequestException(
+          'dayOfMonth is required for monthly recurrence',
+        );
       }
     }
 
@@ -92,7 +108,11 @@ export class RecurringBookingsService {
   async findAll(userId: string, role: UserRole) {
     if (role === UserRole.ADMIN) {
       return this.recurringRepository.find({
-        relations: { customer: { user: true }, provider: { user: true }, providerService: { category: true } },
+        relations: {
+          customer: { user: true },
+          provider: { user: true },
+          providerService: { category: true },
+        },
         order: { createdAt: 'DESC' },
       });
     }
@@ -104,7 +124,10 @@ export class RecurringBookingsService {
       if (!customer) return [];
       return this.recurringRepository.find({
         where: { customer: { id: customer.id } },
-        relations: { provider: { user: true }, providerService: { category: true } },
+        relations: {
+          provider: { user: true },
+          providerService: { category: true },
+        },
         order: { createdAt: 'DESC' },
       });
     }
@@ -116,7 +139,10 @@ export class RecurringBookingsService {
       if (!provider) return [];
       return this.recurringRepository.find({
         where: { provider: { id: provider.id } },
-        relations: { customer: { user: true }, providerService: { category: true } },
+        relations: {
+          customer: { user: true },
+          providerService: { category: true },
+        },
         order: { createdAt: 'DESC' },
       });
     }
@@ -253,7 +279,11 @@ export class RecurringBookingsService {
     return date.toISOString().split('T')[0];
   }
 
-  private ensureAccess(recurring: RecurringBooking, userId: string, role: UserRole) {
+  private ensureAccess(
+    recurring: RecurringBooking,
+    userId: string,
+    role: UserRole,
+  ) {
     if (role === UserRole.ADMIN) return;
     if (role === UserRole.CUSTOMER && recurring.customer.user.id !== userId) {
       throw new ForbiddenException('Access denied');

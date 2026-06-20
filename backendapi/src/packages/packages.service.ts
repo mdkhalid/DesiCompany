@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ServicePackage } from './entities/service-package.entity';
@@ -24,7 +28,9 @@ export class PackagesService {
     bundlePrice: number,
   ) {
     if (serviceIds.length < 2) {
-      throw new BadRequestException('A package must include at least 2 services');
+      throw new BadRequestException(
+        'A package must include at least 2 services',
+      );
     }
 
     const provider = await this.providerRepository.findOne({
@@ -35,20 +41,27 @@ export class PackagesService {
     const services = await this.providerServiceRepository
       .createQueryBuilder('service')
       .where('service.id IN (:...ids)', { ids: serviceIds })
-      .andWhere('service.provider_id = :providerId', { providerId: provider.id })
+      .andWhere('service.provider_id = :providerId', {
+        providerId: provider.id,
+      })
       .getMany();
 
     if (services.length !== serviceIds.length) {
-      throw new BadRequestException('All services must belong to the same provider');
+      throw new BadRequestException(
+        'All services must belong to the same provider',
+      );
     }
 
     const originalPrice = services.reduce((sum, svc) => {
-      return sum + Number(svc.fixedRate || svc.hourlyRate || svc.dailyRate || 0);
+      return (
+        sum + Number(svc.fixedRate || svc.hourlyRate || svc.dailyRate || 0)
+      );
     }, 0);
 
-    const discountPercent = bundlePrice < originalPrice
-      ? Math.round(((originalPrice - bundlePrice) / originalPrice) * 100)
-      : 0;
+    const discountPercent =
+      bundlePrice < originalPrice
+        ? Math.round(((originalPrice - bundlePrice) / originalPrice) * 100)
+        : 0;
 
     const pkg = this.packageRepository.create({
       provider,
@@ -95,7 +108,7 @@ export class PackagesService {
     });
     if (!pkg) throw new NotFoundException('Package not found');
     if (pkg.provider.user.id !== userId) {
-      throw new BadRequestException('Cannot deactivate others\' packages');
+      throw new BadRequestException("Cannot deactivate others' packages");
     }
     pkg.isActive = false;
     return this.packageRepository.save(pkg);

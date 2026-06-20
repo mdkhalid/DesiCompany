@@ -21,10 +21,22 @@ export class Referral extends BaseEntity {
   @Column({ name: 'is_used', default: false })
   isUsed: boolean;
 
-  @Column({ name: 'referrer_credit_amount', type: 'decimal', precision: 10, scale: 2, default: 50 })
+  @Column({
+    name: 'referrer_credit_amount',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 50,
+  })
   referrerCreditAmount: number;
 
-  @Column({ name: 'referred_credit_amount', type: 'decimal', precision: 10, scale: 2, default: 50 })
+  @Column({
+    name: 'referred_credit_amount',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 50,
+  })
   referredCreditAmount: number;
 
   @Column({ name: 'credited_at', type: 'timestamp', nullable: true })

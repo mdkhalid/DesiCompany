@@ -58,11 +58,7 @@ export class NotificationsService {
     });
   }
 
-  async broadcast(
-    title: string,
-    message: string,
-    role?: UserRole,
-  ) {
+  async broadcast(title: string, message: string, role?: UserRole) {
     // Find target users
     const where: any = {};
     if (role) {

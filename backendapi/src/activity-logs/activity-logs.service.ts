@@ -22,7 +22,7 @@ export class ActivityLogsService {
       action,
       entityType,
       entityId,
-      actor: actorId ? ({ id: actorId } as User) : undefined,
+      actor: actorId ? { id: actorId } : undefined,
       metadata,
     });
     return this.activityLogRepository.save(log);

@@ -5,4 +5,5 @@ export enum TransactionSource {
   SETTLEMENT = 'settlement',
   PAYOUT = 'payout',
   ADMIN_ADJUST = 'admin_adjust',
+  PLATFORM_FEE = 'platform_fee',
 }

@@ -19,7 +19,10 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
-import { CreateRecurringBookingDto, UpdateRecurringBookingDto } from './dto/recurring-booking.dto';
+import {
+  CreateRecurringBookingDto,
+  UpdateRecurringBookingDto,
+} from './dto/recurring-booking.dto';
 
 interface AuthRequest {
   user: { id: string; role: UserRole };
@@ -81,7 +84,9 @@ export class RecurringBookingsController {
 
   @Post('process-due')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Process all due recurring bookings (cron endpoint)' })
+  @ApiOperation({
+    summary: 'Process all due recurring bookings (cron endpoint)',
+  })
   processDue() {
     return this.recurringBookingsService.processDueRecurringBookings();
   }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PortfolioItem } from './entities/portfolio-item.entity';
@@ -31,7 +35,9 @@ export class PortfolioService {
 
     let category: ServiceCategory | null = null;
     if (categoryId) {
-      category = await this.categoryRepository.findOne({ where: { id: categoryId } });
+      category = await this.categoryRepository.findOne({
+        where: { id: categoryId },
+      });
     }
 
     const count = await this.portfolioRepository.count({
@@ -72,7 +78,7 @@ export class PortfolioService {
     if (!item) throw new NotFoundException('Portfolio item not found');
 
     if (role !== UserRole.ADMIN && item.provider.user.id !== userId) {
-      throw new ForbiddenException('Cannot delete others\' portfolio items');
+      throw new ForbiddenException("Cannot delete others' portfolio items");
     }
     await this.portfolioRepository.remove(item);
     return { message: 'Portfolio item deleted' };

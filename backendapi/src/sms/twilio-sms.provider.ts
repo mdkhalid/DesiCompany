@@ -22,9 +22,11 @@ export class TwilioSmsProvider {
 
     try {
       // Dynamic import - twilio is optional
-      const twilio = await import('twilio' as string).catch(() => null);
+      const twilio = await import('twilio').catch(() => null);
       if (!twilio) {
-        this.logger.warn('twilio package not installed. SMS will be logged only.');
+        this.logger.warn(
+          'twilio package not installed. SMS will be logged only.',
+        );
         return;
       }
       this.client = twilio.default(accountSid, authToken);

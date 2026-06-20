@@ -14,13 +14,17 @@ export class CreateDateOverrideDto {
   @ApiPropertyOptional({ example: '09:00' })
   @IsOptional()
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'Time must be HH:MM format' })
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: 'Time must be HH:MM format',
+  })
   startTime?: string;
 
   @ApiPropertyOptional({ example: '18:00' })
   @IsOptional()
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'Time must be HH:MM format' })
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: 'Time must be HH:MM format',
+  })
   endTime?: string;
 
   @ApiPropertyOptional({ example: 'On vacation' })

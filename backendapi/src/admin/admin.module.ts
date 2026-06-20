@@ -8,6 +8,7 @@ import { AdminPaymentGatewaysService } from './admin-payment-gateways.service';
 import { AdminRefundsController } from './admin-refunds.controller';
 import { AdminRefundsService } from './admin-refunds.service';
 import { AdminConfigController } from './admin-config.controller';
+import { AdminPlatformFeesController } from './admin-platform-fees.controller';
 import { User } from '../users/entities/user.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
@@ -22,6 +23,9 @@ import { PaymentsModule } from '../payments/payments.module';
 import { FeedbacksModule } from '../feedbacks/feedbacks.module';
 import { AuthModule } from '../auth/auth.module';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { ReviewsModule } from '../reviews/reviews.module';
+import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 
 @Module({
   imports: [
@@ -37,17 +41,26 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
       Review,
       CommissionConfig,
     ]),
+    PlatformFeesModule,
     PaymentsModule,
     FeedbacksModule,
     AuthModule,
     ActivityLogsModule,
+    NotificationsModule,
+    ReviewsModule,
   ],
   controllers: [
     AdminController,
     AdminPaymentGatewaysController,
     AdminRefundsController,
     AdminConfigController,
+    AdminPlatformFeesController,
   ],
-  providers: [AdminService, AnalyticsService, AdminPaymentGatewaysService, AdminRefundsService],
+  providers: [
+    AdminService,
+    AnalyticsService,
+    AdminPaymentGatewaysService,
+    AdminRefundsService,
+  ],
 })
 export class AdminModule {}

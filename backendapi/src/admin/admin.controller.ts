@@ -170,10 +170,7 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Soft-delete a user' })
   @ApiResponse({ status: 200, description: 'User deleted' })
-  deleteUser(
-    @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
-  ) {
+  deleteUser(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.adminService.deleteUser(id, req.user.id);
   }
 

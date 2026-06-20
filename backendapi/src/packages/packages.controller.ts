@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Delete, Param, Body, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  Body,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PackagesService } from './packages.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -27,7 +36,13 @@ export class PackagesController {
     @Body('serviceIds') serviceIds: string[],
     @Body('bundlePrice') bundlePrice: number,
   ) {
-    return this.packagesService.createPackage(req.user.id, name, description, serviceIds, bundlePrice);
+    return this.packagesService.createPackage(
+      req.user.id,
+      name,
+      description,
+      serviceIds,
+      bundlePrice,
+    );
   }
 
   @Get('active')

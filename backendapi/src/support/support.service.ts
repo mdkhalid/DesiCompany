@@ -1,7 +1,15 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { SupportTicket, SupportTicketStatus, SupportTicketCategory } from './entities/support-ticket.entity';
+import {
+  SupportTicket,
+  SupportTicketStatus,
+  SupportTicketCategory,
+} from './entities/support-ticket.entity';
 import { SupportTicketMessage } from './entities/support-ticket-message.entity';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../common/enums/user-role.enum';
@@ -17,7 +25,12 @@ export class SupportService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async createTicket(userId: string, subject: string, description: string, category: SupportTicketCategory) {
+  async createTicket(
+    userId: string,
+    subject: string,
+    description: string,
+    category: SupportTicketCategory,
+  ) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
@@ -66,14 +79,23 @@ export class SupportService {
     const ticket = await this.getTicketById(ticketId);
     ticket.status = status;
     if (adminId) ticket.assignedAdminId = adminId;
-    if (status === SupportTicketStatus.RESOLVED || status === SupportTicketStatus.CLOSED) {
+    if (
+      status === SupportTicketStatus.RESOLVED ||
+      status === SupportTicketStatus.CLOSED
+    ) {
       ticket.resolvedAt = new Date();
       if (notes) ticket.resolutionNotes = notes;
     }
     return this.ticketRepository.save(ticket);
   }
 
-  async addMessage(ticketId: string, userId: string, message: string, isAdmin: boolean, attachmentUrl?: string) {
+  async addMessage(
+    ticketId: string,
+    userId: string,
+    message: string,
+    isAdmin: boolean,
+    attachmentUrl?: string,
+  ) {
     const ticket = await this.getTicketById(ticketId);
     const sender = await this.userRepository.findOne({ where: { id: userId } });
     if (!sender) throw new NotFoundException('User not found');

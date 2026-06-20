@@ -92,16 +92,18 @@ export class AnalyticsService {
   }
 
   async getRevenueAnalytics(startDate?: string, endDate?: string) {
-    const start = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(new Date().setDate(new Date().getDate() - 30));
     const end = endDate ? new Date(endDate) : new Date();
 
     const dailyRevenue = await this.transactionRepository
       .createQueryBuilder('transaction')
-      .select("DATE(transaction.created_at)", 'date')
+      .select('DATE(transaction.created_at)', 'date')
       .addSelect('SUM(transaction.amount)', 'revenue')
       .where('transaction.created_at BETWEEN :start AND :end', { start, end })
       .andWhere("transaction.type = 'payment'")
-      .groupBy("DATE(transaction.created_at)")
+      .groupBy('DATE(transaction.created_at)')
       .orderBy('date', 'ASC')
       .getRawMany();
 
@@ -239,10 +241,10 @@ export class AnalyticsService {
 
     const result = await this.bookingRepository
       .createQueryBuilder('booking')
-      .select("DATE(booking.created_at)", 'date')
+      .select('DATE(booking.created_at)', 'date')
       .addSelect('COUNT(booking.id)', 'count')
       .where('booking.created_at >= :startDate', { startDate })
-      .groupBy("DATE(booking.created_at)")
+      .groupBy('DATE(booking.created_at)')
       .orderBy('date', 'ASC')
       .getRawMany();
 

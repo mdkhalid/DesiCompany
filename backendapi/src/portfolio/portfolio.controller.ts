@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Delete, Param, Body, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  Body,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PortfolioService } from './portfolio.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -27,7 +36,13 @@ export class PortfolioController {
     @Body('description') description?: string,
     @Body('categoryId') categoryId?: string,
   ) {
-    return this.portfolioService.addItem(req.user.id, title, imageUrl, description, categoryId);
+    return this.portfolioService.addItem(
+      req.user.id,
+      title,
+      imageUrl,
+      description,
+      categoryId,
+    );
   }
 
   @Get('provider/:providerId')

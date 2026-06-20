@@ -109,11 +109,7 @@ export class AdminService {
     });
     const savedUser = await this.userRepository.save(user);
 
-    await this.activityLogsService.log(
-      'admin.created',
-      'User',
-      savedUser.id,
-    );
+    await this.activityLogsService.log('admin.created', 'User', savedUser.id);
 
     return { user: savedUser };
   }
@@ -235,11 +231,7 @@ export class AdminService {
 
     const saved = await this.userRepository.save(user);
 
-    await this.activityLogsService.log(
-      'user.activated',
-      'User',
-      userId,
-    );
+    await this.activityLogsService.log('user.activated', 'User', userId);
 
     return saved;
   }
@@ -289,12 +281,7 @@ export class AdminService {
 
     const saved = await this.userRepository.save(user);
 
-    await this.activityLogsService.log(
-      'user.deleted',
-      'User',
-      userId,
-      adminId,
-    );
+    await this.activityLogsService.log('user.deleted', 'User', userId, adminId);
 
     return saved;
   }

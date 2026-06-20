@@ -32,10 +32,14 @@ export class SupportTicket extends BaseEntity {
   @Column({ type: 'enum', enum: SupportTicketCategory })
   category: SupportTicketCategory;
 
-  @Column({ type: 'enum', enum: SupportTicketStatus, default: SupportTicketStatus.OPEN })
+  @Column({
+    type: 'enum',
+    enum: SupportTicketStatus,
+    default: SupportTicketStatus.OPEN,
+  })
   status: SupportTicketStatus;
 
-  @Column({ name: 'assigned_admin_id', nullable: true })
+  @Column({ name: 'assigned_admin_id', nullable: true, type: 'varchar' })
   assignedAdminId: string | null;
 
   @Column({ name: 'resolution_notes', nullable: true, type: 'text' })

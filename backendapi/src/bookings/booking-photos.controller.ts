@@ -1,5 +1,11 @@
 import {
-  Controller, Get, Post, Delete, Param, Body, UseGuards,
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BookingPhotosService } from './booking-photos.service';

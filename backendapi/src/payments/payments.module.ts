@@ -16,6 +16,7 @@ import { LedgerService } from './ledger.service';
 import { SoftBlockService } from './soft-block.service';
 import { BookingsModule } from '../bookings/bookings.module';
 import { CommissionsModule } from '../commissions/commissions.module';
+import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
@@ -34,6 +35,7 @@ import { Booking } from '../bookings/entities/booking.entity';
     ]),
     BookingsModule,
     CommissionsModule,
+    PlatformFeesModule,
   ],
   controllers: [PaymentsController, WebhooksController, WalletsController],
   providers: [

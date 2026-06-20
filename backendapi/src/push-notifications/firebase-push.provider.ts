@@ -12,9 +12,7 @@ export class FirebasePushProvider {
   private async initFirebase() {
     try {
       // Dynamic import - firebase-admin is optional
-      const firebaseAdmin = await import('firebase-admin' as string).catch(
-        () => null,
-      );
+      const firebaseAdmin = await import('firebase-admin').catch(() => null);
       if (!firebaseAdmin) {
         this.logger.warn(
           'firebase-admin not installed. Push notifications disabled.',

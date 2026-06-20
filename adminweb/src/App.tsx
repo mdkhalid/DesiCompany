@@ -9,6 +9,7 @@ import Categories from './pages/Categories';
 import Bookings from './pages/Bookings';
 import PaymentGateways from './pages/PaymentGateways';
 import Commissions from './pages/Commissions';
+import Fees from './pages/Fees';
 import Refunds from './pages/Refunds';
 import Reviews from './pages/Reviews';
 import CustomerFeedback from './pages/CustomerFeedback';
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/categories" element={<ProtectedRoute><Layout><Categories /></Layout></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute><Layout><Bookings /></Layout></ProtectedRoute>} />
         <Route path="/gateways" element={<ProtectedRoute><Layout><PaymentGateways /></Layout></ProtectedRoute>} />
+        <Route path="/fees" element={<ProtectedRoute><Layout><Fees /></Layout></ProtectedRoute>} />
         <Route path="/commissions" element={<ProtectedRoute><Layout><Commissions /></Layout></ProtectedRoute>} />
         <Route path="/refunds" element={<ProtectedRoute><Layout><Refunds /></Layout></ProtectedRoute>} />
         <Route path="/reviews" element={<ProtectedRoute><Layout><Reviews /></Layout></ProtectedRoute>} />

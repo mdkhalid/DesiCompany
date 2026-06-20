@@ -16,13 +16,13 @@ import { UserRole } from '../common/enums/user-role.enum';
 @Controller('reminders')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class BookingRemindersController {
-  constructor(
-    private readonly remindersService: BookingRemindersService,
-  ) {}
+  constructor(private readonly remindersService: BookingRemindersService) {}
 
   @Post('upcoming')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Send reminders for upcoming bookings (cron endpoint)' })
+  @ApiOperation({
+    summary: 'Send reminders for upcoming bookings (cron endpoint)',
+  })
   @ApiResponse({ status: 200, description: 'Reminders sent' })
   sendUpcomingReminders() {
     return this.remindersService.sendUpcomingBookingReminders();

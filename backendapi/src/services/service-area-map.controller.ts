@@ -8,7 +8,9 @@ export class ServiceAreaMapController {
   constructor(private readonly serviceAreaMapService: ServiceAreaMapService) {}
 
   @Get('providers')
-  @ApiOperation({ summary: 'Get providers within a bounding box (for map display)' })
+  @ApiOperation({
+    summary: 'Get providers within a bounding box (for map display)',
+  })
   getProvidersInBox(
     @Query('minLat') minLat: number,
     @Query('maxLat') maxLat: number,
@@ -26,7 +28,10 @@ export class ServiceAreaMapController {
   @Get('coverage')
   @ApiOperation({ summary: 'Get service area coverage stats for a location' })
   getCoverage(@Query('lat') lat: number, @Query('lng') lng: number) {
-    return this.serviceAreaMapService.getServiceAreaCoverage(Number(lat), Number(lng));
+    return this.serviceAreaMapService.getServiceAreaCoverage(
+      Number(lat),
+      Number(lng),
+    );
   }
 
   @Get('nearby')

@@ -17,6 +17,7 @@ import { CommissionsModule } from '../commissions/commissions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 
 @Module({
   imports: [
@@ -29,12 +30,17 @@ import { LoyaltyModule } from '../loyalty/loyalty.module';
       Provider,
       ProviderService,
     ]),
+    PlatformFeesModule,
     CommissionsModule,
     NotificationsModule,
     PushNotificationsModule,
     LoyaltyModule,
   ],
-  controllers: [BookingsController, BookingRemindersController, BookingPhotosController],
+  controllers: [
+    BookingsController,
+    BookingRemindersController,
+    BookingPhotosController,
+  ],
   providers: [BookingsService, BookingRemindersService, BookingPhotosService],
   exports: [BookingsService, BookingRemindersService, BookingPhotosService],
 })

@@ -30,6 +30,7 @@ describe('Sidebar navigation', () => {
     { to: '/categories', label: 'Categories' },
     { to: '/bookings', label: 'Bookings' },
     { to: '/gateways', label: 'Payment Gateways' },
+    { to: '/fees', label: 'Fees & Revenue' },
     { to: '/commissions', label: 'Commissions' },
     { to: '/refunds', label: 'Refunds' },
     { to: '/reviews', label: 'Reviews' },

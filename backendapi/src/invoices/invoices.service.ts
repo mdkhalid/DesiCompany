@@ -35,11 +35,13 @@ export class InvoicesService {
       order: { createdAt: 'DESC' },
     });
 
-    const subtotal = Number(booking.totalAmount) - this.getTaxAmount(booking.totalAmount);
+    const subtotal =
+      Number(booking.totalAmount) - this.getTaxAmount(booking.totalAmount);
     const taxAmount = this.getTaxAmount(booking.totalAmount);
-    const commissionRate = booking.commissionAmount > 0
-      ? (Number(booking.commissionAmount) / Number(booking.totalAmount)) * 100
-      : 0;
+    const commissionRate =
+      booking.commissionAmount > 0
+        ? (Number(booking.commissionAmount) / Number(booking.totalAmount)) * 100
+        : 0;
 
     return {
       invoice: {
@@ -53,7 +55,12 @@ export class InvoicesService {
         name: `${booking.customer.firstName} ${booking.customer.lastName || ''}`.trim(),
         email: booking.customer.user.email,
         phone: booking.customer.user.phone,
-        address: [booking.customer.address, booking.customer.city, booking.customer.state, booking.customer.pincode]
+        address: [
+          booking.customer.address,
+          booking.customer.city,
+          booking.customer.state,
+          booking.customer.pincode,
+        ]
           .filter(Boolean)
           .join(', '),
       },
@@ -80,13 +87,15 @@ export class InvoicesService {
         commissionAmount: Number(booking.commissionAmount),
         providerEarnings: Number(booking.providerAmount),
       },
-      payment: payment ? {
-        id: payment.id,
-        method: payment.method,
-        status: payment.status,
-        amount: Number(payment.amount),
-        gatewayOrderId: payment.gatewayOrderId,
-      } : null,
+      payment: payment
+        ? {
+            id: payment.id,
+            method: payment.method,
+            status: payment.status,
+            amount: Number(payment.amount),
+            gatewayOrderId: payment.gatewayOrderId,
+          }
+        : null,
       company: {
         name: 'DesiCompany',
         address: 'Mumbai, Maharashtra, India',
@@ -101,10 +110,12 @@ export class InvoicesService {
   }
 
   private renderInvoiceHTML(invoice: any): string {
-    const chargesHTML = invoice.charges.map(
-      (c: any) =>
-        `<tr><td>${c.type}</td><td>${c.description || '-'}</td><td style="text-align:right">Rs. ${c.amount.toFixed(2)}</td></tr>`,
-    ).join('');
+    const chargesHTML = invoice.charges
+      .map(
+        (c: any) =>
+          `<tr><td>${c.type}</td><td>${c.description || '-'}</td><td style="text-align:right">Rs. ${c.amount.toFixed(2)}</td></tr>`,
+      )
+      .join('');
 
     return `<!DOCTYPE html>
 <html><head><style>

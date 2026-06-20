@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  UseGuards,
-  Req,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -36,10 +29,16 @@ export class ReferralsController {
 
   @Post('apply')
   @ApiOperation({ summary: 'Apply a referral code' })
-  @ApiResponse({ status: 201, description: 'Referral applied, wallet credited' })
+  @ApiResponse({
+    status: 201,
+    description: 'Referral applied, wallet credited',
+  })
   @ApiResponse({ status: 400, description: 'Invalid or own code' })
   applyCode(@Req() req: AuthRequest, @Body() dto: ApplyReferralDto) {
-    return this.referralsService.applyReferralCode(req.user.id, dto.referralCode);
+    return this.referralsService.applyReferralCode(
+      req.user.id,
+      dto.referralCode,
+    );
   }
 
   @Get('stats')

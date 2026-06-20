@@ -17,6 +17,7 @@ frontendapp/build/
 frontendapp/.flutter-plugins
 frontendapp/.flutter-plugins-dependencies
 frontendapp/pubspec.lock
+.commandcode/
 adminweb/node_modules/
 adminweb/dist/
 adminweb/tsconfig.tsbuildinfo

@@ -1,7 +1,20 @@
-import { Controller, Get, Post, Patch, Param, Body, Req, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Req,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SupportService } from './support.service';
-import { SupportTicketStatus, SupportTicketCategory } from './entities/support-ticket.entity';
+import {
+  SupportTicketStatus,
+  SupportTicketCategory,
+} from './entities/support-ticket.entity';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -27,7 +40,12 @@ export class SupportController {
     @Body('description') description: string,
     @Body('category') category: SupportTicketCategory,
   ) {
-    return this.supportService.createTicket(req.user.id, subject, description, category);
+    return this.supportService.createTicket(
+      req.user.id,
+      subject,
+      description,
+      category,
+    );
   }
 
   @Get('tickets/my')
@@ -60,7 +78,12 @@ export class SupportController {
     @Body('status') status: SupportTicketStatus,
     @Body('notes') notes?: string,
   ) {
-    return this.supportService.updateTicketStatus(id, status, notes, req.user.id);
+    return this.supportService.updateTicketStatus(
+      id,
+      status,
+      notes,
+      req.user.id,
+    );
   }
 
   @Post('tickets/:id/messages')
@@ -85,8 +108,8 @@ export class SupportController {
   @Roles(UserRole.CUSTOMER, UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get messages for a ticket' })
   getMessages(@Req() req: AuthRequest, @Param('id') id: string) {
-    return this.supportService.ensureAccess(id, req.user.id, req.user.role).then(() =>
-      this.supportService.getMessages(id),
-    );
+    return this.supportService
+      .ensureAccess(id, req.user.id, req.user.role)
+      .then(() => this.supportService.getMessages(id));
   }
 }

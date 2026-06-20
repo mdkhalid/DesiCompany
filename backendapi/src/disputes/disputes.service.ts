@@ -102,7 +102,10 @@ export class DisputesService {
       throw new NotFoundException('Dispute not found');
     }
 
-    if (dispute.status === DisputeStatus.RESOLVED || dispute.status === DisputeStatus.DISMISSED) {
+    if (
+      dispute.status === DisputeStatus.RESOLVED ||
+      dispute.status === DisputeStatus.DISMISSED
+    ) {
       throw new BadRequestException('Dispute is already closed');
     }
 

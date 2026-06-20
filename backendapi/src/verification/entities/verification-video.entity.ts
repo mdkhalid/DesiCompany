@@ -23,7 +23,11 @@ export class VerificationVideo extends BaseEntity {
   @Column({ name: 'duration_seconds', default: 30 })
   durationSeconds: number;
 
-  @Column({ type: 'enum', enum: VerificationVideoStatus, default: VerificationVideoStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: VerificationVideoStatus,
+    default: VerificationVideoStatus.PENDING,
+  })
   status: VerificationVideoStatus;
 
   @Column({ nullable: true, type: 'text' })

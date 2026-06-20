@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { VerificationVideo, VerificationVideoStatus } from './entities/verification-video.entity';
+import {
+  VerificationVideo,
+  VerificationVideoStatus,
+} from './entities/verification-video.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 
@@ -14,7 +21,12 @@ export class VerificationVideosService {
     private readonly providerRepository: Repository<Provider>,
   ) {}
 
-  async uploadVideo(userId: string, videoUrl: string, durationSeconds: number, thumbnailUrl?: string) {
+  async uploadVideo(
+    userId: string,
+    videoUrl: string,
+    durationSeconds: number,
+    thumbnailUrl?: string,
+  ) {
     if (durationSeconds > 60 || durationSeconds < 5) {
       throw new BadRequestException('Video must be between 5 and 60 seconds');
     }
@@ -28,7 +40,9 @@ export class VerificationVideosService {
       where: { provider: { id: provider.id } },
     });
     if (existing && existing.status === VerificationVideoStatus.PENDING) {
-      throw new BadRequestException('You already have a pending verification video');
+      throw new BadRequestException(
+        'You already have a pending verification video',
+      );
     }
 
     const video = this.videoRepository.create({
@@ -56,7 +70,11 @@ export class VerificationVideosService {
     });
   }
 
-  async reviewVideo(id: string, status: VerificationVideoStatus, reviewerNotes?: string) {
+  async reviewVideo(
+    id: string,
+    status: VerificationVideoStatus,
+    reviewerNotes?: string,
+  ) {
     const video = await this.videoRepository.findOne({ where: { id } });
     if (!video) throw new NotFoundException('Video not found');
     video.status = status;

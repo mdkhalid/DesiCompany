@@ -7,7 +7,9 @@ import { Provider } from '../users/entities/provider.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ServicePackage, Provider, ProviderService])],
+  imports: [
+    TypeOrmModule.forFeature([ServicePackage, Provider, ProviderService]),
+  ],
   controllers: [PackagesController],
   providers: [PackagesService],
   exports: [PackagesService],

@@ -550,18 +550,78 @@ async function seed() {
 
   // Seed subcategories
   const subcategories = [
-    { parent: 'Plumber', nameEn: 'Pipe Repair', nameHi: 'पाइप मरम्मत', icon: 'pipe repair' },
-    { parent: 'Plumber', nameEn: 'Water Tank Cleaning', nameHi: 'वॉटर टैंक क्लीनिंग', icon: 'water tank' },
-    { parent: 'Plumber', nameEn: 'Bathroom Fitting', nameHi: 'बाथरूम फिटिंग', icon: 'bathroom' },
-    { parent: 'Electrician', nameEn: 'Wiring', nameHi: 'वायरिंग', icon: 'wiring' },
-    { parent: 'Electrician', nameEn: 'Fan Installation', nameHi: 'फैन इंस्टॉलेशन', icon: 'fan' },
-    { parent: 'Electrician', nameEn: 'Switch Board Repair', nameHi: 'स्विच बोर्ड मरम्मत', icon: 'switch' },
-    { parent: 'Cleaning', nameEn: 'Deep Cleaning', nameHi: 'डीप क्लीनिंग', icon: 'deep cleaning' },
-    { parent: 'Cleaning', nameEn: 'Sofa Cleaning', nameHi: 'सोफा क्लीनिंग', icon: 'sofa' },
-    { parent: 'Cleaning', nameEn: 'Carpet Cleaning', nameHi: 'कार्पेट क्लीनिंग', icon: 'carpet' },
-    { parent: 'AC Repair', nameEn: 'AC Installation', nameHi: 'एसी इंस्टॉलेशन', icon: 'ac install' },
-    { parent: 'AC Repair', nameEn: 'AC Gas Refill', nameHi: 'एसी गैस रीफिल', icon: 'gas refill' },
-    { parent: 'AC Repair', nameEn: 'AC Servicing', nameHi: 'एसी सर्विसिंग', icon: 'ac service' },
+    {
+      parent: 'Plumber',
+      nameEn: 'Pipe Repair',
+      nameHi: 'पाइप मरम्मत',
+      icon: 'pipe repair',
+    },
+    {
+      parent: 'Plumber',
+      nameEn: 'Water Tank Cleaning',
+      nameHi: 'वॉटर टैंक क्लीनिंग',
+      icon: 'water tank',
+    },
+    {
+      parent: 'Plumber',
+      nameEn: 'Bathroom Fitting',
+      nameHi: 'बाथरूम फिटिंग',
+      icon: 'bathroom',
+    },
+    {
+      parent: 'Electrician',
+      nameEn: 'Wiring',
+      nameHi: 'वायरिंग',
+      icon: 'wiring',
+    },
+    {
+      parent: 'Electrician',
+      nameEn: 'Fan Installation',
+      nameHi: 'फैन इंस्टॉलेशन',
+      icon: 'fan',
+    },
+    {
+      parent: 'Electrician',
+      nameEn: 'Switch Board Repair',
+      nameHi: 'स्विच बोर्ड मरम्मत',
+      icon: 'switch',
+    },
+    {
+      parent: 'Cleaning',
+      nameEn: 'Deep Cleaning',
+      nameHi: 'डीप क्लीनिंग',
+      icon: 'deep cleaning',
+    },
+    {
+      parent: 'Cleaning',
+      nameEn: 'Sofa Cleaning',
+      nameHi: 'सोफा क्लीनिंग',
+      icon: 'sofa',
+    },
+    {
+      parent: 'Cleaning',
+      nameEn: 'Carpet Cleaning',
+      nameHi: 'कार्पेट क्लीनिंग',
+      icon: 'carpet',
+    },
+    {
+      parent: 'AC Repair',
+      nameEn: 'AC Installation',
+      nameHi: 'एसी इंस्टॉलेशन',
+      icon: 'ac install',
+    },
+    {
+      parent: 'AC Repair',
+      nameEn: 'AC Gas Refill',
+      nameHi: 'एसी गैस रीफिल',
+      icon: 'gas refill',
+    },
+    {
+      parent: 'AC Repair',
+      nameEn: 'AC Servicing',
+      nameHi: 'एसी सर्विसिंग',
+      icon: 'ac service',
+    },
   ];
 
   for (const sub of subcategories) {

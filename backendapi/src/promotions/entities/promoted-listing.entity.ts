@@ -31,7 +31,11 @@ export class PromotedListing extends BaseEntity {
   @Column({ name: 'priority', default: 0 })
   priority: number;
 
-  @Column({ type: 'enum', enum: PromotedListingStatus, default: PromotedListingStatus.ACTIVE })
+  @Column({
+    type: 'enum',
+    enum: PromotedListingStatus,
+    default: PromotedListingStatus.ACTIVE,
+  })
   status: PromotedListingStatus;
 
   @Column({ name: 'impressions', default: 0 })

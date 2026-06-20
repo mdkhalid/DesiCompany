@@ -9,6 +9,7 @@ import { JobRequest } from './entities/job-request.entity';
 import { Quote } from './entities/quote.entity';
 import { QuotesController } from './quotes.controller';
 import { QuotesService } from './quotes.service';
+import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { QuotesService } from './quotes.service';
       ProviderService,
       Booking,
     ]),
+    PlatformFeesModule,
   ],
   controllers: [QuotesController],
   providers: [QuotesService],

@@ -30,10 +30,7 @@ export class BadgesService {
     const badges: BadgeType[] = [];
 
     // TOP_RATED: 4.5+ rating with 20+ reviews
-    if (
-      Number(provider.averageRating) >= 4.5 &&
-      provider.totalReviews >= 20
-    ) {
+    if (Number(provider.averageRating) >= 4.5 && provider.totalReviews >= 20) {
       badges.push(BadgeType.TOP_RATED);
     }
 

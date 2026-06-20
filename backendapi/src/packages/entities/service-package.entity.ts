@@ -1,5 +1,10 @@
 import {
-  Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne,
+  Column,
+  Entity,
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
 } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { Provider } from '../../users/entities/provider.entity';

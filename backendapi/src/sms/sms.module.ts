@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
 import { SmsService } from './sms.service';
 import { TwilioSmsProvider } from './twilio-sms.provider';
-
-export const SMS_PROVIDER = 'SMS_PROVIDER';
+import { SMS_PROVIDER } from './sms.constants';
 
 @Module({
   providers: [

@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Body, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { VerificationVideosService } from './verification-videos.service';
 import { VerificationVideoStatus } from './entities/verification-video.entity';
@@ -27,7 +35,12 @@ export class VerificationVideosController {
     @Body('durationSeconds') durationSeconds: number,
     @Body('thumbnailUrl') thumbnailUrl?: string,
   ) {
-    return this.videosService.uploadVideo(req.user.id, videoUrl, durationSeconds, thumbnailUrl);
+    return this.videosService.uploadVideo(
+      req.user.id,
+      videoUrl,
+      durationSeconds,
+      thumbnailUrl,
+    );
   }
 
   @Get('provider/:providerId')

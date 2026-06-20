@@ -145,7 +145,11 @@ export class ReferralsService {
     });
   }
 
-  private async creditWallet(userId: string, amount: number, description: string) {
+  private async creditWallet(
+    userId: string,
+    amount: number,
+    description: string,
+  ) {
     let wallet = await this.walletRepository.findOne({
       where: { user: { id: userId } },
     });

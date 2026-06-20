@@ -45,7 +45,10 @@ export class CreateBookingDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Mark as urgent/emergency service', default: false })
+  @ApiPropertyOptional({
+    description: 'Mark as urgent/emergency service',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isEmergency?: boolean;
@@ -61,7 +64,10 @@ export class CreateBookingDto {
   @ArrayMinSize(1)
   additionalServices?: BookingServiceItemDto[];
 
-  @ApiPropertyOptional({ description: 'Discount percent for multi-service bundle', default: 0 })
+  @ApiPropertyOptional({
+    description: 'Discount percent for multi-service bundle',
+    default: 0,
+  })
   @IsOptional()
   @IsNumber()
   bundleDiscountPercent?: number;

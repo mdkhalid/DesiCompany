@@ -2,7 +2,7 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
-import { PUSH_NOTIFICATION_PROVIDER } from './push-notifications.module';
+import { PUSH_NOTIFICATION_PROVIDER } from './push-notifications.constants';
 
 @Injectable()
 export class PushNotificationsService {
@@ -12,7 +12,14 @@ export class PushNotificationsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @Inject(PUSH_NOTIFICATION_PROVIDER)
-    private readonly pushProvider: { send(payload: { token: string; title: string; body: string; data?: Record<string, string> }): Promise<void> },
+    private readonly pushProvider: {
+      send(payload: {
+        token: string;
+        title: string;
+        body: string;
+        data?: Record<string, string>;
+      }): Promise<void>;
+    },
   ) {}
 
   async sendToUser(

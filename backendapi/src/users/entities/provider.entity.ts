@@ -84,10 +84,7 @@ export class Provider extends BaseEntity {
   )
   availabilities?: ProviderAvailability[];
 
-  @OneToMany(
-    () => ProviderDateOverride,
-    (override) => override.provider,
-  )
+  @OneToMany(() => ProviderDateOverride, (override) => override.provider)
   dateOverrides?: ProviderDateOverride[];
 
   @OneToMany(() => Booking, (booking) => booking.provider)

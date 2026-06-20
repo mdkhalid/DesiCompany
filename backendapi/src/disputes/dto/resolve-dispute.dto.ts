@@ -4,7 +4,10 @@ import { DisputeStatus } from '../entities/dispute.entity';
 export class ResolveDisputeDto {
   @IsEnum(DisputeStatus)
   @IsNotEmpty()
-  status: DisputeStatus.RESOLVED | DisputeStatus.DISMISSED | DisputeStatus.IN_REVIEW;
+  status:
+    | DisputeStatus.RESOLVED
+    | DisputeStatus.DISMISSED
+    | DisputeStatus.IN_REVIEW;
 
   @IsString()
   @IsNotEmpty()

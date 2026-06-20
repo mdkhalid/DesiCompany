@@ -7,7 +7,9 @@ import { Provider } from '../users/entities/provider.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PortfolioItem, Provider, ServiceCategory])],
+  imports: [
+    TypeOrmModule.forFeature([PortfolioItem, Provider, ServiceCategory]),
+  ],
   controllers: [PortfolioController],
   providers: [PortfolioService],
   exports: [PortfolioService],

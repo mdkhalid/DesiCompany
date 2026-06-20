@@ -18,6 +18,7 @@ import { CommissionService } from '../commissions/commission.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 import {
   CreateBookingDto,
   UpdateBookingStatusDto,
@@ -46,6 +47,7 @@ export class BookingsService {
     private readonly notificationsService: NotificationsService,
     private readonly pushNotificationsService: PushNotificationsService,
     private readonly loyaltyService: LoyaltyService,
+    private readonly platformFeesService: PlatformFeesService,
   ) {}
 
   async createByUser(userId: string, dto: CreateBookingDto) {
@@ -117,7 +119,9 @@ export class BookingsService {
           },
         });
         if (additionalService) {
-          const rate = Number(additionalService.fixedRate || additionalService.hourlyRate || 0);
+          const rate = Number(
+            additionalService.fixedRate || additionalService.hourlyRate || 0,
+          );
           const bookingItem = this.bookingServiceItemRepository.create({
             booking: saved,
             providerService: additionalService,
@@ -377,9 +381,7 @@ export class BookingsService {
     const booking = await this.findOne(id);
 
     if (booking.status !== BookingStatus.PROPOSED_NEW_TIME) {
-      throw new BadRequestException(
-        'No active time proposal for this booking',
-      );
+      throw new BadRequestException('No active time proposal for this booking');
     }
 
     this.ensureBookingAccess(booking, userId, role);
@@ -503,35 +505,74 @@ export class BookingsService {
     }
 
     // Add additional services to base amount
-    const additionalServiceTotal = (booking.serviceItems || []).reduce((sum, item) => {
-      if (item.estimatedHours) {
-        return sum + Number(item.rateAtBooking) * Number(item.estimatedHours);
-      }
-      if (item.estimatedDays) {
-        return sum + Number(item.rateAtBooking) * Number(item.estimatedDays);
-      }
-      return sum + Number(item.rateAtBooking);
-    }, 0);
+    const additionalServiceTotal = (booking.serviceItems || []).reduce(
+      (sum, item) => {
+        if (item.estimatedHours) {
+          return sum + Number(item.rateAtBooking) * Number(item.estimatedHours);
+        }
+        if (item.estimatedDays) {
+          return sum + Number(item.rateAtBooking) * Number(item.estimatedDays);
+        }
+        return sum + Number(item.rateAtBooking);
+      },
+      0,
+    );
     baseAmount += additionalServiceTotal;
 
     // Apply multi-service bundle discount if more than 1 service
     const totalServiceCount = 1 + (booking.serviceItems?.length || 0);
     if (totalServiceCount > 1) {
-      const bundleDiscount = parseFloat(process.env.MULTI_SERVICE_BUNDLE_DISCOUNT || '10');
+      const bundleDiscount = parseFloat(
+        process.env.MULTI_SERVICE_BUNDLE_DISCOUNT || '10',
+      );
       baseAmount = baseAmount * (1 - bundleDiscount / 100);
     }
 
     // Apply emergency multiplier if this is an emergency booking
     if (booking.isEmergency) {
-      const emergencyMultiplier = parseFloat(process.env.EMERGENCY_PRICE_MULTIPLIER || '1.5');
+      const emergencyMultiplier = parseFloat(
+        process.env.EMERGENCY_PRICE_MULTIPLIER || '1.5',
+      );
       baseAmount = baseAmount * emergencyMultiplier;
     }
 
-    const chargesTotal = (booking.charges || []).reduce(
-      (sum, charge) => sum + Number(charge.amount),
-      0,
+    const serviceAmount =
+      baseAmount +
+      (booking.charges || []).reduce(
+        (sum, charge) =>
+          charge.chargeType === 'convenience_fee'
+            ? sum
+            : sum + Number(charge.amount),
+        0,
+      );
+
+    // Calculate convenience fee
+    const fee = await this.platformFeesService.getConvenienceFee(serviceAmount);
+    booking.convenienceFee = fee.finalFee;
+
+    // Create or update the convenience fee charge for audit trail
+    const existingFeeCharge = (booking.charges || []).find(
+      (c) => c.chargeType === 'convenience_fee',
     );
-    const totalAmount = baseAmount + chargesTotal;
+    if (fee.finalFee > 0) {
+      if (existingFeeCharge) {
+        existingFeeCharge.amount = fee.finalFee;
+        await this.chargeRepository.save(existingFeeCharge);
+      } else {
+        const feeCharge = this.chargeRepository.create({
+          booking: { id: booking.id },
+          chargeType: 'convenience_fee',
+          amount: fee.finalFee,
+          description: 'Platform convenience fee',
+        });
+        await this.chargeRepository.save(feeCharge);
+      }
+    } else if (existingFeeCharge) {
+      await this.chargeRepository.remove(existingFeeCharge);
+    }
+
+    // Total = service amount + convenience fee (commission is on service amount only)
+    const totalAmount = serviceAmount + fee.finalFee;
 
     // Commission lookup: provider scope → category scope → global fallback
     const providerId = booking.provider?.id;
@@ -540,16 +581,16 @@ export class BookingsService {
     let commission;
     if (providerId) {
       commission = await this.commissionService.getCommission(
-        totalAmount,
+        serviceAmount,
         'provider',
         providerId,
       );
     }
-    if (!commission || commission.amount === totalAmount * 0.1) {
+    if (!commission || commission.amount === serviceAmount * 0.1) {
       // No provider-specific config found (fell through to default 10%), try category
       if (categoryId) {
         const categoryCommission = await this.commissionService.getCommission(
-          totalAmount,
+          serviceAmount,
           'category',
           categoryId,
         );
@@ -571,7 +612,7 @@ export class BookingsService {
 
     booking.totalAmount = totalAmount;
     booking.commissionAmount = commission.amount;
-    booking.providerAmount = totalAmount - commission.amount;
+    booking.providerAmount = serviceAmount - commission.amount;
 
     return this.bookingRepository.save(booking);
   }

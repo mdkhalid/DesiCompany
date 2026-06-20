@@ -43,6 +43,15 @@ export class Booking extends BaseEntity {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   providerAmount: number;
 
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    name: 'convenience_fee',
+  })
+  convenienceFee: number;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   estimatedHours: number;
 

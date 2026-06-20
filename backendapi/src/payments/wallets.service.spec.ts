@@ -6,12 +6,14 @@ import { WalletsService } from './wallets.service';
 import { Wallet } from './entities/wallet.entity';
 import { Transaction } from './entities/transaction.entity';
 import { User } from '../users/entities/user.entity';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 describe('WalletsService', () => {
   let service: WalletsService;
   let walletRepo: jest.Mocked<Repository<Wallet>>;
   let txRepo: jest.Mocked<Repository<Transaction>>;
   let userRepo: jest.Mocked<Repository<User>>;
+  let platformFeesService: jest.Mocked<PlatformFeesService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -37,6 +39,12 @@ describe('WalletsService', () => {
             findOne: jest.fn(),
           },
         },
+        {
+          provide: PlatformFeesService,
+          useValue: {
+            calculateInstantPayoutFee: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -44,6 +52,7 @@ describe('WalletsService', () => {
     walletRepo = module.get(getRepositoryToken(Wallet));
     txRepo = module.get(getRepositoryToken(Transaction));
     userRepo = module.get(getRepositoryToken(User));
+    platformFeesService = module.get(PlatformFeesService);
   });
 
   describe('getWallet', () => {

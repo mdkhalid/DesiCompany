@@ -3,8 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PushNotificationsService } from './push-notifications.service';
 import { FirebasePushProvider } from './firebase-push.provider';
 import { User } from '../users/entities/user.entity';
-
-export const PUSH_NOTIFICATION_PROVIDER = 'PUSH_NOTIFICATION_PROVIDER';
+import { PUSH_NOTIFICATION_PROVIDER } from './push-notifications.constants';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User])],

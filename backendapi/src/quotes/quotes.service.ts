@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
@@ -19,9 +20,12 @@ import { JobRequest } from './entities/job-request.entity';
 import { JobRequestStatus } from './entities/job-request-status.enum';
 import { Quote } from './entities/quote.entity';
 import { QuoteStatus } from './entities/quote-status.enum';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 @Injectable()
 export class QuotesService {
+  private readonly logger = new Logger(QuotesService.name);
+
   constructor(
     @InjectRepository(JobRequest)
     private readonly jobRequestRepository: Repository<JobRequest>,
@@ -37,6 +41,7 @@ export class QuotesService {
     private readonly providerServiceRepository: Repository<ProviderService>,
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
+    private readonly platformFeesService: PlatformFeesService,
   ) {}
 
   async createJobRequest(dto: CreateJobRequestDto, userId: string) {
@@ -247,6 +252,13 @@ export class QuotesService {
       await this.jobRequestRepository.save(jobRequest);
     }
 
+    // Calculate and log lead/quote fee (non-blocking — doesn't prevent quote submission)
+    this.chargeLeadQuoteFee(provider, saved).catch((err) =>
+      this.logger.warn(
+        `Lead quote fee calculation failed: ${(err as Error).message}`,
+      ),
+    );
+
     return saved;
   }
 
@@ -408,5 +420,21 @@ export class QuotesService {
         charges: true,
       },
     });
+  }
+
+  private async chargeLeadQuoteFee(
+    provider: Provider,
+    quote: Quote,
+  ): Promise<void> {
+    const feeResult = await this.platformFeesService.calculateLeadQuoteFee(
+      Number(quote.amount),
+      provider.id,
+    );
+    if (feeResult.finalFee > 0) {
+      this.logger.log(
+        `Lead quote fee of ₹${feeResult.finalFee} applicable for provider ${provider.id} on quote ${quote.id}`,
+      );
+      // Fee is tracked; actual deduction can be done via wallet or invoiced later
+    }
   }
 }

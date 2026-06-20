@@ -42,7 +42,8 @@ export class BookingRemindersService {
 
       if (minutesUntil <= 60 && minutesUntil > 0) {
         const providerName = `${booking.provider.firstName} ${booking.provider.lastName}`;
-        const serviceName = booking.providerService?.category?.nameEn || 'Service';
+        const serviceName =
+          booking.providerService?.category?.nameEn || 'Service';
 
         // Notify customer
         await this.notificationsService.create(
@@ -112,7 +113,8 @@ export class BookingRemindersService {
 
     for (const booking of bookings) {
       const providerName = `${booking.provider.firstName} ${booking.provider.lastName}`;
-      const serviceName = booking.providerService?.category?.nameEn || 'Service';
+      const serviceName =
+        booking.providerService?.category?.nameEn || 'Service';
 
       await this.notificationsService.create(
         booking.customer.user.id,

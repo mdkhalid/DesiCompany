@@ -34,6 +34,7 @@ import { FollowUpModule } from './followup/followup.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { TranslationModule } from './chat/translation.module';
 import { PricingModule } from './pricing/pricing.module';
+import { PlatformFeesModule } from './platform-fees/platform-fees.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { PackagesModule } from './packages/packages.module';
 import { VerificationVideosModule } from './verification/verification-videos.module';
@@ -96,6 +97,7 @@ import { ActivityLog } from './activity-logs/entities/activity-log.entity';
     PortfolioModule,
     TranslationModule,
     PricingModule,
+    PlatformFeesModule,
     PromotionsModule,
     PackagesModule,
     VerificationVideosModule,
