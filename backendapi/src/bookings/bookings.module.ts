@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
+import { BookingRemindersController } from './booking-reminders.controller';
+import { BookingRemindersService } from './booking-reminders.service';
 import { Booking } from './entities/booking.entity';
 import { BookingCharge } from './entities/booking-charge.entity';
 import { Customer } from '../users/entities/customer.entity';
@@ -24,8 +26,8 @@ import { PushNotificationsModule } from '../push-notifications/push-notification
     NotificationsModule,
     PushNotificationsModule,
   ],
-  controllers: [BookingsController],
-  providers: [BookingsService],
-  exports: [BookingsService],
+  controllers: [BookingsController, BookingRemindersController],
+  providers: [BookingsService, BookingRemindersService],
+  exports: [BookingsService, BookingRemindersService],
 })
 export class BookingsModule {}
