@@ -34,6 +34,10 @@ import { FollowUpModule } from './followup/followup.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { TranslationModule } from './chat/translation.module';
 import { PricingModule } from './pricing/pricing.module';
+import { PromotionsModule } from './promotions/promotions.module';
+import { PackagesModule } from './packages/packages.module';
+import { VerificationVideosModule } from './verification/verification-videos.module';
+import { SupportModule } from './support/support.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -92,6 +96,10 @@ import { ActivityLog } from './activity-logs/entities/activity-log.entity';
     PortfolioModule,
     TranslationModule,
     PricingModule,
+    PromotionsModule,
+    PackagesModule,
+    VerificationVideosModule,
+    SupportModule,
     TypeOrmModule.forFeature([
       User,
       Customer,
