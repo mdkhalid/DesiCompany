@@ -100,4 +100,72 @@ export class SoftBlockService {
 
     return totalCommissionOwed >= threshold;
   }
+
+  async checkAndBlockForProvider(userId: string): Promise<void> {
+    const wallet = await this.walletRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!wallet) return;
+
+    const provider = await this.providerRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!provider || provider.isSoftBlocked) return;
+
+    const shouldBlock = await this.shouldSoftBlock(wallet);
+    if (shouldBlock) {
+      provider.isSoftBlocked = true;
+      await this.providerRepository.save(provider);
+      this.logger.warn(
+        `Provider user ${userId} soft-blocked due to outstanding commissions`,
+      );
+    }
+  }
+
+  async unblockProvider(userId: string): Promise<void> {
+    const provider = await this.providerRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!provider) return;
+
+    if (!provider.isSoftBlocked) return;
+
+    provider.isSoftBlocked = false;
+    await this.providerRepository.save(provider);
+    this.logger.log(`Provider user ${userId} unblocked`);
+  }
+
+  async checkAndUnblockProvider(userId: string): Promise<void> {
+    const wallet = await this.walletRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!wallet) return;
+
+    const provider = await this.providerRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!provider || !provider.isSoftBlocked) return;
+
+    const outstanding = await this.transactionRepository
+      .createQueryBuilder('tx')
+      .where('tx.wallet_id = :walletId', { walletId: wallet.id })
+      .andWhere('tx.source = :source', {
+        source: TransactionSource.COMMISSION_OWED,
+      })
+      .andWhere('tx.type = :type', { type: 'debit' })
+      .getMany();
+
+    const totalOwed = outstanding.reduce(
+      (sum, tx) => sum + Number(tx.amount),
+      0,
+    );
+
+    if (totalOwed <= 0) {
+      provider.isSoftBlocked = false;
+      await this.providerRepository.save(provider);
+      this.logger.log(
+        `Provider user ${userId} auto-unblocked — all commissions settled`,
+      );
+    }
+  }
 }

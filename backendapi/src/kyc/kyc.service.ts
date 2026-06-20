@@ -80,9 +80,12 @@ export class KycService {
 
     if (status === KycStatus.APPROVED) {
       document.provider.isVerified = true;
-      document.provider.user.status = UserStatus.ACTIVE;
+      // Only activate user if not suspended - suspended users require admin intervention
+      if (document.provider.user.status !== UserStatus.SUSPENDED) {
+        document.provider.user.status = UserStatus.ACTIVE;
+        await this.userRepository.save(document.provider.user);
+      }
       await this.providerRepository.save(document.provider);
-      await this.userRepository.save(document.provider.user);
     } else if (status === KycStatus.REJECTED) {
       document.provider.isVerified = false;
       await this.providerRepository.save(document.provider);

@@ -24,6 +24,15 @@ export class User extends BaseEntity {
   status: UserStatus;
 
   @Column({ nullable: true })
+  suspendedAt?: Date;
+
+  @Column({ nullable: true })
+  suspendedBy?: string;
+
+  @Column({ nullable: true, type: 'text' })
+  suspensionReason?: string;
+
+  @Column({ nullable: true })
   profileImage: string;
 
   @Column({ default: 'en' })

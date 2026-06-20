@@ -18,8 +18,17 @@ async function bootstrap() {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Swagger UI needs unsafe-inline/eval
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
-          fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net'],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            'https://fonts.googleapis.com',
+            'https://cdn.jsdelivr.net',
+          ],
+          fontSrc: [
+            "'self'",
+            'https://fonts.gstatic.com',
+            'https://cdn.jsdelivr.net',
+          ],
           imgSrc: ["'self'", 'data:', 'https://fastly.pinkomatic.com'],
           connectSrc: ["'self'"],
         },
@@ -50,11 +59,18 @@ async function bootstrap() {
     .filter(Boolean);
 
   if (allowedOrigins.length === 0 && process.env.NODE_ENV === 'production') {
-    console.warn('WARNING: CORS_ALLOWED_ORIGINS is not set. CORS will deny all origins in production.');
+    console.warn(
+      'WARNING: CORS_ALLOWED_ORIGINS is not set. CORS will deny all origins in production.',
+    );
   }
 
   app.enableCors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : process.env.NODE_ENV === 'production' ? [] : true,
+    origin:
+      allowedOrigins.length > 0
+        ? allowedOrigins
+        : process.env.NODE_ENV === 'production'
+          ? []
+          : true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: true,
@@ -78,4 +94,3 @@ bootstrap().catch((err) => {
   console.error('Application failed to start:', err);
   process.exit(1);
 });
-

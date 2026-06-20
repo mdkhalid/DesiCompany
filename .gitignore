@@ -8,6 +8,7 @@ server-error.log
 body.json
 body2.json
 login_resp.json
+TEST_CREDENTIALS.md
 .kimchi/
 frontendapp/.dart_tool/
 frontendapp/.packages

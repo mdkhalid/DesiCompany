@@ -18,6 +18,7 @@ import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 import { PaymentGateway } from './gateways/payment-gateway.interface';
+import { SoftBlockService } from './soft-block.service';
 
 interface CreateOrderResult {
   gatewayOrderId: string;
@@ -97,6 +98,12 @@ describe('PaymentsService', () => {
         {
           provide: DataSource,
           useValue: { transaction: jest.fn() },
+        },
+        {
+          provide: SoftBlockService,
+          useValue: {
+            checkAndBlockForProvider: jest.fn(),
+          },
         },
       ],
     }).compile();

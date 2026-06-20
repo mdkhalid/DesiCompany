@@ -5,6 +5,7 @@ import { Wallet } from './entities/wallet.entity';
 import { Transaction } from './entities/transaction.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { TransactionSource } from '../common/enums/transaction-source.enum';
+import { SoftBlockService } from './soft-block.service';
 
 @Injectable()
 export class LedgerService {
@@ -18,6 +19,7 @@ export class LedgerService {
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
     private readonly dataSource: DataSource,
+    private readonly softBlockService: SoftBlockService,
   ) {}
 
   async settleOutstandingCommissions(providerUserId?: string) {
@@ -79,5 +81,13 @@ export class LedgerService {
     this.logger.log(
       `Settled ${settlementAmount} from wallet ${wallet.id}, remaining owed: ${totalOwed - settlementAmount}`,
     );
+
+    if (wallet.user?.id) {
+      this.softBlockService
+        .checkAndUnblockProvider(wallet.user.id)
+        .catch((err) =>
+          this.logger.warn(`Unblock check failed: ${(err as Error).message}`),
+        );
+    }
   }
 }

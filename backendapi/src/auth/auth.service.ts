@@ -92,6 +92,11 @@ export class AuthService {
   async register(
     registerDto: RegisterDto,
   ): Promise<{ user: User; tokens: AuthTokens }> {
+    // Block admin registration via API - admins must be created through admin page
+    if (registerDto.role === UserRole.ADMIN) {
+      throw new BadRequestException('Admin registration is not allowed');
+    }
+
     // Validate OTP
     const otpRecord = this.otpStore.get(registerDto.phone);
     if (!otpRecord) {
@@ -175,6 +180,12 @@ export class AuthService {
     this.otpStore.delete(loginDto.phone);
 
     if (loginDto.role && loginDto.role !== user.role) {
+      // Validate that user actually has the requested role
+      const userRoles =
+        user.roles && user.roles.length > 0 ? user.roles : [user.role];
+      if (!userRoles.includes(loginDto.role)) {
+        throw new BadRequestException('User does not have this role');
+      }
       user.role = loginDto.role;
       await this.userRepository.save(user);
     }

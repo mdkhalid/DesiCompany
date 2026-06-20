@@ -19,6 +19,7 @@ import { TransactionSource } from '../common/enums/transaction-source.enum';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 import { ForbiddenException } from '@nestjs/common';
+import { SoftBlockService } from './soft-block.service';
 
 @Injectable()
 export class PaymentsService {
@@ -35,6 +36,7 @@ export class PaymentsService {
     private readonly transactionRepository: Repository<Transaction>,
     private readonly paymentGatewayFactory: PaymentGatewayFactory,
     private readonly dataSource: DataSource,
+    private readonly softBlockService: SoftBlockService,
   ) {}
 
   async createOrderForBooking(
@@ -254,6 +256,28 @@ export class PaymentsService {
       balanceAfter: Number(wallet.balance),
     });
     await this.transactionRepository.save(tx);
+
+    const commissionAmount = Number(booking.commissionAmount);
+    if (commissionAmount > 0) {
+      const commissionTx = this.transactionRepository.create({
+        wallet,
+        type: 'debit',
+        amount: commissionAmount,
+        reference: `booking_${booking.id}_commission_${payment.id}`,
+        description: `Commission owed for booking #${booking.id}`,
+        source: TransactionSource.COMMISSION_OWED,
+        balanceAfter: Number(wallet.balance),
+      });
+      await this.transactionRepository.save(commissionTx);
+
+      this.softBlockService
+        .checkAndBlockForProvider(providerUserId)
+        .catch((err) =>
+          this.logger.warn(
+            `Soft-block check failed: ${(err as Error).message}`,
+          ),
+        );
+    }
   }
 
   private async createCashOrder(

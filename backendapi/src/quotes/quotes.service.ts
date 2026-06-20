@@ -346,6 +346,12 @@ export class QuotesService {
       throw new BadRequestException(`Quote is already ${quote.status}`);
     }
 
+    if (quote.provider.isSoftBlocked) {
+      throw new BadRequestException(
+        'Provider is temporarily suspended due to outstanding commissions',
+      );
+    }
+
     if (
       jobRequest.status !== JobRequestStatus.OPEN &&
       jobRequest.status !== JobRequestStatus.QUOTED

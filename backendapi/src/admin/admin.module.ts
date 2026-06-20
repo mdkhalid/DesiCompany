@@ -19,6 +19,7 @@ import { Review } from '../reviews/entities/review.entity';
 import { CommissionConfig } from '../commissions/entities/commission-config.entity';
 import { PaymentsModule } from '../payments/payments.module';
 import { FeedbacksModule } from '../feedbacks/feedbacks.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { FeedbacksModule } from '../feedbacks/feedbacks.module';
     ]),
     PaymentsModule,
     FeedbacksModule,
+    AuthModule,
   ],
   controllers: [
     AdminController,

@@ -66,6 +66,11 @@ export class BookingsService {
     if (!provider.isVerified) {
       throw new BadRequestException('Provider is not verified');
     }
+    if (provider.isSoftBlocked) {
+      throw new BadRequestException(
+        'Provider is temporarily suspended due to outstanding commissions',
+      );
+    }
 
     const providerService = await this.providerServiceRepository.findOne({
       where: {

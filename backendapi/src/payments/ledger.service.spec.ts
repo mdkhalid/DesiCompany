@@ -5,6 +5,7 @@ import { LedgerService } from './ledger.service';
 import { Wallet } from './entities/wallet.entity';
 import { Transaction } from './entities/transaction.entity';
 import { Booking } from '../bookings/entities/booking.entity';
+import { SoftBlockService } from './soft-block.service';
 
 describe('LedgerService', () => {
   let service: LedgerService;
@@ -59,6 +60,12 @@ describe('LedgerService', () => {
                   create: jest.fn(),
                 }),
             ),
+          },
+        },
+        {
+          provide: SoftBlockService,
+          useValue: {
+            checkAndUnblockProvider: jest.fn(),
           },
         },
       ],
