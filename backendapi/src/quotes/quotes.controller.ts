@@ -111,7 +111,11 @@ export class QuotesController {
 
   @Post('quotes/:id/accept')
   @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
-  acceptQuote(@Param('id') id: string, @Req() req: AuthRequest) {
-    return this.quotesService.acceptQuote(id, req.user.id);
+  acceptQuote(
+    @Param('id') id: string,
+    @Body() body: { promoCode?: string },
+    @Req() req: AuthRequest,
+  ) {
+    return this.quotesService.acceptQuote(id, req.user.id, body.promoCode);
   }
 }

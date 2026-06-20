@@ -129,6 +129,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             const Icon(Icons.currency_rupee, size: 16, color: AppTheme.textSecondary),
                             Text('${b['totalAmount'] ?? 0}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                           ]),
+                          if ((b['convenienceFee'] ?? 0) > 0) ...[
+                            const SizedBox(height: 4),
+                            Row(children: [
+                              const Icon(Icons.receipt_long, size: 14, color: Color(0xFFE65100)),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${loc.tr('convenience_fee')}: ₹${b['convenienceFee']}',
+                                style: const TextStyle(color: Color(0xFFE65100), fontSize: 12),
+                              ),
+                            ]),
+                          ],
                           if (isCompleted) ...[
                             const SizedBox(height: 12),
                             if (isReviewed)

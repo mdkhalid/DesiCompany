@@ -335,7 +335,7 @@ export class QuotesService {
     return this.quoteRepository.save(quote);
   }
 
-  async acceptQuote(quoteId: string, userId: string) {
+  async acceptQuote(quoteId: string, userId: string, promoCode?: string) {
     const quote = await this.quoteRepository.findOne({
       where: { id: quoteId },
       relations: {
@@ -397,7 +397,7 @@ export class QuotesService {
       },
     });
 
-    const totalAmount = Number(quote.amount);
+    const serviceAmount = Number(quote.amount);
 
     const booking = this.bookingRepository.create({
       customer: jobRequest.customer,
@@ -406,11 +406,24 @@ export class QuotesService {
       scheduledDate: jobRequest.preferredDate ?? new Date(),
       description: jobRequest.description,
       estimatedHours: quote.estimatedHours ?? undefined,
-      totalAmount,
+      totalAmount: serviceAmount,
       status: BookingStatus.REQUESTED,
     });
 
     const savedBooking = await this.bookingRepository.save(booking);
+
+    // Calculate convenience fee with optional promo code
+    const feeResult = await this.platformFeesService.getConvenienceFee(
+      serviceAmount,
+      promoCode,
+      userId,
+    );
+    if (feeResult.finalFee > 0) {
+      savedBooking.totalAmount = Number(savedBooking.totalAmount) + feeResult.finalFee;
+      savedBooking.convenienceFee = feeResult.finalFee;
+      await this.bookingRepository.save(savedBooking);
+    }
+
     return this.bookingRepository.findOne({
       where: { id: savedBooking.id },
       relations: {

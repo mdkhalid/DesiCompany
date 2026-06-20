@@ -73,11 +73,74 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
     }
   }
 
+  String? _promoCode;
+  Map<String, dynamic>? _promoResult;
+  bool _validatingPromo = false;
+  final _promoController = TextEditingController();
+
+  @override
+  void dispose() {
+    _promoController.dispose();
+    super.dispose();
+  }
+
+  double _firstQuoteAmount(List<dynamic> quotes) {
+    if (quotes.isEmpty) return 0;
+    final first = quotes.first as Map<String, dynamic>?;
+    return (first?['amount'] ?? 0).toDouble();
+  }
+
+  Future<void> _validatePromoCode(String code) async {
+    final loc = DesiCompanyApp.localeProvider!;
+    if (code.trim().isEmpty) return;
+    setState(() => _validatingPromo = true);
+    try {
+      final quotes = (_job?['quotes'] as List?) ?? [];
+      final amount = _firstQuoteAmount(quotes);
+      final result = await ApiService.post('/promo-codes/validate', body: {
+        'code': code.trim().toUpperCase(),
+        'bookingAmount': amount,
+      });
+      if (!mounted) return;
+      final res = result as Map<String, dynamic>;
+      if (res['valid'] == true) {
+        setState(() {
+          _promoCode = code.trim().toUpperCase();
+          _promoResult = res;
+          _validatingPromo = false;
+        });
+      } else {
+        setState(() {
+          _promoCode = null;
+          _promoResult = null;
+          _validatingPromo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? loc.tr('promo_invalid'))),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _promoCode = null;
+        _promoResult = null;
+        _validatingPromo = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.tr('promo_invalid'))),
+      );
+    }
+  }
+
   Future<void> _acceptQuote(String quoteId) async {
     final loc = DesiCompanyApp.localeProvider!;
     setState(() => _acceptingId = true);
     try {
-      await ApiService.post('/quotes/$quoteId/accept');
+      final body = <String, dynamic>{};
+      if (_promoCode != null) {
+        body['promoCode'] = _promoCode;
+      }
+      await ApiService.post('/quotes/$quoteId/accept', body: body);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(loc.tr('quote_accepted'))),
@@ -373,9 +436,119 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
               ),
             ),
           )
-        else
+        else ...[
           ...quotes.map((q) => _buildQuoteCard(q as Map<String, dynamic>, jobStatus, loc)),
+          const SizedBox(height: 16),
+          _buildPromoCodeInput(loc),
+        ],
       ],
+    );
+  }
+
+  Widget _buildPromoCodeInput(LocalizationProvider loc) {
+    final discount = _promoResult?['discount'] ?? 0;
+    final feeWaived = _promoResult?['promoCode']?['type'] == 'fee_waiver';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _promoCode != null ? const Color(0xFF43A047) : Colors.grey.shade200,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_offer_outlined, size: 16, color: AppTheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                loc.tr('promo_code'),
+                style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary,
+                ),
+              ),
+              if (_promoCode != null) ...[
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _promoCode = null;
+                      _promoResult = null;
+                      _promoController.clear();
+                    });
+                  },
+                  child: Text(
+                    loc.tr('promo_code_remove'),
+                    style: const TextStyle(color: AppTheme.error, fontSize: 12),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_promoCode == null)
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _promoController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    hintText: loc.tr('promo_code_hint'),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _validatingPromo
+                    ? null
+                    : () => _validatePromoCode(_promoController.text),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                child: _validatingPromo
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(loc.tr('apply'), style: const TextStyle(fontSize: 13)),
+              ),
+            ])
+          else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check_circle, size: 14, color: Color(0xFF2E7D32)),
+                  const SizedBox(width: 4),
+                  Text(
+                    feeWaived ? loc.tr('promo_fee_waived') : loc.tr('promo_applied'),
+                    style: const TextStyle(color: Color(0xFF2E7D32), fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            if (!feeWaived && discount > 0) ...[
+              const SizedBox(height: 6),
+              Text(
+                loc.tr('promo_discount', params: {'amount': '$discount'}),
+                style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w500, fontSize: 13),
+              ),
+            ],
+          ],
+        ],
+      ),
     );
   }
 

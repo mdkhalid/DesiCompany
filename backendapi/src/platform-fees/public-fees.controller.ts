@@ -6,6 +6,7 @@ import {
   Param,
   Body,
   Req,
+  Query,
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
@@ -129,5 +130,36 @@ export class PublicFeesController {
       return { membership, waiver };
     }
     return null;
+  }
+
+  // ─── Promo Code Validation ───────────────────────────────────
+
+  @Post('promo-codes/validate')
+  @ApiOperation({ summary: 'Validate a promo code for the current user' })
+  async validatePromoCode(
+    @Body() body: { code: string; bookingAmount: number },
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.platformFeesService.validatePromoCode(
+      body.code,
+      req.user.id,
+      body.bookingAmount,
+    );
+  }
+
+  // ─── Convenience Fee Estimate ────────────────────────────────
+
+  @Get('convenience-fee/estimate')
+  @ApiOperation({ summary: 'Estimate convenience fee for an amount' })
+  async estimateFee(
+    @Req() req: AuthenticatedRequest,
+    @Query('amount') amount: string,
+    @Query('promoCode') promoCode?: string,
+  ) {
+    return this.platformFeesService.getConvenienceFee(
+      parseFloat(amount) || 0,
+      promoCode,
+      req.user.id,
+    );
   }
 }

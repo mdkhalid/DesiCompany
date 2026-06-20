@@ -168,6 +168,8 @@ class _ProviderSubmitQuoteScreenState extends State<ProviderSubmitQuoteScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               _buildJobInfo(loc),
+                              const SizedBox(height: 16),
+                              _buildLeadFeeNotice(loc),
                               const SizedBox(height: 24),
                               _buildLabel(loc.tr('quote_amount')),
                               TextFormField(
@@ -296,6 +298,29 @@ class _ProviderSubmitQuoteScreenState extends State<ProviderSubmitQuoteScreen> {
           fontWeight: FontWeight.w600,
           color: AppTheme.textPrimary,
         ),
+      ),
+    );
+  }
+
+  Widget _buildLeadFeeNotice(LocalizationProvider loc) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFE082)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, size: 16, color: Color(0xFFF57F17)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              loc.tr('lead_fee_notice', params: {'fee': '10'}),
+              style: const TextStyle(fontSize: 12, color: Color(0xFFF57F17), height: 1.3),
+            ),
+          ),
+        ],
       ),
     );
   }

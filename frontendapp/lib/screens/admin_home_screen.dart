@@ -354,6 +354,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         'color': const Color(0xFF2196F3),
         'route': '/admin-gateways',
       },
+      {
+        'label': loc.tr('admin_revenue'),
+        'icon': Icons.bar_chart,
+        'color': const Color(0xFF00BFA5),
+        'route': '/admin-revenue',
+      },
     ];
 
     return Column(

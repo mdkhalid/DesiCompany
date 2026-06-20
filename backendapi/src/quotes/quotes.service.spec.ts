@@ -132,6 +132,7 @@ describe('QuotesService', () => {
           provide: PlatformFeesService,
           useValue: {
             calculateLeadQuoteFee: jest.fn(),
+            getConvenienceFee: jest.fn().mockResolvedValue({ finalFee: 0 }),
           },
         },
       ],

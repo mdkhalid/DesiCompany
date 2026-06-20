@@ -331,9 +331,7 @@ class AppStrings {
       'billing_yearly': '/year',
       'instant_payout': 'Instant Payout',
       'instant_payout_fee_info': 'Fee: {fee}',
-      'instant_payout_confirm': 'Withdraw ₹{amount}?
-Fee: ₹{fee}
-Net amount: ₹{net}',
+      'instant_payout_confirm': 'Withdraw ₹{amount}? Fee: ₹{fee} Net: ₹{net}',
       'instant_payout_confirmed': 'Payout request submitted!',
       'payout_failed': 'Payout failed: {error}',
       'insufficient_balance_payout': 'Insufficient balance for instant payout',
@@ -352,6 +350,38 @@ Net amount: ₹{net}',
       'benefit_earlyAccess': 'Early access to premium providers',
       'benefit_unlimitedQuotes': 'Unlimited quote responses',
       'benefit_dedicatedSupport': 'Dedicated account manager',
+
+      // Promo Codes
+      'promo_code': 'Promo Code',
+      'promo_code_hint': 'Enter promo code',
+      'apply': 'Apply',
+      'promo_applied': 'Promo code applied!',
+      'promo_invalid': 'Invalid promo code',
+      'promo_expired': 'Promo code expired',
+      'promo_used_up': 'Promo code usage limit reached',
+      'promo_discount': 'Discount: -₹{amount}',
+      'promo_fee_waived': 'Fee waived!',
+      'promo_code_remove': 'Remove',
+
+      // Fee breakdown
+      'convenience_fee': 'Convenience Fee',
+      'fee_included': 'Fee included in total',
+      'total_amount': 'Total Amount',
+      'subtotal': 'Subtotal',
+      'net_revenue': 'Net Revenue',
+
+      // Lead fee
+      'lead_fee_notice': 'A lead fee of ₹{fee} applies when submitting a quote',
+      'lead_fee_included': 'Lead fee included',
+
+      // Admin Revenue Report
+      'admin_revenue': 'Revenue Report',
+      'revenue_stats': 'Revenue Stats',
+      'convenience_fees': 'Convenience Fees',
+      'subscription_revenue': 'Subscription Revenue',
+      'discounts_given': 'Discounts Given',
+      'revenue_auto_billing': '(Auto-billing coming)',
+      'last_30_days': 'Last 30 days',
     },
     'hi': {
       // General
@@ -682,9 +712,7 @@ Net amount: ₹{net}',
       'billing_yearly': '/वर्ष',
       'instant_payout': 'इंस्टेंट पेआउट',
       'instant_payout_fee_info': 'शुल्क: {fee}',
-      'instant_payout_confirm': '₹{amount} निकालें?
-शुल्क: ₹{fee}
-नेट राशि: ₹{net}',
+      'instant_payout_confirm': '₹{amount} निकालें? शुल्क: ₹{fee} नेट: ₹{net}',
       'instant_payout_confirmed': 'पेआउट अनुरोध सबमिट हो गया!',
       'payout_failed': 'पेआउट विफल: {error}',
       'insufficient_balance_payout': 'इंस्टेंट पेआउट के लिए अपर्याप्त शेष राशि',
@@ -703,6 +731,38 @@ Net amount: ₹{net}',
       'benefit_earlyAccess': 'प्रीमियम प्रदाताओं तक शीघ्र पहुंच',
       'benefit_unlimitedQuotes': 'असीमित कोटेशन प्रतिक्रियाएं',
       'benefit_dedicatedSupport': 'समर्पित खाता प्रबंधक',
+
+      // Promo Codes
+      'promo_code': 'प्रोमो कोड',
+      'promo_code_hint': 'प्रोमो कोड दर्ज करें',
+      'apply': 'लागू करें',
+      'promo_applied': 'प्रोमो कोड लागू!',
+      'promo_invalid': 'अमान्य प्रोमो कोड',
+      'promo_expired': 'प्रोमो कोड समाप्त',
+      'promo_used_up': 'प्रोमो कोड उपयोग सीमा समाप्त',
+      'promo_discount': 'छूट: -₹{amount}',
+      'promo_fee_waived': 'शुल्क माफ!',
+      'promo_code_remove': 'हटाएं',
+
+      // Fee breakdown
+      'convenience_fee': 'सुविधा शुल्क',
+      'fee_included': 'शुल्क कुल में शामिल',
+      'total_amount': 'कुल राशि',
+      'subtotal': 'उप-योग',
+      'net_revenue': 'शुद्ध राजस्व',
+
+      // Lead fee
+      'lead_fee_notice': 'कोटेशन सबमिट करने पर ₹{fee} लीड शुल्क लागू होता है',
+      'lead_fee_included': 'लीड शुल्क शामिल',
+
+      // Admin Revenue Report
+      'admin_revenue': 'राजस्व रिपोर्ट',
+      'revenue_stats': 'राजस्व आंकड़े',
+      'convenience_fees': 'सुविधा शुल्क',
+      'subscription_revenue': 'सदस्यता राजस्व',
+      'discounts_given': 'दी गई छूट',
+      'revenue_auto_billing': '(ऑटो-बिलिंग जल्द)',
+      'last_30_days': 'पिछले 30 दिन',
     },
   };
 
