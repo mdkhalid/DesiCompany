@@ -13,8 +13,10 @@ import { Provider } from '../users/entities/provider.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
+import { CommissionType } from '../common/enums/commission-type.enum';
 import { CommissionService } from '../commissions/commission.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import {
   CreateBookingDto,
   UpdateBookingStatusDto,
@@ -37,6 +39,7 @@ export class BookingsService {
     private readonly providerServiceRepository: Repository<ProviderService>,
     private readonly commissionService: CommissionService,
     private readonly notificationsService: NotificationsService,
+    private readonly pushNotificationsService: PushNotificationsService,
   ) {}
 
   async createByUser(userId: string, dto: CreateBookingDto) {
@@ -94,6 +97,17 @@ export class BookingsService {
     });
 
     const saved = await this.bookingRepository.save(booking);
+
+    // Notify provider of new booking request (fire-and-forget)
+    this.pushNotificationsService
+      .sendToUser(
+        provider.user.id,
+        'New Booking Request',
+        'You have a new booking request. Please review and respond.',
+        { bookingId: saved.id },
+      )
+      .catch(() => {});
+
     return this.recalculateTotals(saved.id);
   }
 
@@ -221,11 +235,22 @@ export class BookingsService {
 
     const notification = messages[status];
     if (notification) {
+      // In-app notification
       await this.notificationsService.create(
         notification.userId,
         notification.title,
         notification.message,
       );
+
+      // Push notification (fire-and-forget)
+      this.pushNotificationsService
+        .sendToUser(
+          notification.userId,
+          notification.title,
+          notification.message,
+          { bookingId: booking.id, status },
+        )
+        .catch(() => {});
     }
   }
 
@@ -307,7 +332,7 @@ export class BookingsService {
   private async recalculateTotals(bookingId: string) {
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
-      relations: { providerService: { category: true }, charges: true },
+      relations: { providerService: { category: true }, provider: true, charges: true },
     });
     if (!booking) {
       throw new NotFoundException('Booking not found');
@@ -332,12 +357,36 @@ export class BookingsService {
     );
     const totalAmount = baseAmount + chargesTotal;
 
+    // Commission lookup: provider scope → category scope → global fallback
+    const providerId = booking.provider?.id;
     const categoryId = service?.category?.id;
-    const commission = await this.commissionService.getCommission(
-      totalAmount,
-      'category',
-      categoryId,
-    );
+
+    let commission;
+    if (providerId) {
+      commission = await this.commissionService.getCommission(
+        totalAmount,
+        'provider',
+        providerId,
+      );
+    }
+    if (!commission || commission.amount === totalAmount * 0.1) {
+      // No provider-specific config found (fell through to default 10%), try category
+      if (categoryId) {
+        const categoryCommission = await this.commissionService.getCommission(
+          totalAmount,
+          'category',
+          categoryId,
+        );
+        // Only use category commission if it differs from the default fallback
+        if (
+          categoryCommission.type !== CommissionType.PERCENTAGE ||
+          categoryCommission.value !== 10 ||
+          categoryId
+        ) {
+          commission = categoryCommission;
+        }
+      }
+    }
 
     booking.totalAmount = totalAmount;
     booking.commissionAmount = commission.amount;

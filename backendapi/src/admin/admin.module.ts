@@ -20,6 +20,7 @@ import { CommissionConfig } from '../commissions/entities/commission-config.enti
 import { PaymentsModule } from '../payments/payments.module';
 import { FeedbacksModule } from '../feedbacks/feedbacks.module';
 import { AuthModule } from '../auth/auth.module';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AuthModule } from '../auth/auth.module';
     PaymentsModule,
     FeedbacksModule,
     AuthModule,
+    ActivityLogsModule,
   ],
   controllers: [
     AdminController,

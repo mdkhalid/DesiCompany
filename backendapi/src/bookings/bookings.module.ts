@@ -9,6 +9,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 import { CommissionsModule } from '../commissions/commissions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     ]),
     CommissionsModule,
     NotificationsModule,
+    PushNotificationsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService],

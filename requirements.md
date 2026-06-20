@@ -9,6 +9,7 @@
 | Backend Phase 2 | ✅ Complete |
 | Backend Phase 3 | ✅ Complete |
 | Backend Phase 4 | ✅ Complete |
+| Backend Phase 9 (Gap Fixes) | ✅ Complete — all 12 gaps closed |
 | Flutter Mobile App | ✅ Implemented |
 | React Admin Web | ✅ Implemented |
 
@@ -284,6 +285,21 @@ npm run start:dev
 - [x] Flutter mobile app (Customer + Provider)
 - [x] React admin dashboard (TailwindCSS)
 - [ ] Polish, testing, deployment prep
+
+### Phase 9 — Requirement Gap Fixes ✅ COMPLETED
+- [x] Logout with refresh token revocation (`POST /auth/logout`, `RevokedToken` entity)
+- [x] User soft-delete (`DELETE /admin/users/:id`, `deletedAt` column)
+- [x] Hierarchical subcategories (`parentId` self-referencing FK on `ServiceCategory`)
+- [x] Per-provider commission override CRUD (`POST/PATCH/DELETE /admin/commissions`)
+- [x] Dispute system (`Dispute` entity, `POST /disputes`, `PATCH /disputes/:id/resolve`)
+- [x] Activity logs (`ActivityLog` entity, wired into admin suspend/activate/delete/create actions)
+- [x] Broadcast notifications (`POST /admin/notifications/broadcast` with role filter)
+- [x] Admin review moderation (`DELETE /admin/reviews/:id`)
+- [x] Price range search (`minPrice`/`maxPrice` in provider search)
+- [x] Env variable fallback for payment gateway (checks `RAZORPAY`/`STRIPE` env vars)
+- [x] Push notifications wired into booking status changes and new booking creation
+- [x] SMS provider integration (Twilio abstraction, wired into OTP flow)
+- [x] Provider commission override lookup (recalculateTotals checks provider scope first)
 
 ### Phase 6 — Location-Based Provider Discovery ✅ COMPLETED
 - [x] GPS location capture (Flutter)

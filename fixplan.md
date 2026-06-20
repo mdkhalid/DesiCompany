@@ -670,6 +670,14 @@ ALTER TABLE users ADD COLUMN suspension_reason TEXT NULL;
 | G10 | Push notifications (FCM abstraction + Firebase provider) | `push-notifications/` module, `user.entity.ts` (fcmToken) |
 | G11 | SMS provider (Twilio abstraction + mock fallback) | `sms/` module, `auth.service.ts` (integrated) |
 
+### Phase 11 — Wiring Gaps ✅ COMPLETED
+
+| Gap | Task | Files |
+|-----|------|-------|
+| G10-wire | Push notifications wired into booking flow | `bookings.service.ts` (sendStatusNotification + create) |
+| G6-wire | Activity logs wired into admin actions | `admin.service.ts` (suspend/activate/delete/create) |
+| G4-wire | Provider commission override lookup | `bookings.service.ts` (recalculateTotals checks provider→category→global) |
+
 ### New Entities Added
 - `RevokedToken` — stores revoked refresh tokens for logout
 - `Dispute` — booking dispute with status workflow (OPEN → IN_REVIEW → RESOLVED/DISMISSED)

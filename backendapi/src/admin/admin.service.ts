@@ -20,6 +20,7 @@ import { CreateAdminDto } from './dto/create-admin.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { SuspendUserDto } from './dto/suspend-user.dto';
 import { SoftBlockService } from '../payments/soft-block.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class AdminService {
@@ -39,6 +40,7 @@ export class AdminService {
     @InjectRepository(CommissionConfig)
     private readonly commissionConfigRepository: Repository<CommissionConfig>,
     private readonly softBlockService: SoftBlockService,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   async getDashboard() {
@@ -106,6 +108,12 @@ export class AdminService {
     });
     const savedUser = await this.userRepository.save(user);
 
+    await this.activityLogsService.log(
+      'admin.created',
+      'User',
+      savedUser.id,
+    );
+
     return { user: savedUser };
   }
 
@@ -169,7 +177,17 @@ export class AdminService {
     user.suspendedBy = adminId;
     user.suspensionReason = dto.reason;
 
-    return this.userRepository.save(user);
+    const saved = await this.userRepository.save(user);
+
+    await this.activityLogsService.log(
+      'user.suspended',
+      'User',
+      userId,
+      adminId,
+      { reason: dto.reason },
+    );
+
+    return saved;
   }
 
   async activateUser(userId: string) {
@@ -190,7 +208,15 @@ export class AdminService {
     user.suspendedBy = undefined;
     user.suspensionReason = undefined;
 
-    return this.userRepository.save(user);
+    const saved = await this.userRepository.save(user);
+
+    await this.activityLogsService.log(
+      'user.activated',
+      'User',
+      userId,
+    );
+
+    return saved;
   }
 
   async unblockProvider(userId: string) {
@@ -236,7 +262,16 @@ export class AdminService {
     user.status = UserStatus.DELETED;
     user.deletedAt = new Date();
 
-    return this.userRepository.save(user);
+    const saved = await this.userRepository.save(user);
+
+    await this.activityLogsService.log(
+      'user.deleted',
+      'User',
+      userId,
+      adminId,
+    );
+
+    return saved;
   }
 
   async createCommissionConfig(dto: {
