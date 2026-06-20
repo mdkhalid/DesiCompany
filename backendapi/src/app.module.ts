@@ -26,6 +26,7 @@ import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { PushNotificationsModule } from './push-notifications/push-notifications.module';
 import { SmsModule } from './sms/sms.module';
 import { HealthModule } from './health/health.module';
+import { ReferralsModule } from './referrals/referrals.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -76,6 +77,7 @@ import { ActivityLog } from './activity-logs/entities/activity-log.entity';
     PushNotificationsModule,
     SmsModule,
     HealthModule,
+    ReferralsModule,
     TypeOrmModule.forFeature([
       User,
       Customer,
