@@ -31,6 +31,9 @@ import { LoyaltyModule } from './loyalty/loyalty.module';
 import { BadgesModule } from './badges/badges.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { FollowUpModule } from './followup/followup.module';
+import { PortfolioModule } from './portfolio/portfolio.module';
+import { TranslationModule } from './chat/translation.module';
+import { PricingModule } from './pricing/pricing.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -86,6 +89,9 @@ import { ActivityLog } from './activity-logs/entities/activity-log.entity';
     BadgesModule,
     InvoicesModule,
     FollowUpModule,
+    PortfolioModule,
+    TranslationModule,
+    PricingModule,
     TypeOrmModule.forFeature([
       User,
       Customer,

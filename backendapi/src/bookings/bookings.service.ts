@@ -25,6 +25,7 @@ import {
   ProposeNewTimeDto,
 } from './dto/create-booking.dto';
 import { AddBookingChargeDto } from './dto/add-booking-charge.dto';
+import { BookingServiceItem } from './entities/booking-service-item.entity';
 
 @Injectable()
 export class BookingsService {
@@ -39,6 +40,8 @@ export class BookingsService {
     private readonly providerRepository: Repository<Provider>,
     @InjectRepository(ProviderService)
     private readonly providerServiceRepository: Repository<ProviderService>,
+    @InjectRepository(BookingServiceItem)
+    private readonly bookingServiceItemRepository: Repository<BookingServiceItem>,
     private readonly commissionService: CommissionService,
     private readonly notificationsService: NotificationsService,
     private readonly pushNotificationsService: PushNotificationsService,
@@ -101,6 +104,32 @@ export class BookingsService {
     });
 
     const saved = await this.bookingRepository.save(booking);
+
+    // Add additional service items for multi-service booking
+    if (dto.additionalServices && dto.additionalServices.length > 0) {
+      let sequence = 1;
+      for (const item of dto.additionalServices) {
+        const additionalService = await this.providerServiceRepository.findOne({
+          where: {
+            id: item.providerServiceId,
+            provider: { id: provider.id },
+            isActive: true,
+          },
+        });
+        if (additionalService) {
+          const rate = Number(additionalService.fixedRate || additionalService.hourlyRate || 0);
+          const bookingItem = this.bookingServiceItemRepository.create({
+            booking: saved,
+            providerService: additionalService,
+            sequenceOrder: sequence++,
+            rateAtBooking: rate,
+            estimatedHours: item.estimatedHours ?? null,
+            estimatedDays: item.estimatedDays ?? null,
+          });
+          await this.bookingServiceItemRepository.save(bookingItem);
+        }
+      }
+    }
 
     // Notify provider of new booking request (fire-and-forget)
     this.pushNotificationsService
@@ -449,7 +478,12 @@ export class BookingsService {
   private async recalculateTotals(bookingId: string) {
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
-      relations: { providerService: { category: true }, provider: true, charges: true },
+      relations: {
+        providerService: { category: true },
+        provider: true,
+        charges: true,
+        serviceItems: { providerService: { category: true } },
+      },
     });
     if (!booking) {
       throw new NotFoundException('Booking not found');
@@ -466,6 +500,25 @@ export class BookingsService {
       } else if (service.dailyRate && booking.estimatedDays) {
         baseAmount = Number(service.dailyRate) * Number(booking.estimatedDays);
       }
+    }
+
+    // Add additional services to base amount
+    const additionalServiceTotal = (booking.serviceItems || []).reduce((sum, item) => {
+      if (item.estimatedHours) {
+        return sum + Number(item.rateAtBooking) * Number(item.estimatedHours);
+      }
+      if (item.estimatedDays) {
+        return sum + Number(item.rateAtBooking) * Number(item.estimatedDays);
+      }
+      return sum + Number(item.rateAtBooking);
+    }, 0);
+    baseAmount += additionalServiceTotal;
+
+    // Apply multi-service bundle discount if more than 1 service
+    const totalServiceCount = 1 + (booking.serviceItems?.length || 0);
+    if (totalServiceCount > 1) {
+      const bundleDiscount = parseFloat(process.env.MULTI_SERVICE_BUNDLE_DISCOUNT || '10');
+      baseAmount = baseAmount * (1 - bundleDiscount / 100);
     }
 
     // Apply emergency multiplier if this is an emergency booking

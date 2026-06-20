@@ -5,6 +5,7 @@ import { Customer } from '../../users/entities/customer.entity';
 import { Provider } from '../../users/entities/provider.entity';
 import { ProviderService } from '../../services/entities/provider-service.entity';
 import { BookingCharge } from './booking-charge.entity';
+import { BookingServiceItem } from './booking-service-item.entity';
 
 @Entity('bookings')
 export class Booking extends BaseEntity {
@@ -56,4 +57,7 @@ export class Booking extends BaseEntity {
 
   @OneToMany(() => BookingCharge, (charge) => charge.booking)
   charges?: BookingCharge[];
+
+  @OneToMany(() => BookingServiceItem, (item) => item.booking)
+  serviceItems?: BookingServiceItem[];
 }
