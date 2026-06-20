@@ -41,4 +41,16 @@ export class SearchProvidersDto {
   @IsBoolean()
   @Type(() => Boolean)
   availableNow?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  minPrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  maxPrice?: number;
 }

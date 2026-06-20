@@ -22,6 +22,7 @@ interface CategoryInput {
   commissionType?: CommissionType;
   commissionValue?: number;
   isActive?: boolean;
+  parentId?: string;
 }
 
 @Injectable()
@@ -40,6 +41,14 @@ export class ServicesService {
   async findAllCategories() {
     return this.categoryRepository.find({
       where: { isActive: true },
+      relations: { children: true, parent: true },
+      order: { nameEn: 'ASC' },
+    });
+  }
+
+  async findSubcategories(parentId: string) {
+    return this.categoryRepository.find({
+      where: { parent: { id: parentId }, isActive: true },
       order: { nameEn: 'ASC' },
     });
   }
@@ -47,12 +56,24 @@ export class ServicesService {
   async createCategory(
     input: Required<Pick<CategoryInput, 'nameEn' | 'nameHi'>> & CategoryInput,
   ) {
+    let parent: ServiceCategory | undefined;
+    if (input.parentId) {
+      const parentCategory = await this.categoryRepository.findOne({
+        where: { id: input.parentId },
+      });
+      if (!parentCategory) {
+        throw new NotFoundException('Parent category not found');
+      }
+      parent = parentCategory;
+    }
+
     const category = this.categoryRepository.create({
       nameEn: input.nameEn,
       nameHi: input.nameHi,
       icon: input.icon,
       commissionType: input.commissionType,
       commissionValue: input.commissionValue,
+      parent: parent || undefined,
     });
     return this.categoryRepository.save(category);
   }
@@ -270,6 +291,30 @@ export class ServicesService {
         'availability.dayOfWeek = :dayOfWeek AND availability.startTime <= :timeString AND availability.endTime >= :timeString',
         { dayOfWeek, timeString },
       );
+    }
+
+    if (dto.minPrice !== undefined || dto.maxPrice !== undefined) {
+      // Join ProviderService for price filtering
+      const priceConditions: string[] = [];
+      if (dto.minPrice !== undefined) {
+        priceConditions.push(
+          '(service.hourlyRate >= :minPrice OR service.dailyRate >= :minPrice OR service.fixedRate >= :minPrice)',
+        );
+      }
+      if (dto.maxPrice !== undefined) {
+        priceConditions.push(
+          '(service.hourlyRate <= :maxPrice OR service.dailyRate <= :maxPrice OR service.fixedRate <= :maxPrice)',
+        );
+      }
+      if (priceConditions.length > 0) {
+        query.andWhere(priceConditions.join(' AND '), {
+          minPrice: dto.minPrice,
+          maxPrice: dto.maxPrice,
+        });
+        query.andWhere('service.isActive = :serviceActive', {
+          serviceActive: true,
+        });
+      }
     }
 
     return query.getMany();

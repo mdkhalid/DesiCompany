@@ -20,6 +20,10 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ChatModule } from './chat/chat.module';
 import { FeedbacksModule } from './feedbacks/feedbacks.module';
 import { QuotesModule } from './quotes/quotes.module';
+import { DisputesModule } from './disputes/disputes.module';
+import { ActivityLogsModule } from './activity-logs/activity-logs.module';
+import { PushNotificationsModule } from './push-notifications/push-notifications.module';
+import { SmsModule } from './sms/sms.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -34,6 +38,8 @@ import { CommissionConfig } from './commissions/entities/commission-config.entit
 import { Review } from './reviews/entities/review.entity';
 import { Notification } from './notifications/entities/notification.entity';
 import { CustomerFeedback } from './feedbacks/entities/customer-feedback.entity';
+import { Dispute } from './disputes/entities/dispute.entity';
+import { ActivityLog } from './activity-logs/entities/activity-log.entity';
 
 @Module({
   imports: [
@@ -62,6 +68,10 @@ import { CustomerFeedback } from './feedbacks/entities/customer-feedback.entity'
     ChatModule,
     FeedbacksModule,
     QuotesModule,
+    DisputesModule,
+    ActivityLogsModule,
+    PushNotificationsModule,
+    SmsModule,
     TypeOrmModule.forFeature([
       User,
       Customer,
@@ -77,6 +87,8 @@ import { CustomerFeedback } from './feedbacks/entities/customer-feedback.entity'
       Review,
       Notification,
       CustomerFeedback,
+      Dispute,
+      ActivityLog,
     ]),
   ],
   controllers: [AppController],

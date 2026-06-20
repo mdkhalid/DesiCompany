@@ -35,6 +35,12 @@ export class User extends BaseEntity {
   @Column({ nullable: true })
   profileImage: string;
 
+  @Column({ nullable: true })
+  deletedAt?: Date;
+
+  @Column({ nullable: true })
+  fcmToken?: string;
+
   @Column({ default: 'en' })
   language: string;
 

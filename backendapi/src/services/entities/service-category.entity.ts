@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { CommissionType } from '../../common/enums/commission-type.enum';
 import { ProviderService } from './provider-service.entity';
@@ -22,6 +22,16 @@ export class ServiceCategory extends BaseEntity {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @ManyToOne(() => ServiceCategory, (category) => category.children, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'parent_id' })
+  parent?: ServiceCategory;
+
+  @OneToMany(() => ServiceCategory, (category) => category.parent)
+  children?: ServiceCategory[];
 
   @OneToMany(
     () => ProviderService,

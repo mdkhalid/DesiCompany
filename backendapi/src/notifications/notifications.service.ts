@@ -1,14 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { User } from '../users/entities/user.entity';
+import { UserRole } from '../common/enums/user-role.enum';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async create(userId: string, title: string, message: string) {
@@ -53,5 +56,40 @@ export class NotificationsService {
     return this.notificationRepository.count({
       where: { user: { id: userId }, isRead: false },
     });
+  }
+
+  async broadcast(
+    title: string,
+    message: string,
+    role?: UserRole,
+  ) {
+    // Find target users
+    const where: any = {};
+    if (role) {
+      where.role = role;
+    }
+
+    const users = await this.userRepository.find({
+      where,
+      select: { id: true },
+    });
+
+    // Batch create notifications
+    const notifications = users.map((user) =>
+      this.notificationRepository.create({
+        user: { id: user.id } as User,
+        title,
+        message,
+      }),
+    );
+
+    if (notifications.length > 0) {
+      await this.notificationRepository.save(notifications);
+    }
+
+    return {
+      message: `Broadcast sent to ${notifications.length} users`,
+      count: notifications.length,
+    };
   }
 }

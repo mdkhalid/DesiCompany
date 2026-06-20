@@ -56,6 +56,12 @@ export class AuthController {
     return this.authService.refreshToken(refreshToken);
   }
 
+  @Post('logout')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  logout(@Body('refreshToken') refreshToken: string) {
+    return this.authService.logout(refreshToken);
+  }
+
   @Post('switch-role')
   @SkipThrottle()
   @UseGuards(AuthGuard('jwt'))

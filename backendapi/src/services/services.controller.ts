@@ -42,6 +42,11 @@ export class ServicesController {
     return this.servicesService.findAllCategories();
   }
 
+  @Get('categories/:id/subcategories')
+  findSubcategories(@Param('id') id: string) {
+    return this.servicesService.findSubcategories(id);
+  }
+
   @Post('categories')
   @Roles(UserRole.ADMIN)
   createCategory(
@@ -50,6 +55,7 @@ export class ServicesController {
     @Body('icon') icon?: string,
     @Body('commissionType') commissionType?: CommissionType,
     @Body('commissionValue') commissionValue?: number,
+    @Body('parentId') parentId?: string,
   ) {
     return this.servicesService.createCategory({
       nameEn,
@@ -57,6 +63,7 @@ export class ServicesController {
       icon,
       commissionType: commissionType || CommissionType.PERCENTAGE,
       commissionValue: commissionValue || 10,
+      parentId,
     });
   }
 

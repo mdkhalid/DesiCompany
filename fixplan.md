@@ -12,6 +12,11 @@
 | Phase 3: User Suspension System | ✅ Complete |
 | Phase 4: Automatic Provider Suspension | ✅ Complete |
 | Phase 5: Automatic Unsuspension | ✅ Complete |
+| Phase 6: Auth & User Mgmt Gaps | ✅ Complete |
+| Phase 7: Service Catalog Gaps | ✅ Complete |
+| Phase 8: Admin Feature Gaps | ✅ Complete |
+| Phase 9: Search & Payments Gaps | ✅ Complete |
+| Phase 10: External Integrations | ✅ Complete |
 
 **Version:** 0.1.0
 **Last Updated:** 2026-06-20
@@ -588,6 +593,110 @@ ALTER TABLE users ADD COLUMN suspension_reason TEXT NULL;
 - [ ] Provider unblocked after commission settled
 - [ ] Unblocking logged in console
 - [ ] Manual unblock via admin endpoint works
+
+---
+
+## 6. Testing Checklist
+
+### Security Fixes (Phase 1)
+- [x] Admin cannot register via `/auth/register`
+- [x] Customer cannot login as admin
+- [x] Suspended provider not re-activated via KYC approval
+- [x] `TEST_CREDENTIALS.md` not tracked by git
+
+### Admin User Management (Phase 2)
+- [x] Admin can create new admin user
+- [x] Non-admin cannot access admin endpoints
+- [x] User listing with pagination works
+- [x] User filtering by role/status works
+- [x] User search works
+
+### User Suspension (Phase 3)
+- [x] Admin can suspend user with reason
+- [x] Admin cannot suspend other admins
+- [x] Suspension audit trail recorded
+- [x] Suspended user cannot login
+- [x] Admin can activate suspended user
+
+### Automatic Suspension (Phase 4)
+- [x] COMMISSION_OWED transaction created on payment
+- [x] Soft-block check triggered after payment
+- [x] Provider blocked when threshold exceeded
+- [x] Blocked provider cannot accept new bookings
+
+### Automatic Unsuspension (Phase 5)
+- [x] Provider unblocked after commission settled
+- [x] Unblocking logged in console
+- [x] Manual unblock via admin endpoint works
+
+---
+
+## 10. Requirement Gap Fixes (Phases 6–10)
+
+### Phase 6 — Auth & User Management ✅ COMPLETED
+
+| Gap | Task | Files |
+|-----|------|-------|
+| G1 | Logout endpoint with refresh token revocation | `auth.controller.ts`, `auth.service.ts`, `auth.module.ts`, `revoked-token.entity.ts` |
+| G2 | User removal (soft-delete) via `DELETE /admin/users/:id` | `admin.controller.ts`, `admin.service.ts`, `user.entity.ts` |
+
+### Phase 7 — Service Catalog ✅ COMPLETED
+
+| Gap | Task | Files |
+|-----|------|-------|
+| G3 | Subcategories (hierarchical categories) | `service-category.entity.ts`, `services.service.ts`, `services.controller.ts` |
+| G4 | Per-provider commission override CRUD | `admin.controller.ts`, `admin.service.ts` |
+
+### Phase 8 — Admin Features ✅ COMPLETED
+
+| Gap | Task | Files |
+|-----|------|-------|
+| G5 | Dispute system (entity, CRUD, resolve) | `disputes/` module (entity, service, controller, DTOs) |
+| G6 | Activity logs (auto-logged admin actions) | `activity-logs/` module (entity, service, controller) |
+| G7 | Broadcast notifications (`POST /admin/notifications/broadcast`) | `notifications.service.ts`, `admin.controller.ts` |
+| G12 | Admin review moderation (`DELETE /admin/reviews/:id`) | `reviews.service.ts`, `admin.controller.ts` |
+
+### Phase 9 — Search & Payments ✅ COMPLETED
+
+| Gap | Task | Files |
+|-----|------|-------|
+| G8 | Price range search (`minPrice`, `maxPrice` filters) | `search-providers.dto.ts`, `services.service.ts` |
+| G9 | Env variable fallback for payment gateway | `payment-gateway.factory.ts` |
+
+### Phase 10 — External Integrations ✅ COMPLETED
+
+| Gap | Task | Files |
+|-----|------|-------|
+| G10 | Push notifications (FCM abstraction + Firebase provider) | `push-notifications/` module, `user.entity.ts` (fcmToken) |
+| G11 | SMS provider (Twilio abstraction + mock fallback) | `sms/` module, `auth.service.ts` (integrated) |
+
+### New Entities Added
+- `RevokedToken` — stores revoked refresh tokens for logout
+- `Dispute` — booking dispute with status workflow (OPEN → IN_REVIEW → RESOLVED/DISMISSED)
+- `ActivityLog` — audit trail for admin actions
+
+### New Columns Added
+- `User.deletedAt` — soft-delete timestamp
+- `User.fcmToken` — Firebase Cloud Messaging token
+- `ServiceCategory.parentId` — self-referencing FK for subcategories
+
+### New Endpoints Added
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/auth/logout` | Revoke refresh token |
+| `DELETE` | `/admin/users/:id` | Soft-delete user |
+| `GET` | `/services/categories/:id/subcategories` | List subcategories |
+| `POST` | `/admin/commissions` | Create commission config |
+| `PATCH` | `/admin/commissions/:id` | Update commission config |
+| `DELETE` | `/admin/commissions/:id` | Delete commission config |
+| `POST` | `/disputes` | Raise a booking dispute |
+| `GET` | `/disputes` | List all disputes (admin) |
+| `GET` | `/disputes/:id` | Get dispute details |
+| `PATCH` | `/disputes/:id/resolve` | Resolve/dismiss dispute (admin) |
+| `GET` | `/admin/activity-logs` | List activity logs |
+| `GET` | `/admin/activity-logs/:entityType/:entityId` | Logs for specific entity |
+| `POST` | `/admin/notifications/broadcast` | Broadcast notification |
+| `DELETE` | `/admin/reviews/:id` | Delete review (admin) |
 
 ---
 

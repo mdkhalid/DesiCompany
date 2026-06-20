@@ -15,6 +15,7 @@ import { Review } from '../reviews/entities/review.entity';
 import { CommissionConfig } from '../commissions/entities/commission-config.entity';
 import { UserStatus } from '../common/enums/user-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
+import { CommissionType } from '../common/enums/commission-type.enum';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { SuspendUserDto } from './dto/suspend-user.dto';
@@ -209,5 +210,80 @@ export class AdminService {
     await this.softBlockService.unblockProvider(userId);
 
     return { message: 'Provider unblocked successfully' };
+  }
+
+  async deleteUser(userId: string, adminId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      throw new BadRequestException('Cannot delete admin users');
+    }
+
+    if (userId === adminId) {
+      throw new BadRequestException('Cannot delete yourself');
+    }
+
+    if (user.status === UserStatus.DELETED) {
+      throw new BadRequestException('User is already deleted');
+    }
+
+    user.status = UserStatus.DELETED;
+    user.deletedAt = new Date();
+
+    return this.userRepository.save(user);
+  }
+
+  async createCommissionConfig(dto: {
+    scope: string;
+    scopeId?: string;
+    type: CommissionType;
+    value: number;
+  }) {
+    const config = this.commissionConfigRepository.create({
+      scope: dto.scope,
+      scopeId: dto.scopeId,
+      type: dto.type,
+      value: dto.value,
+    });
+    return this.commissionConfigRepository.save(config);
+  }
+
+  async updateCommissionConfig(
+    id: string,
+    dto: {
+      type?: CommissionType;
+      value?: number;
+      isActive?: boolean;
+    },
+  ) {
+    const config = await this.commissionConfigRepository.findOne({
+      where: { id },
+    });
+    if (!config) {
+      throw new NotFoundException('Commission config not found');
+    }
+
+    if (dto.type !== undefined) config.type = dto.type;
+    if (dto.value !== undefined) config.value = dto.value;
+    if (dto.isActive !== undefined) config.isActive = dto.isActive;
+
+    return this.commissionConfigRepository.save(config);
+  }
+
+  async deleteCommissionConfig(id: string) {
+    const config = await this.commissionConfigRepository.findOne({
+      where: { id },
+    });
+    if (!config) {
+      throw new NotFoundException('Commission config not found');
+    }
+    await this.commissionConfigRepository.remove(config);
+    return { message: 'Commission config deleted' };
   }
 }

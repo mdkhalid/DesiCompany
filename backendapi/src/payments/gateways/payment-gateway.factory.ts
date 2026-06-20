@@ -32,13 +32,28 @@ export class PaymentGatewayFactory {
 
   /**
    * Returns the active default gateway. Behavior:
-   *  - If the config table is empty, returns CashGateway (graceful dev fallback).
+   *  - If the config table is empty, checks env vars before falling back to CashGateway.
    *  - If rows exist but none has isDefault=true, throws an explicit error.
    *  - Otherwise decrypts credentials and instantiates the registered class.
    */
   async getDefault(): Promise<PaymentGateway> {
     const all = await this.configRepo.find();
     if (all.length === 0) {
+      // Check env vars for gateway configuration
+      const envGateway = process.env.PAYMENT_GATEWAY;
+      if (envGateway && envGateway !== 'cash') {
+        const envCreds = this.getEnvCredentials(envGateway);
+        if (envCreds) {
+          this.logger.log(
+            `No DB config — using env-configured gateway: ${envGateway}`,
+          );
+          const GatewayClass =
+            GATEWAY_CLASSES[envGateway as PaymentGatewayType];
+          if (GatewayClass) {
+            return new GatewayClass(envCreds);
+          }
+        }
+      }
       this.logger.warn(
         'payment_gateway_configs is empty — falling back to CashGateway',
       );
@@ -92,5 +107,28 @@ export class PaymentGatewayFactory {
       throw new Error(`No gateway class registered for type: ${config.type}`);
     }
     return new GatewayClass(credentials);
+  }
+
+  private getEnvCredentials(
+    gatewayType: string,
+  ): Record<string, string> | null {
+    switch (gatewayType) {
+      case PaymentGatewayType.RAZORPAY: {
+        const keyId = process.env.RAZORPAY_KEY_ID;
+        const keySecret = process.env.RAZORPAY_KEY_SECRET;
+        if (keyId && keySecret) {
+          return { key_id: keyId, key_secret: keySecret };
+        }
+        break;
+      }
+      case PaymentGatewayType.STRIPE: {
+        const secretKey = process.env.STRIPE_SECRET_KEY;
+        if (secretKey) {
+          return { secret_key: secretKey };
+        }
+        break;
+      }
+    }
+    return null;
   }
 }

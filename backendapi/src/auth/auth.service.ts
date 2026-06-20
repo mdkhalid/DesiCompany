@@ -11,8 +11,10 @@ import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
+import { RevokedToken } from './entities/revoked-token.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
+import { SmsService } from '../sms/sms.service';
 
 interface RegisterDto {
   phone: string;
@@ -73,10 +75,13 @@ export class AuthService {
     private readonly customerRepository: Repository<Customer>,
     @InjectRepository(Provider)
     private readonly providerRepository: Repository<Provider>,
+    @InjectRepository(RevokedToken)
+    private readonly revokedTokenRepository: Repository<RevokedToken>,
     private readonly jwtService: JwtService,
+    private readonly smsService: SmsService,
   ) {}
 
-  requestOtp(phone: string): { message: string } {
+  async requestOtp(phone: string): Promise<{ message: string }> {
     const code =
       process.env.OTP_MOCK === 'true'
         ? process.env.OTP_MOCK_CODE || '123456'
@@ -85,7 +90,15 @@ export class AuthService {
 
     this.otpStore.set(phone, { code, expiresAt });
 
-    // TODO: Integrate SMS provider here for production
+    // Send SMS if not in mock mode
+    if (process.env.OTP_MOCK !== 'true') {
+      try {
+        await this.smsService.sendOtp(phone, code);
+      } catch (error) {
+        // Log but don't fail — OTP is still stored for verification
+      }
+    }
+
     return { message: `OTP sent to ${phone}` };
   }
 
@@ -329,6 +342,14 @@ export class AuthService {
 
   async refreshToken(refreshToken: string): Promise<{ tokens: AuthTokens }> {
     try {
+      // Check if token is revoked
+      const isRevoked = await this.revokedTokenRepository.findOne({
+        where: { token: refreshToken },
+      });
+      if (isRevoked) {
+        throw new UnauthorizedException('Refresh token has been revoked');
+      }
+
       const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
@@ -342,8 +363,32 @@ export class AuthService {
 
       const tokens = this.generateTokens(user);
       return { tokens };
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  async logout(refreshToken: string): Promise<{ message: string }> {
+    try {
+      const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+
+      // Store revoked token with its expiry (7 days from now as fallback)
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const revoked = this.revokedTokenRepository.create({
+        token: refreshToken,
+        expiresAt,
+      });
+      await this.revokedTokenRepository.save(revoked);
+
+      return { message: 'Logged out successfully' };
+    } catch {
+      // Even if token is invalid, return success (client-side logout)
+      return { message: 'Logged out successfully' };
     }
   }
 

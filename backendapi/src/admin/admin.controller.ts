@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -11,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { CustomerFeedbacksService } from '../feedbacks/customer-feedbacks.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { ReviewsService } from '../reviews/reviews.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -18,6 +21,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { SuspendUserDto } from './dto/suspend-user.dto';
+import { CommissionType } from '../common/enums/commission-type.enum';
 
 interface AuthenticatedRequest {
   user: { id: string; phone: string; role: UserRole };
@@ -29,6 +33,8 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly customerFeedbacksService: CustomerFeedbacksService,
+    private readonly notificationsService: NotificationsService,
+    private readonly reviewsService: ReviewsService,
   ) {}
 
   @Get('dashboard')
@@ -93,5 +99,67 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   unblockProvider(@Param('id') id: string) {
     return this.adminService.unblockProvider(id);
+  }
+
+  @Delete('users/:id')
+  @Roles(UserRole.ADMIN)
+  deleteUser(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.adminService.deleteUser(id, req.user.id);
+  }
+
+  @Post('commissions')
+  @Roles(UserRole.ADMIN)
+  createCommissionConfig(
+    @Body('scope') scope: string,
+    @Body('type') type: CommissionType,
+    @Body('value') value: number,
+    @Body('scopeId') scopeId?: string,
+  ) {
+    return this.adminService.createCommissionConfig({
+      scope,
+      scopeId,
+      type,
+      value,
+    });
+  }
+
+  @Patch('commissions/:id')
+  @Roles(UserRole.ADMIN)
+  updateCommissionConfig(
+    @Param('id') id: string,
+    @Body('type') type?: CommissionType,
+    @Body('value') value?: number,
+    @Body('isActive') isActive?: boolean,
+  ) {
+    return this.adminService.updateCommissionConfig(id, {
+      type,
+      value,
+      isActive,
+    });
+  }
+
+  @Delete('commissions/:id')
+  @Roles(UserRole.ADMIN)
+  deleteCommissionConfig(@Param('id') id: string) {
+    return this.adminService.deleteCommissionConfig(id);
+  }
+
+  @Post('notifications/broadcast')
+  @Roles(UserRole.ADMIN)
+  broadcastNotification(
+    @Body('title') title: string,
+    @Body('message') message: string,
+    @Body('role') role?: UserRole,
+  ) {
+    return this.notificationsService.broadcast(title, message, role);
+  }
+
+  @Delete('reviews/:id')
+  @Roles(UserRole.ADMIN)
+  deleteReview(@Param('id') id: string) {
+    return this.reviewsService.delete(id);
   }
 }

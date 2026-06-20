@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, UpdateResult } from 'typeorm';
 import { NotificationsService } from './notifications.service';
 import { Notification } from './entities/notification.entity';
+import { User } from '../users/entities/user.entity';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
@@ -21,6 +22,13 @@ describe('NotificationsService', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             count: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            createQueryBuilder: jest.fn(),
           },
         },
       ],

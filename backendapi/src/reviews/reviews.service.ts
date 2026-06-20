@@ -103,6 +103,24 @@ export class ReviewsService {
     return review;
   }
 
+  async delete(reviewId: string) {
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+      relations: { provider: true },
+    });
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+
+    const providerId = review.provider.id;
+    await this.reviewRepository.remove(review);
+
+    // Recalculate provider rating after deletion
+    await this.updateProviderRating(providerId);
+
+    return { message: 'Review deleted successfully' };
+  }
+
   private async updateProviderRating(providerId: string) {
     const stats = await this.reviewRepository
       .createQueryBuilder('review')

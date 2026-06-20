@@ -12,8 +12,8 @@
 | Flutter Mobile App | ✅ Implemented |
 | React Admin Web | ✅ Implemented |
 
-**Version:** 0.2.0
-**Last Updated:** 2026-06-18
+**Version:** 0.3.0
+**Last Updated:** 2026-06-20
 **GitHub:** https://github.com/mdkhalid/DesiCompany
 
 ---
