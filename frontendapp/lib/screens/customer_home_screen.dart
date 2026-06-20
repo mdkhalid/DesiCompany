@@ -259,6 +259,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 onTap: () => Navigator.pushNamed(context, '/customer-jobs'),
               ),
               const SizedBox(width: 6),
+              LabeledIconButton(
+                icon: Icons.card_giftcard,
+                label: loc.tr('membership_plans'),
+                iconColor: Colors.white,
+                backgroundColor: Colors.white.withValues(alpha: 0.15),
+                onTap: () => Navigator.pushNamed(context, '/customer-memberships'),
+              ),
+              const SizedBox(width: 6),
               _buildNotificationButton(),
               const SizedBox(width: 8),
               _buildIconButton(

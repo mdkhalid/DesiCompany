@@ -31,6 +31,8 @@ import 'screens/provider_open_jobs_screen.dart';
 import 'screens/provider_submit_quote_screen.dart';
 import 'screens/provider_my_quotes_screen.dart';
 import 'screens/provider_job_detail_screen.dart';
+import 'screens/provider_subscription_screen.dart';
+import 'screens/customer_membership_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
@@ -118,6 +120,8 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
             '/customer-post-job': (_) => const CustomerPostJobScreen(),
           '/provider-open-jobs': (_) => const ProviderOpenJobsScreen(),
           '/provider-my-quotes': (_) => const ProviderMyQuotesScreen(),
+          '/provider-subscriptions': (_) => const ProviderSubscriptionScreen(),
+          '/customer-memberships': (_) => const CustomerMembershipScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name == '/provider-detail') {

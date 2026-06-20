@@ -95,6 +95,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                           () => Navigator.pushNamed(context, '/provider-reviews')),
                         _buildHeaderButton(Icons.verified_user, loc.tr('header_kyc'),
                           () => Navigator.pushNamed(context, '/provider-kyc-upload')),
+                        _buildHeaderButton(Icons.card_membership, loc.tr('subscription_plans'),
+                          () => Navigator.pushNamed(context, '/provider-subscriptions')),
                         _buildHeaderButton(Icons.account_balance_wallet, loc.tr('header_wallet'),
                           () => Navigator.pushNamed(context, '/wallet')),
                         _buildHeaderButton(Icons.feedback, loc.tr('my_quotes'),

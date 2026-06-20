@@ -12,6 +12,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { User } from '../users/entities/user.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+import { PublicFeesController } from './public-fees.controller';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
     ]),
     ActivityLogsModule,
   ],
+  controllers: [PublicFeesController],
   providers: [PlatformFeesService],
   exports: [PlatformFeesService],
 })

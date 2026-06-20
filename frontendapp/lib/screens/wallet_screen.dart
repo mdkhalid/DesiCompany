@@ -16,6 +16,8 @@ class _WalletScreenState extends State<WalletScreen> {
   double _totalSpent = 0;
   List<dynamic> _txns = [];
   bool _loading = true;
+  bool _payouting = false;
+  bool _hasFeeWaiver = false;
 
   @override
   void initState() {
@@ -27,6 +29,7 @@ class _WalletScreenState extends State<WalletScreen> {
     try {
       final wallet = await ApiService.get('/wallet');
       final txns = await ApiService.get('/wallet/transactions');
+      _checkFeeWaiver();
       final list = (txns['transactions'] as List?) ?? [];
       double earned = 0;
       double spent = 0;
@@ -48,6 +51,69 @@ class _WalletScreenState extends State<WalletScreen> {
       });
     } catch (e) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _checkFeeWaiver() async {
+    try {
+      final result = await ApiService.get('/membership-plans/my');
+      if (result is Map && result['membership'] != null) {
+        if (mounted) setState(() => _hasFeeWaiver = true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _requestInstantPayout() async {
+    final loc = LocalizationProvider.of(context);
+    if (_balance <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.tr('insufficient_balance_payout'))),
+      );
+      return;
+    }
+
+    // Confirmation dialog first with estimated amounts
+    final amount = _balance;
+    final estimatedFee = amount * 0.025; // 2.5% estimate
+    final estimatedNet = amount - estimatedFee;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(loc.tr('instant_payout')),
+        content: Text(
+          loc.tr('instant_payout_confirm', params: {
+            'amount': amount.toStringAsFixed(0),
+            'fee': estimatedFee.toStringAsFixed(0),
+            'net': estimatedNet.toStringAsFixed(0),
+          }),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(loc.tr('cancel'))),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(loc.tr('withdraw')),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    setState(() => _payouting = true);
+    try {
+      await ApiService.post('/wallet/instant-payout', body: {'amount': amount});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.tr('instant_payout_confirmed'))),
+      );
+      setState(() => _payouting = false);
+      _loadWallet();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _payouting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loc.tr('payout_failed', params: {'error': e.toString().replaceFirst('Exception: ', '')}))),
+      );
     }
   }
 
@@ -201,6 +267,27 @@ class _WalletScreenState extends State<WalletScreen> {
               letterSpacing: 1,
             ),
           ),
+          if (_hasFeeWaiver) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check_circle, size: 14, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    loc.tr('fee_waived'),
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           Row(
             children: [
@@ -219,12 +306,8 @@ class _WalletScreenState extends State<WalletScreen> {
               Expanded(
                 child: _buildActionButton(
                   icon: Icons.upload,
-                  label: loc.tr('withdraw'),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(loc.tr('withdraw'))),
-                    );
-                  },
+                  label: _payouting ? '...' : loc.tr('withdraw'),
+                  onTap: _payouting ? null : () => _requestInstantPayout(),
                 ),
               ),
             ],
@@ -237,7 +320,7 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget _buildActionButton({
     required IconData icon,
     required String label,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
   }) {
     return Material(
       color: Colors.white.withValues(alpha: 0.2),
