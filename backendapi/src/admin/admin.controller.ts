@@ -17,6 +17,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
+import { AnalyticsService } from './analytics.service';
 import { CustomerFeedbacksService } from '../feedbacks/customer-feedbacks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ReviewsService } from '../reviews/reviews.service';
@@ -40,6 +41,7 @@ interface AuthenticatedRequest {
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
+    private readonly analyticsService: AnalyticsService,
     private readonly customerFeedbacksService: CustomerFeedbacksService,
     private readonly notificationsService: NotificationsService,
     private readonly reviewsService: ReviewsService,
@@ -51,6 +53,41 @@ export class AdminController {
   @ApiResponse({ status: 200, description: 'Returns dashboard data' })
   getDashboard() {
     return this.adminService.getDashboard();
+  }
+
+  @Get('analytics')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get full analytics dashboard' })
+  @ApiResponse({ status: 200, description: 'Returns analytics data' })
+  getAnalytics() {
+    return this.analyticsService.getDashboardAnalytics();
+  }
+
+  @Get('analytics/revenue')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get revenue analytics' })
+  @ApiResponse({ status: 200, description: 'Returns revenue data' })
+  getRevenueAnalytics(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.analyticsService.getRevenueAnalytics(startDate, endDate);
+  }
+
+  @Get('analytics/providers')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get provider analytics' })
+  @ApiResponse({ status: 200, description: 'Returns provider analytics' })
+  getProviderAnalytics() {
+    return this.analyticsService.getProviderAnalytics();
+  }
+
+  @Get('analytics/categories')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get category analytics' })
+  @ApiResponse({ status: 200, description: 'Returns category analytics' })
+  getCategoryAnalytics() {
+    return this.analyticsService.getCategoryAnalytics();
   }
 
   @Get('bookings')

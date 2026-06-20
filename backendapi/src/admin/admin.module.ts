@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { AnalyticsService } from './analytics.service';
 import { AdminPaymentGatewaysController } from './admin-payment-gateways.controller';
 import { AdminPaymentGatewaysService } from './admin-payment-gateways.service';
 import { AdminRefundsController } from './admin-refunds.controller';
@@ -47,6 +48,6 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
     AdminRefundsController,
     AdminConfigController,
   ],
-  providers: [AdminService, AdminPaymentGatewaysService, AdminRefundsService],
+  providers: [AdminService, AnalyticsService, AdminPaymentGatewaysService, AdminRefundsService],
 })
 export class AdminModule {}
