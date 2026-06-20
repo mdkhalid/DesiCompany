@@ -51,6 +51,9 @@ export class Booking extends BaseEntity {
   @Column({ type: 'timestamp', nullable: true })
   proposedDate: Date | null;
 
+  @Column({ name: 'is_emergency', default: false })
+  isEmergency: boolean;
+
   @OneToMany(() => BookingCharge, (charge) => charge.booking)
   charges?: BookingCharge[];
 }

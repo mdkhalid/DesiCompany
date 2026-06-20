@@ -94,6 +94,7 @@ export class BookingsService {
       providerService,
       scheduledDate: new Date(dto.scheduledDate),
       description: dto.description,
+      isEmergency: dto.isEmergency || false,
       status: BookingStatus.REQUESTED,
     });
 
@@ -455,6 +456,12 @@ export class BookingsService {
       } else if (service.dailyRate && booking.estimatedDays) {
         baseAmount = Number(service.dailyRate) * Number(booking.estimatedDays);
       }
+    }
+
+    // Apply emergency multiplier if this is an emergency booking
+    if (booking.isEmergency) {
+      const emergencyMultiplier = parseFloat(process.env.EMERGENCY_PRICE_MULTIPLIER || '1.5');
+      baseAmount = baseAmount * emergencyMultiplier;
     }
 
     const chargesTotal = (booking.charges || []).reduce(

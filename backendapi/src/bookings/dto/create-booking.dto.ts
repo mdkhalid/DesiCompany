@@ -4,7 +4,9 @@ import {
   IsString,
   IsDateString,
   IsEnum,
+  IsBoolean,
 } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { BookingStatus } from '../../common/enums/booking-status.enum';
 
 export class CreateBookingDto {
@@ -24,6 +26,11 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ description: 'Mark as urgent/emergency service', default: false })
+  @IsOptional()
+  @IsBoolean()
+  isEmergency?: boolean;
 }
 
 export class UpdateBookingStatusDto {
