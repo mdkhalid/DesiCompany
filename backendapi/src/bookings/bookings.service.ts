@@ -17,6 +17,7 @@ import { CommissionType } from '../common/enums/commission-type.enum';
 import { CommissionService } from '../commissions/commission.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 import {
   CreateBookingDto,
   UpdateBookingStatusDto,
@@ -41,6 +42,7 @@ export class BookingsService {
     private readonly commissionService: CommissionService,
     private readonly notificationsService: NotificationsService,
     private readonly pushNotificationsService: PushNotificationsService,
+    private readonly loyaltyService: LoyaltyService,
   ) {}
 
   async createByUser(userId: string, dto: CreateBookingDto) {
@@ -186,7 +188,15 @@ export class BookingsService {
     await this.sendStatusNotification(saved, dto.status);
 
     if (dto.status === BookingStatus.COMPLETED) {
-      return this.recalculateTotals(saved.id);
+      const recalculated = await this.recalculateTotals(saved.id);
+      // Award loyalty points to customer for completed booking
+      this.loyaltyService
+        .awardPointsForBooking(
+          saved.customer.user.id,
+          Number(recalculated.totalAmount),
+        )
+        .catch((err) => console.error('Loyalty award failed:', err));
+      return recalculated;
     }
 
     return saved;

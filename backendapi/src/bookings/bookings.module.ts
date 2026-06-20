@@ -12,6 +12,7 @@ import { ProviderService } from '../services/entities/provider-service.entity';
 import { CommissionsModule } from '../commissions/commissions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PushNotificationsModule } from '../push-notifications/push-notification
     CommissionsModule,
     NotificationsModule,
     PushNotificationsModule,
+    LoyaltyModule,
   ],
   controllers: [BookingsController, BookingRemindersController],
   providers: [BookingsService, BookingRemindersService],
