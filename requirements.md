@@ -13,7 +13,7 @@
 | Flutter Mobile App | ✅ Implemented |
 | React Admin Web | ✅ Implemented |
 
-**Version:** 0.3.0
+**Version:** 0.4.0
 **Last Updated:** 2026-06-20
 **GitHub:** https://github.com/mdkhalid/DesiCompany
 
@@ -284,7 +284,7 @@ npm run start:dev
 ### Phase 5 — Mobile & Web UI ✅ COMPLETED
 - [x] Flutter mobile app (Customer + Provider)
 - [x] React admin dashboard (TailwindCSS)
-- [ ] Polish, testing, deployment prep
+- [x] Polish, testing, deployment prep
 
 ### Phase 9 — Requirement Gap Fixes ✅ COMPLETED
 - [x] Logout with refresh token revocation (`POST /auth/logout`, `RevokedToken` entity)
@@ -417,6 +417,16 @@ npm run start:dev
 5. Customer taps "Accept Quote" on the best one → a booking is auto-created with status REQUESTED
 6. Other PENDING quotes are auto-rejected
 7. Provider can accept/reject/work/complete the booking as normal
+
+### Phase 9 — Quality & Polish ✅ COMPLETED
+- [x] Propose New Time flow (`PROPOSED_NEW_TIME` status, counter-offer endpoints)
+- [x] Provider `verificationStatus` field (pending_kyc/under_review/verified/rejected/suspended)
+- [x] Hierarchical category search (searching parent includes subcategory providers)
+- [x] Subcategory seed data (12 subcategories for Plumber/Electrician/Cleaning/AC Repair)
+- [x] Dockerfile for backend API
+- [x] Health check endpoint (`GET /health` with DB ping)
+- [x] Swagger decorators on all controllers (`@ApiTags`, `@ApiOperation`, `@ApiResponse`)
+- [x] Expanded activity logs (commission config, KYC approve/reject)
 
 ---
 

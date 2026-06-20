@@ -10,6 +10,8 @@ import { Provider } from '../users/entities/provider.entity';
 import { User } from '../users/entities/user.entity';
 import { KycStatus } from '../common/enums/kyc-status.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
+import { VerificationStatus } from '../common/enums/verification-status.enum';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class KycService {
@@ -20,6 +22,7 @@ export class KycService {
     private readonly providerRepository: Repository<Provider>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   async uploadDocument(
@@ -80,15 +83,33 @@ export class KycService {
 
     if (status === KycStatus.APPROVED) {
       document.provider.isVerified = true;
+      document.provider.verificationStatus = VerificationStatus.VERIFIED;
       // Only activate user if not suspended - suspended users require admin intervention
       if (document.provider.user.status !== UserStatus.SUSPENDED) {
         document.provider.user.status = UserStatus.ACTIVE;
         await this.userRepository.save(document.provider.user);
       }
       await this.providerRepository.save(document.provider);
+
+      await this.activityLogsService.log(
+        'kyc.approved',
+        'KycDocument',
+        id,
+        undefined,
+        { providerId: document.provider.id },
+      );
     } else if (status === KycStatus.REJECTED) {
       document.provider.isVerified = false;
+      document.provider.verificationStatus = VerificationStatus.REJECTED;
       await this.providerRepository.save(document.provider);
+
+      await this.activityLogsService.log(
+        'kyc.rejected',
+        'KycDocument',
+        id,
+        undefined,
+        { providerId: document.provider.id, remarks },
+      );
     }
 
     return document;

@@ -17,8 +17,9 @@
 | Phase 8: Admin Feature Gaps | ✅ Complete |
 | Phase 9: Search & Payments Gaps | ✅ Complete |
 | Phase 10: External Integrations | ✅ Complete |
+| Phase 11: Quality & Polish | ✅ Complete |
 
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Last Updated:** 2026-06-20
 **Related:** [requirements.md](./requirements.md)
 
@@ -717,8 +718,44 @@ If any phase causes issues:
 3. **Phase 3:** Remove suspension fields from user entity
 4. **Phase 4:** Remove COMMISSION_OWED transaction creation
 5. **Phase 5:** Remove auto-unblock logic
+6. **Phase 6:** Remove logout/soft-delete endpoints
+7. **Phase 7:** Remove subcategory/commission CRUD
+8. **Phase 8:** Remove dispute/activity-log/broadcast/review-moderation
+9. **Phase 9:** Remove price filters/env fallback
+10. **Phase 10:** Remove FCM/SMS modules
+11. **Phase 11:** Remove propose-time/verificationStatus/Dockerfile/health
 
 All changes are additive and can be reverted without data loss.
+
+---
+
+## Phase 11: Quality & Polish
+
+### Implemented Features
+
+| Item | Feature | Files Changed |
+|------|---------|---------------|
+| 1 | Propose New Time flow | `booking-status.enum.ts`, `booking.entity.ts`, `bookings.service.ts`, `bookings.controller.ts`, `create-booking.dto.ts` |
+| 2 | Provider `verificationStatus` | `verification-status.enum.ts` (new), `provider.entity.ts`, `kyc.service.ts`, `admin.service.ts` |
+| 3 | Hierarchical category search | `services.service.ts` |
+| 4 | Subcategory seed data | `seed.ts` |
+| 5 | Dockerfile | `Dockerfile` (new) |
+| 6 | Health check endpoint | `health.controller.ts`, `health.module.ts` (new), `app.module.ts` |
+| 7 | Swagger decorators | `bookings.controller.ts`, `admin.controller.ts`, `auth.controller.ts` |
+| 8 | Expanded activity logs | `admin.service.ts`, `kyc.service.ts`, `kyc.module.ts` |
+
+### New API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/bookings/:id/propose-time` | Propose new time for booking |
+| `POST` | `/bookings/:id/respond-proposal` | Accept/decline time proposal |
+| `GET` | `/health` | Health check with DB ping |
+
+### Entity Changes
+
+- `Booking.proposedDate` — nullable timestamp for proposed time
+- `Provider.verificationStatus` — enum: pending_kyc, under_review, verified, rejected, suspended
 
 ---
 

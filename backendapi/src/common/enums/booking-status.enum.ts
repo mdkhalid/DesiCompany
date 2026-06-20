@@ -6,4 +6,5 @@ export enum BookingStatus {
   WORKING = 'working',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  PROPOSED_NEW_TIME = 'proposed_new_time',
 }

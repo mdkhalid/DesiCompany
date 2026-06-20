@@ -16,6 +16,7 @@ import { CommissionConfig } from '../commissions/entities/commission-config.enti
 import { UserStatus } from '../common/enums/user-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
+import { VerificationStatus } from '../common/enums/verification-status.enum';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { SuspendUserDto } from './dto/suspend-user.dto';
@@ -177,6 +178,17 @@ export class AdminService {
     user.suspendedBy = adminId;
     user.suspensionReason = dto.reason;
 
+    // If suspending a provider, update verificationStatus
+    if (user.role === UserRole.PROVIDER) {
+      const provider = await this.providerRepository.findOne({
+        where: { user: { id: userId } },
+      });
+      if (provider) {
+        provider.verificationStatus = VerificationStatus.SUSPENDED;
+        await this.providerRepository.save(provider);
+      }
+    }
+
     const saved = await this.userRepository.save(user);
 
     await this.activityLogsService.log(
@@ -207,6 +219,19 @@ export class AdminService {
     user.suspendedAt = undefined;
     user.suspendedBy = undefined;
     user.suspensionReason = undefined;
+
+    // If activating a provider, restore verificationStatus
+    if (user.role === UserRole.PROVIDER) {
+      const provider = await this.providerRepository.findOne({
+        where: { user: { id: userId } },
+      });
+      if (provider) {
+        provider.verificationStatus = provider.isVerified
+          ? VerificationStatus.VERIFIED
+          : VerificationStatus.PENDING_KYC;
+        await this.providerRepository.save(provider);
+      }
+    }
 
     const saved = await this.userRepository.save(user);
 
@@ -286,7 +311,17 @@ export class AdminService {
       type: dto.type,
       value: dto.value,
     });
-    return this.commissionConfigRepository.save(config);
+    const saved = await this.commissionConfigRepository.save(config);
+
+    await this.activityLogsService.log(
+      'commission.created',
+      'CommissionConfig',
+      saved.id,
+      undefined,
+      { scope: dto.scope, type: dto.type, value: dto.value },
+    );
+
+    return saved;
   }
 
   async updateCommissionConfig(
@@ -308,7 +343,17 @@ export class AdminService {
     if (dto.value !== undefined) config.value = dto.value;
     if (dto.isActive !== undefined) config.isActive = dto.isActive;
 
-    return this.commissionConfigRepository.save(config);
+    const saved = await this.commissionConfigRepository.save(config);
+
+    await this.activityLogsService.log(
+      'commission.updated',
+      'CommissionConfig',
+      id,
+      undefined,
+      { type: dto.type, value: dto.value, isActive: dto.isActive },
+    );
+
+    return saved;
   }
 
   async deleteCommissionConfig(id: string) {
@@ -319,6 +364,13 @@ export class AdminService {
       throw new NotFoundException('Commission config not found');
     }
     await this.commissionConfigRepository.remove(config);
+
+    await this.activityLogsService.log(
+      'commission.deleted',
+      'CommissionConfig',
+      id,
+    );
+
     return { message: 'Commission config deleted' };
   }
 }

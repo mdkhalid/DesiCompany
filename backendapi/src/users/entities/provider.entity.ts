@@ -7,6 +7,7 @@ import { Booking } from '../../bookings/entities/booking.entity';
 import { Review } from '../../reviews/entities/review.entity';
 import { CustomerFeedback } from '../../feedbacks/entities/customer-feedback.entity';
 import { ProviderAvailability } from '../../services/entities/provider-availability.entity';
+import { VerificationStatus } from '../../common/enums/verification-status.enum';
 
 @Entity('providers')
 export class Provider extends BaseEntity {
@@ -49,6 +50,14 @@ export class Provider extends BaseEntity {
 
   @Column({ default: false })
   isVerified: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: VerificationStatus,
+    default: VerificationStatus.PENDING_KYC,
+    name: 'verification_status',
+  })
+  verificationStatus: VerificationStatus;
 
   @Column({ default: false, name: 'is_soft_blocked' })
   isSoftBlocked: boolean;

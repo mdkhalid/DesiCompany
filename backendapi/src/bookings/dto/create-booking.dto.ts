@@ -39,3 +39,17 @@ export class RescheduleBookingDto {
   @IsDateString()
   scheduledDate: string;
 }
+
+export class ProposeNewTimeDto {
+  @IsDateString()
+  proposedDate: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+export class RespondToProposalDto {
+  @IsEnum(BookingStatus)
+  status: BookingStatus;
+}

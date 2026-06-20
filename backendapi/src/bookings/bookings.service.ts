@@ -21,6 +21,7 @@ import {
   CreateBookingDto,
   UpdateBookingStatusDto,
   RescheduleBookingDto,
+  ProposeNewTimeDto,
 } from './dto/create-booking.dto';
 import { AddBookingChargeDto } from './dto/add-booking-charge.dto';
 
@@ -277,6 +278,111 @@ export class BookingsService {
     return this.bookingRepository.save(booking);
   }
 
+  async proposeNewTime(
+    id: string,
+    dto: ProposeNewTimeDto,
+    userId: string,
+    role: UserRole,
+  ) {
+    const booking = await this.findOne(id);
+    this.ensureBookingAccess(booking, userId, role);
+
+    if (
+      booking.status === BookingStatus.COMPLETED ||
+      booking.status === BookingStatus.CANCELLED ||
+      booking.status === BookingStatus.REJECTED
+    ) {
+      throw new BadRequestException(
+        'Cannot propose new time for a completed, cancelled, or rejected booking',
+      );
+    }
+
+    booking.proposedDate = new Date(dto.proposedDate);
+    booking.status = BookingStatus.PROPOSED_NEW_TIME;
+    const saved = await this.bookingRepository.save(booking);
+
+    // Notify the other party about the proposal
+    const providerName = `${booking.provider.firstName} ${booking.provider.lastName}`;
+    const notifyUserId =
+      role === UserRole.PROVIDER
+        ? booking.customer.user.id
+        : booking.provider.user.id;
+    const proposeBy =
+      role === UserRole.PROVIDER ? providerName : 'The customer';
+
+    await this.notificationsService.create(
+      notifyUserId,
+      'New Time Proposed',
+      `${proposeBy} proposed a new time for the service.`,
+    );
+
+    this.pushNotificationsService
+      .sendToUser(
+        notifyUserId,
+        'New Time Proposed',
+        `${proposeBy} proposed a new time for the service.`,
+        { bookingId: saved.id },
+      )
+      .catch(() => {});
+
+    return saved;
+  }
+
+  async respondToProposal(
+    id: string,
+    accept: boolean,
+    userId: string,
+    role: UserRole,
+  ) {
+    const booking = await this.findOne(id);
+
+    if (booking.status !== BookingStatus.PROPOSED_NEW_TIME) {
+      throw new BadRequestException(
+        'No active time proposal for this booking',
+      );
+    }
+
+    this.ensureBookingAccess(booking, userId, role);
+
+    if (accept) {
+      if (booking.proposedDate) {
+        booking.scheduledDate = booking.proposedDate;
+      }
+      booking.status = BookingStatus.REQUESTED;
+      booking.proposedDate = null;
+    } else {
+      booking.proposedDate = null;
+      booking.status = BookingStatus.REQUESTED;
+    }
+
+    const saved = await this.bookingRepository.save(booking);
+
+    // Notify the proposer
+    const providerName = `${booking.provider.firstName} ${booking.provider.lastName}`;
+    const notifyUserId =
+      role === UserRole.PROVIDER
+        ? booking.customer.user.id
+        : booking.provider.user.id;
+    const decision = accept ? 'accepted' : 'declined';
+
+    await this.notificationsService.create(
+      notifyUserId,
+      `Proposal ${decision.charAt(0).toUpperCase() + decision.slice(1)}`,
+      `The proposed new time has been ${decision}.`,
+    );
+
+    this.pushNotificationsService
+      .sendToUser(
+        notifyUserId,
+        `Proposal ${decision.charAt(0).toUpperCase() + decision.slice(1)}`,
+        `The proposed new time has been ${decision}.`,
+        { bookingId: saved.id },
+      )
+      .catch(() => {});
+
+    return saved;
+  }
+
   async addCharge(dto: AddBookingChargeDto, userId: string, role: UserRole) {
     const booking = await this.findOne(dto.bookingId);
 
@@ -388,6 +494,11 @@ export class BookingsService {
       }
     }
 
+    if (!commission) {
+      // If no commission found, default to 0
+      commission = { amount: 0, type: CommissionType.PERCENTAGE, value: 0 };
+    }
+
     booking.totalAmount = totalAmount;
     booking.commissionAmount = commission.amount;
     booking.providerAmount = totalAmount - commission.amount;
@@ -405,16 +516,22 @@ export class BookingsService {
         BookingStatus.ACCEPTED,
         BookingStatus.REJECTED,
         BookingStatus.CANCELLED,
+        BookingStatus.PROPOSED_NEW_TIME,
       ],
       [BookingStatus.ACCEPTED]: [
         BookingStatus.ON_THE_WAY,
         BookingStatus.CANCELLED,
+        BookingStatus.PROPOSED_NEW_TIME,
       ],
       [BookingStatus.ON_THE_WAY]: [BookingStatus.WORKING],
       [BookingStatus.WORKING]: [BookingStatus.COMPLETED],
       [BookingStatus.COMPLETED]: [],
       [BookingStatus.CANCELLED]: [],
       [BookingStatus.REJECTED]: [],
+      [BookingStatus.PROPOSED_NEW_TIME]: [
+        BookingStatus.REQUESTED,
+        BookingStatus.CANCELLED,
+      ],
     };
 
     if (!allowedTransitions[current]?.includes(next)) {

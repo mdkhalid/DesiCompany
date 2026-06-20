@@ -48,6 +48,9 @@ export class Booking extends BaseEntity {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   estimatedDays: number;
 
+  @Column({ type: 'timestamp', nullable: true })
+  proposedDate: Date | null;
+
   @OneToMany(() => BookingCharge, (charge) => charge.booking)
   charges?: BookingCharge[];
 }

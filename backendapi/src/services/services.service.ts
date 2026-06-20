@@ -243,8 +243,11 @@ export class ServicesService {
       .where('provider.isVerified = :isVerified', { isVerified: true });
 
     if (dto.categoryId) {
-      query.andWhere('category.id = :categoryId', {
-        categoryId: dto.categoryId,
+      // Get all subcategory IDs for hierarchical search
+      const subcategoryIds = await this.getCategoryAndDescendantIds(dto.categoryId);
+
+      query.andWhere('category.id IN (:...subcategoryIds)', {
+        subcategoryIds,
       });
       query.andWhere('service.isActive = :isActive', { isActive: true });
     }
@@ -294,7 +297,6 @@ export class ServicesService {
     }
 
     if (dto.minPrice !== undefined || dto.maxPrice !== undefined) {
-      // Join ProviderService for price filtering
       const priceConditions: string[] = [];
       if (dto.minPrice !== undefined) {
         priceConditions.push(
@@ -318,5 +320,21 @@ export class ServicesService {
     }
 
     return query.getMany();
+  }
+
+  private async getCategoryAndDescendantIds(
+    categoryId: string,
+  ): Promise<string[]> {
+    const ids = [categoryId];
+    const children = await this.categoryRepository.find({
+      where: { parent: { id: categoryId }, isActive: true },
+    });
+
+    for (const child of children) {
+      const descendantIds = await this.getCategoryAndDescendantIds(child.id);
+      ids.push(...descendantIds);
+    }
+
+    return ids;
   }
 }
