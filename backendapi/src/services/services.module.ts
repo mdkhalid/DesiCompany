@@ -5,6 +5,7 @@ import { ServicesService } from './services.service';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
+import { ProviderDateOverride } from './entities/provider-date-override.entity';
 import { Provider } from '../users/entities/provider.entity';
 
 @Module({
@@ -13,6 +14,7 @@ import { Provider } from '../users/entities/provider.entity';
       ServiceCategory,
       ProviderService,
       ProviderAvailability,
+      ProviderDateOverride,
       Provider,
     ]),
   ],

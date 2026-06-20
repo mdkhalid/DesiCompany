@@ -7,6 +7,7 @@ import { Booking } from '../../bookings/entities/booking.entity';
 import { Review } from '../../reviews/entities/review.entity';
 import { CustomerFeedback } from '../../feedbacks/entities/customer-feedback.entity';
 import { ProviderAvailability } from '../../services/entities/provider-availability.entity';
+import { ProviderDateOverride } from '../../services/entities/provider-date-override.entity';
 import { VerificationStatus } from '../../common/enums/verification-status.enum';
 
 @Entity('providers')
@@ -82,6 +83,12 @@ export class Provider extends BaseEntity {
     (availability) => availability.provider,
   )
   availabilities?: ProviderAvailability[];
+
+  @OneToMany(
+    () => ProviderDateOverride,
+    (override) => override.provider,
+  )
+  dateOverrides?: ProviderDateOverride[];
 
   @OneToMany(() => Booking, (booking) => booking.provider)
   bookings?: Booking[];

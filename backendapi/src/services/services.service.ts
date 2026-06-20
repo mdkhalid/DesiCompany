@@ -8,12 +8,14 @@ import { Repository } from 'typeorm';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
+import { ProviderDateOverride } from './entities/provider-date-override.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { CommissionType } from '../common/enums/commission-type.enum';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
 import { UpdateProviderServiceDto } from './dto/update-provider-service.dto';
 import { CreateProviderAvailabilityDto } from './dto/create-provider-availability.dto';
 import { SearchProvidersDto } from './dto/search-providers.dto';
+import { CreateDateOverrideDto } from './dto/date-override.dto';
 
 interface CategoryInput {
   nameEn?: string;
@@ -34,6 +36,8 @@ export class ServicesService {
     private readonly providerServiceRepository: Repository<ProviderService>,
     @InjectRepository(ProviderAvailability)
     private readonly availabilityRepository: Repository<ProviderAvailability>,
+    @InjectRepository(ProviderDateOverride)
+    private readonly dateOverrideRepository: Repository<ProviderDateOverride>,
     @InjectRepository(Provider)
     private readonly providerRepository: Repository<Provider>,
   ) {}
@@ -220,6 +224,163 @@ export class ServicesService {
       throw new NotFoundException('Availability slot not found');
     }
     await this.availabilityRepository.remove(availability);
+  }
+
+  async createDateOverride(providerId: string, dto: CreateDateOverrideDto) {
+    const provider = await this.providerRepository.findOne({
+      where: { id: providerId },
+    });
+    if (!provider) {
+      throw new NotFoundException('Provider not found');
+    }
+
+    if (!dto.isAvailable && dto.startTime && dto.endTime) {
+      throw new BadRequestException(
+        'startTime and endTime should only be set when isAvailable is true',
+      );
+    }
+
+    if (dto.isAvailable && dto.startTime && dto.endTime) {
+      if (dto.startTime >= dto.endTime) {
+        throw new BadRequestException('startTime must be before endTime');
+      }
+    }
+
+    const existing = await this.dateOverrideRepository.findOne({
+      where: { provider: { id: providerId }, overrideDate: dto.overrideDate },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'Date override already exists for this date. Use PATCH to update.',
+      );
+    }
+
+    const override = this.dateOverrideRepository.create({
+      provider,
+      overrideDate: dto.overrideDate,
+      isAvailable: dto.isAvailable,
+      startTime: dto.startTime || null,
+      endTime: dto.endTime || null,
+      reason: dto.reason,
+    });
+    return this.dateOverrideRepository.save(override);
+  }
+
+  async updateDateOverride(
+    providerId: string,
+    overrideId: string,
+    dto: Partial<CreateDateOverrideDto>,
+  ) {
+    const override = await this.dateOverrideRepository.findOne({
+      where: { id: overrideId, provider: { id: providerId } },
+    });
+    if (!override) {
+      throw new NotFoundException('Date override not found');
+    }
+
+    if (dto.isAvailable !== undefined) override.isAvailable = dto.isAvailable;
+    if (dto.startTime !== undefined) override.startTime = dto.startTime || null;
+    if (dto.endTime !== undefined) override.endTime = dto.endTime || null;
+    if (dto.reason !== undefined) override.reason = dto.reason;
+
+    return this.dateOverrideRepository.save(override);
+  }
+
+  async deleteDateOverride(providerId: string, overrideId: string) {
+    const override = await this.dateOverrideRepository.findOne({
+      where: { id: overrideId, provider: { id: providerId } },
+    });
+    if (!override) {
+      throw new NotFoundException('Date override not found');
+    }
+    await this.dateOverrideRepository.remove(override);
+    return { message: 'Date override deleted' };
+  }
+
+  async getDateOverrides(providerId: string) {
+    return this.dateOverrideRepository.find({
+      where: { provider: { id: providerId } },
+      order: { overrideDate: 'ASC' },
+    });
+  }
+
+  async getAvailableSlots(providerId: string, date: string) {
+    const provider = await this.providerRepository.findOne({
+      where: { id: providerId },
+    });
+    if (!provider) {
+      throw new NotFoundException('Provider not found');
+    }
+
+    const dateObj = new Date(date);
+    const dayOfWeek = dateObj.getDay();
+
+    const override = await this.dateOverrideRepository.findOne({
+      where: { provider: { id: providerId }, overrideDate: date },
+    });
+
+    if (override && !override.isAvailable) {
+      return {
+        date,
+        available: false,
+        reason: override.reason || 'Provider not available on this date',
+        slots: [],
+      };
+    }
+
+    let startTime: string;
+    let endTime: string;
+
+    if (override && override.startTime && override.endTime) {
+      startTime = override.startTime;
+      endTime = override.endTime;
+    } else {
+      const availability = await this.availabilityRepository.findOne({
+        where: { provider: { id: providerId }, dayOfWeek },
+      });
+      if (!availability) {
+        return {
+          date,
+          available: false,
+          reason: 'Provider not available on this day of week',
+          slots: [],
+        };
+      }
+      startTime = availability.startTime;
+      endTime = availability.endTime;
+    }
+
+    const slots = this.generateTimeSlots(startTime, endTime, 60);
+
+    return {
+      date,
+      available: true,
+      slots,
+    };
+  }
+
+  private generateTimeSlots(
+    startTime: string,
+    endTime: string,
+    durationMinutes: number,
+  ): string[] {
+    const slots: string[] = [];
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+
+    let currentMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+
+    while (currentMinutes + durationMinutes <= endMinutes) {
+      const hour = Math.floor(currentMinutes / 60);
+      const min = currentMinutes % 60;
+      slots.push(
+        `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
+      );
+      currentMinutes += durationMinutes;
+    }
+
+    return slots;
   }
 
   async findAllVerifiedProviders() {
