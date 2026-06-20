@@ -7,26 +7,38 @@ export default function Login() {
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const navigate = useNavigate();
 
   async function handleSendOtp() {
     try {
       setError('');
+      setSending(true);
       await sendOtp(phone);
       setStep('otp');
-    } catch (e: any) { setError(e.message); }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to send OTP');
+    } finally {
+      setSending(false);
+    }
   }
 
   async function handleVerifyOtp() {
     try {
       setError('');
+      setVerifying(true);
       const data = await verifyOtp(phone, otp);
       if (data.user.role !== 'admin') {
         setError('Only admin can access this panel');
         return;
       }
       navigate('/');
-    } catch (e: any) { setError(e.message); }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to verify OTP');
+    } finally {
+      setVerifying(false);
+    }
   }
 
   return (
@@ -47,10 +59,10 @@ export default function Login() {
             />
             <button
               onClick={handleSendOtp}
-              disabled={phone.length !== 10}
+              disabled={phone.length !== 10 || sending}
               className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Send OTP
+              {sending ? 'Sending...' : 'Send OTP'}
             </button>
           </div>
         ) : (
@@ -67,10 +79,10 @@ export default function Login() {
             />
             <button
               onClick={handleVerifyOtp}
-              disabled={otp.length < 4}
+              disabled={otp.length < 4 || verifying}
               className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Verify & Login
+              {verifying ? 'Verifying...' : 'Verify & Login'}
             </button>
           </div>
         )}

@@ -38,7 +38,7 @@ describe('ProtectedRoute', () => {
 
   it('renders children when authenticated as admin', () => {
     vi.mocked(authService.isAuthenticated).mockReturnValue(true);
-    vi.mocked(authService.getStoredUser).mockReturnValue({ role: 'admin' });
+    vi.mocked(authService.getStoredUser).mockReturnValue({ id: '1', phone: '9999999999', role: 'admin' });
 
     renderWithRouter(
       <ProtectedRoute>
@@ -51,7 +51,7 @@ describe('ProtectedRoute', () => {
 
   it('redirects to login when authenticated but not admin', () => {
     vi.mocked(authService.isAuthenticated).mockReturnValue(true);
-    vi.mocked(authService.getStoredUser).mockReturnValue({ role: 'customer' });
+    vi.mocked(authService.getStoredUser).mockReturnValue({ id: '1', phone: '9876543210', role: 'customer' });
 
     renderWithRouter(
       <ProtectedRoute>

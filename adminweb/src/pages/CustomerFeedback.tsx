@@ -53,8 +53,8 @@ export default function CustomerFeedback() {
     try {
       const data = await api.get<CustomerFeedback[]>('/admin/customer-feedbacks');
       setFeedbacks(data);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load feedback');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load feedback');
     } finally {
       setLoading(false);
     }

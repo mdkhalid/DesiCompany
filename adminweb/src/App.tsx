@@ -13,6 +13,18 @@ import Refunds from './pages/Refunds';
 import Reviews from './pages/Reviews';
 import CustomerFeedback from './pages/CustomerFeedback';
 
+function NotFound() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <h1 className="text-6xl font-bold text-gray-300">404</h1>
+        <p className="text-gray-500 mt-2">Page not found</p>
+        <a href="/" className="text-blue-600 hover:underline mt-4 inline-block">Go to Dashboard</a>
+      </div>
+    </div>
+  );
+}
+
 function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
@@ -37,6 +49,7 @@ export default function App() {
         <Route path="/refunds" element={<ProtectedRoute><Layout><Refunds /></Layout></ProtectedRoute>} />
         <Route path="/reviews" element={<ProtectedRoute><Layout><Reviews /></Layout></ProtectedRoute>} />
         <Route path="/customer-feedback" element={<ProtectedRoute><Layout><CustomerFeedback /></Layout></ProtectedRoute>} />
+        <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );

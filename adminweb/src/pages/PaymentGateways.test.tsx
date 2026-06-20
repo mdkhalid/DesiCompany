@@ -108,6 +108,9 @@ describe('PaymentGateways Page', () => {
 
     await user.click(screen.getByText('Add Gateway'));
 
+    const displayNameField = screen.getByPlaceholderText('Display name');
+    await user.type(displayNameField, 'Test Gateway');
+
     const credentialsField = screen.getByPlaceholderText(/key_id/);
     await user.clear(credentialsField);
     await user.type(credentialsField, 'invalid json');

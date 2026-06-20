@@ -5,14 +5,34 @@ interface KycDoc { id: string; providerId: string; providerName: string; documen
 
 export default function KycVerification() {
   const [docs, setDocs] = useState<KycDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
 
-  useEffect(() => {
-    api.get<KycDoc[]>('/kyc/documents').then(setDocs).catch(console.error);
-  }, []);
+  async function load() {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await api.get<KycDoc[]>('/kyc/documents');
+      setDocs(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load KYC documents');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
 
   async function updateStatus(id: string, status: string) {
-    await api.patch(`/kyc/documents/${id}`, { status });
-    setDocs(docs.map((d) => (d.id === id ? { ...d, status } : d)));
+    setActionError('');
+    if (!confirm(`Are you sure you want to ${status} this KYC document?`)) return;
+    try {
+      await api.patch(`/kyc/documents/${id}`, { status });
+      setDocs((prev) => prev.map((d) => (d.id === id ? { ...d, status } : d)));
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Failed to update status');
+    }
   }
 
   const pending = docs.filter((d) => d.status === 'pending' || d.status === 'under_review');
@@ -41,8 +61,28 @@ export default function KycVerification() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">KYC Verification</h1>
-      {pending.length > 0 && <div className="mb-6"><h2 className="font-semibold mb-3">Pending ({pending.length})</h2><div className="space-y-2">{pending.map(renderDoc)}</div></div>}
-      <div><h2 className="font-semibold mb-3">Processed ({others.length})</h2><div className="space-y-2">{others.map(renderDoc)}</div></div>
+
+      {actionError && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{actionError}</div>
+      )}
+
+      {loading && (
+        <div className="bg-white p-8 rounded-xl shadow text-center text-gray-500">Loading KYC documents...</div>
+      )}
+
+      {!loading && error && (
+        <div className="bg-white p-6 rounded-xl shadow">
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>
+          <button onClick={load} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Retry</button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
+          {pending.length > 0 && <div className="mb-6"><h2 className="font-semibold mb-3">Pending ({pending.length})</h2><div className="space-y-2">{pending.map(renderDoc)}</div></div>}
+          <div><h2 className="font-semibold mb-3">Processed ({others.length})</h2><div className="space-y-2">{others.map(renderDoc)}</div></div>
+        </>
+      )}
     </div>
   );
 }
