@@ -10,6 +10,12 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
+    cors: {
+      origin: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      credentials: true,
+    },
   });
 
   // Ensure uploads directory exists
@@ -66,29 +72,26 @@ async function bootstrap() {
     }),
   );
 
-  // Restricted CORS — allow only specified origins
+  // Override CORS for production with explicit origins
   const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+
+  if (allowedOrigins.length > 0) {
+    app.enableCors({
+      origin: allowedOrigins,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      credentials: true,
+    });
+  }
 
   if (allowedOrigins.length === 0 && process.env.NODE_ENV === 'production') {
     console.warn(
       'WARNING: CORS_ALLOWED_ORIGINS is not set. CORS will deny all origins in production.',
     );
   }
-
-  app.enableCors({
-    origin:
-      allowedOrigins.length > 0
-        ? allowedOrigins
-        : process.env.NODE_ENV === 'production'
-          ? []
-          : true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    credentials: true,
-  });
 
   const config = new DocumentBuilder()
     .setTitle('DesiCompany API')
