@@ -69,7 +69,8 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       final data = await ApiService.get('/chat/conversations');
       if (!mounted) return;
       setState(() {
-        _conversations = (data as List).map((c) => Conversation.fromJson(c)).toList();
+        final list = data is List ? data : (data['conversations'] as List);
+        _conversations = list.map((c) => Conversation.fromJson(c)).toList();
         _loading = false;
       });
     } catch (e) {

@@ -203,85 +203,83 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final loc = LocalizationProvider.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: _locationText == 'Set location'
-                ? () => Navigator.pushNamed(context, '/profile')
-                : null,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.location_on, color: Colors.white, size: 18),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _locationText == 'Set location' ? loc.tr('set_location') : _locationText,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 12,
-                          ),
-                        ),
-                        Text(
-                          loc.tr('find_services'),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Flexible(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            GestureDetector(
+              onTap: _locationText == 'Set location'
+                  ? () => Navigator.pushNamed(context, '/profile')
+                  : null,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  LabeledIconButton(
-                    icon: Icons.work_outline,
-                    label: loc.tr('header_jobs'),
-                    iconColor: Colors.white,
-                    backgroundColor: Colors.white.withValues(alpha: 0.15),
-                    onTap: () => Navigator.pushNamed(context, '/customer-jobs'),
-                  ),
-                  const SizedBox(width: 6),
-                  LabeledIconButton(
-                    icon: Icons.card_giftcard,
-                    label: loc.tr('membership_plans'),
-                    iconColor: Colors.white,
-                    backgroundColor: Colors.white.withValues(alpha: 0.15),
-                    onTap: () => Navigator.pushNamed(context, '/customer-memberships'),
-                  ),
-                  const SizedBox(width: 6),
-                  _buildNotificationButton(),
-                  const SizedBox(width: 8),
-                  _buildIconButton(
-                    Icons.logout,
-                    () => Navigator.pushReplacementNamed(context, '/login'),
-                    tooltipKey: 'header_logout',
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _locationText == 'Set location' ? loc.tr('set_location') : _locationText,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            loc.tr('find_services'),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+            Row(
+              children: [
+                LabeledIconButton(
+                  icon: Icons.work_outline,
+                  label: loc.tr('header_jobs'),
+                  iconColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  onTap: () => Navigator.pushNamed(context, '/customer-jobs'),
+                ),
+                const SizedBox(width: 6),
+                LabeledIconButton(
+                  icon: Icons.card_giftcard,
+                  label: loc.tr('membership_plans'),
+                  iconColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  onTap: () => Navigator.pushNamed(context, '/customer-memberships'),
+                ),
+                const SizedBox(width: 6),
+                _buildNotificationButton(),
+                const SizedBox(width: 8),
+                _buildIconButton(
+                  Icons.logout,
+                  () => Navigator.pushReplacementNamed(context, '/login'),
+                  tooltipKey: 'header_logout',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

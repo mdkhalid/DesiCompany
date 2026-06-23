@@ -210,7 +210,7 @@ export class ChatService {
     // Fix: only count messages from the other person as unread
     const unreadRows = await this.directMessageRepository.find({
       where: { ...unreadWhere, sender: { id: Not(userId) } } as any,
-      select: ['id', 'sender', 'customer', 'provider'],
+      select: { id: true, sender: true, customer: true, provider: true },
     });
 
     const unreadCountMap = new Map<string, number>();

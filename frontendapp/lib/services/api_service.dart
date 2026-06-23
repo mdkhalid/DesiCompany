@@ -52,6 +52,12 @@ class ApiService {
   static Uri _uri(String path) {
     final base = Uri.parse(baseUrl);
     final pathPart = path.startsWith('/') ? path : '/$path';
+    final queryIdx = pathPart.indexOf('?');
+    if (queryIdx >= 0) {
+      final cleanPath = pathPart.substring(0, queryIdx);
+      final queryString = pathPart.substring(queryIdx + 1);
+      return base.replace(path: '${base.path}$cleanPath', query: queryString);
+    }
     return base.replace(path: '${base.path}$pathPart');
   }
 
