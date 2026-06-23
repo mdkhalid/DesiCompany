@@ -44,7 +44,7 @@ async function bootstrap() {
             'https://cdn.jsdelivr.net',
           ],
           imgSrc: ["'self'", 'data:', 'blob:', 'http://localhost:3000'],
-          connectSrc: ["'self'"],
+          connectSrc: ["'self'", "http://localhost:*", "https://localhost:*", "ws://localhost:*", "wss://localhost:*"],
         },
       },
       frameguard: { action: 'deny' },
