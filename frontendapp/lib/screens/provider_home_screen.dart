@@ -247,7 +247,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              _navItem(Icons.book_online, loc.tr('nav_bookings'), true, () {}),
+              _navItem(Icons.assignment_outlined, 'Requests', true, () {}),
               _navItem(Icons.wallet, loc.tr('nav_wallet'), false, () => Navigator.pushNamed(context, '/wallet')),
               _navItem(Icons.chat, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/conversations')),
               _navItem(Icons.person, loc.tr('nav_profile'), false, () => Navigator.pushNamed(context, '/profile')),

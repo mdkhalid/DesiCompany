@@ -11,6 +11,8 @@ import 'screens/provider_services_screen.dart';
 import 'screens/wallet_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/conversation_list_screen.dart';
+import 'screens/customer_requests_screen.dart';
+import 'screens/provider_requests_screen.dart';
 import 'screens/my_bookings_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/notifications_screen.dart';
@@ -126,6 +128,8 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
           '/customer-memberships': (_) => const CustomerMembershipScreen(),
           '/admin-revenue': (_) => const AdminRevenueScreen(),
           '/conversations': (_) => const ConversationListScreen(),
+          '/customer-requests': (_) => const CustomerRequestsScreen(),
+          '/provider-requests': (_) => const ProviderRequestsScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name == '/provider-detail') {
