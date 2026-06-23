@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import { Message, MessageType } from './entities/message.entity';
 import { DirectMessage, DirectMessageType } from './entities/direct-message.entity';
 import { Booking } from '../bookings/entities/booking.entity';
@@ -46,9 +46,6 @@ export class ChatService {
   }
 
   async getConversations(userId: string, page = 1, limit = 20): Promise<{ conversations: ConversationItem[]; total: number }> {
-    const conversations: ConversationItem[] = [];
-
-    // Get user info with relations
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: { customer: true, provider: true },
@@ -57,127 +54,115 @@ export class ChatService {
 
     const isCustomer = !!user.customer;
     const isProvider = !!user.provider;
+    if (!isCustomer && !isProvider) return { conversations: [], total: 0 };
 
-    // Get booking-based conversations
-    let bookings: Booking[];
+    const conversations: ConversationItem[] = [];
+
+    // === BOOKING CONVERSATIONS ===
+    type BookingWithRelations = Booking & { customer: Customer; provider: Provider & { user: User } };
+    let bookings: BookingWithRelations[];
     if (isCustomer && user.customer) {
       bookings = await this.bookingRepository.find({
         where: { customer: { id: user.customer.id } },
         relations: { customer: true, provider: { user: true } },
         order: { updatedAt: 'DESC' },
-      });
+      }) as BookingWithRelations[];
     } else if (isProvider && user.provider) {
       bookings = await this.bookingRepository.find({
         where: { provider: { id: user.provider.id } },
-        relations: { customer: true, provider: { user: true } },
+        relations: { customer: { user: true }, provider: true },
         order: { updatedAt: 'DESC' },
-      });
+      }) as BookingWithRelations[];
     } else {
-      return { conversations: [], total: 0 };
+      bookings = [];
     }
 
-    for (const booking of bookings) {
-      let partnerId: string;
-      let partnerName: string;
+    if (bookings.length > 0) {
+      const bookingIds = bookings.map(b => b.id);
 
-      if (isCustomer && booking.provider) {
-        partnerId = booking.provider.user?.id || '';
-        partnerName = this.getFullName(booking.provider.firstName, booking.provider.lastName);
-      } else if (isProvider && booking.customer) {
-        partnerId = booking.customer.user?.id || '';
-        partnerName = this.getFullName(booking.customer.firstName, booking.customer.lastName);
-      } else {
-        continue;
+      // Batch: last message per booking (single query)
+      const lastMessages = await this.messageRepository
+        .createQueryBuilder('msg')
+        .select(['msg.id', 'msg.content', 'msg.createdAt', 'msg.booking'])
+        .where('msg.booking IN (:...bookingIds)', { bookingIds })
+        .orderBy('msg.createdAt', 'DESC')
+        .getMany();
+
+      const lastMessageMap = new Map<string, { content: string; createdAt: Date }>();
+      for (const m of lastMessages) {
+        const bid = m.booking?.id;
+        if (bid && !lastMessageMap.has(bid)) {
+          lastMessageMap.set(bid, { content: m.content, createdAt: m.createdAt });
+        }
       }
 
-      if (!partnerId) continue;
+      // Batch: unread count per booking (single query)
+      const unreadRows = await this.messageRepository
+        .createQueryBuilder('msg')
+        .select('msg.booking', 'bookingId')
+        .addSelect('COUNT(*)', 'cnt')
+        .where('msg.booking IN (:...bookingIds)', { bookingIds })
+        .andWhere('msg.isRead = false')
+        .groupBy('msg.booking')
+        .getRawMany();
 
-      const lastMessage = await this.messageRepository.findOne({
-        where: { booking: { id: booking.id } },
-        order: { createdAt: 'DESC' },
-      });
-
-      const unreadCount = await this.messageRepository.count({
-        where: {
-          booking: { id: booking.id },
-          isRead: false,
-        },
-      });
-
-      conversations.push({
-        id: `booking_${booking.id}`,
-        type: 'booking',
-        partnerId,
-        partnerName,
-        partnerRole: isCustomer ? 'provider' : 'customer',
-        lastMessage: lastMessage?.content || 'No messages yet',
-        lastMessageAt: lastMessage?.createdAt || booking.createdAt,
-        unreadCount,
-        bookingId: booking.id,
-        bookingStatus: booking.status,
-      });
-    }
-
-    // Get direct (pre-booking) conversations
-    let directMessages: DirectMessage[];
-    if (isCustomer && user.customer) {
-      directMessages = await this.directMessageRepository.find({
-        where: { customer: { id: user.customer.id } },
-        relations: { customer: { user: true }, provider: { user: true }, sender: true },
-        order: { createdAt: 'DESC' },
-      });
-    } else if (isProvider && user.provider) {
-      directMessages = await this.directMessageRepository.find({
-        where: { provider: { id: user.provider.id } },
-        relations: { customer: { user: true }, provider: { user: true }, sender: true },
-        order: { createdAt: 'DESC' },
-      });
-    } else {
-      directMessages = [];
-    }
-
-    // Group by conversation partner
-    const directMap = new Map<string, ConversationItem>();
-    for (const dm of directMessages) {
-      let partnerId: string;
-      let partnerName: string;
-
-      if (isCustomer && dm.provider) {
-        partnerId = dm.provider.user?.id || '';
-        partnerName = this.getFullName(dm.provider.firstName, dm.provider.lastName);
-      } else if (isProvider && dm.customer) {
-        partnerId = dm.customer.user?.id || '';
-        partnerName = this.getFullName(dm.customer.firstName, dm.customer.lastName);
-      } else {
-        continue;
+      const unreadMap = new Map<string, number>();
+      for (const r of unreadRows) {
+        unreadMap.set(r.bookingId ?? r.msg_booking, parseInt(r.cnt ?? '0', 10));
       }
 
-      if (!partnerId) continue;
+      for (const booking of bookings) {
+        let partnerId: string;
+        let partnerName: string;
 
-      const existing = directMap.get(partnerId);
+        if (isCustomer && booking.provider) {
+          partnerId = booking.provider.user?.id || '';
+          partnerName = this.getFullName(booking.provider.firstName, booking.provider.lastName);
+        } else if (isProvider && booking.customer) {
+          partnerId = booking.customer.user?.id || '';
+          partnerName = this.getFullName(booking.customer.firstName, booking.customer.lastName);
+        } else {
+          continue;
+        }
 
-      if (!existing) {
-        directMap.set(partnerId, {
-          id: `direct_${partnerId}`,
-          type: 'direct',
+        if (!partnerId) continue;
+
+        const lastMsg = lastMessageMap.get(booking.id);
+        conversations.push({
+          id: `booking_${booking.id}`,
+          type: 'booking',
           partnerId,
           partnerName,
-          partnerRole: 'provider',
-          lastMessage: dm.content,
-          lastMessageAt: dm.createdAt,
-          unreadCount: 0,
+          partnerRole: isCustomer ? 'provider' : 'customer',
+          lastMessage: lastMsg?.content || 'No messages yet',
+          lastMessageAt: lastMsg?.createdAt || booking.createdAt,
+          unreadCount: unreadMap.get(booking.id) || 0,
+          bookingId: booking.id,
+          bookingStatus: booking.status,
         });
-      } else if (dm.createdAt > existing.lastMessageAt) {
-        existing.lastMessage = dm.content;
-        existing.lastMessageAt = dm.createdAt;
       }
     }
 
-    for (const conv of directMap.values()) {
-      conversations.push(conv);
+    // === DIRECT (PRE-BOOKING) CONVERSATIONS ===
+    if (isCustomer && user.customer) {
+      await this.addDirectConversations(
+        conversations,
+        'customer',
+        user.customer.id,
+        userId,
+        'provider',
+      );
+    } else if (isProvider && user.provider) {
+      await this.addDirectConversations(
+        conversations,
+        'provider',
+        user.provider.id,
+        userId,
+        'customer',
+      );
     }
 
-    // Sort by last message time
+    // Sort by last message time descending
     conversations.sort((a, b) =>
       new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
     );
@@ -188,6 +173,80 @@ export class ChatService {
     const paginated = conversations.slice(start, start + limit);
 
     return { conversations: paginated, total };
+  }
+
+  private async addDirectConversations(
+    conversations: ConversationItem[],
+    userRole: 'customer' | 'provider',
+    profileId: string,
+    userId: string,
+    partnerRole: 'customer' | 'provider',
+  ): Promise<void> {
+    const partnerField = userRole === 'customer' ? 'dm.provider' : 'dm.customer';
+
+    const lastMessages = await this.directMessageRepository
+      .createQueryBuilder('dm')
+      .distinctOn([partnerField])
+      .leftJoinAndSelect('dm.customer', 'dmc')
+      .leftJoinAndSelect('dmc.user', 'dmcu')
+      .leftJoinAndSelect('dm.provider', 'dmp')
+      .leftJoinAndSelect('dmp.user', 'dmpu')
+      .where(userRole === 'customer' ? 'dm.customer = :pid' : 'dm.provider = :pid', { pid: profileId })
+      .orderBy(partnerField)
+      .addOrderBy('dm.createdAt', 'DESC')
+      .getMany();
+
+    if (lastMessages.length === 0) return;
+
+    // Batch: get unread counts per partner
+    const partnerProfileIds = lastMessages.map(m =>
+      userRole === 'customer' ? m.provider.id : m.customer.id,
+    );
+
+    const unreadWhere = userRole === 'customer'
+      ? { customer: { id: profileId }, provider: { id: In(partnerProfileIds) }, isRead: false }
+      : { provider: { id: profileId }, customer: { id: In(partnerProfileIds) }, isRead: false };
+
+    // Fix: only count messages from the other person as unread
+    const unreadRows = await this.directMessageRepository.find({
+      where: { ...unreadWhere, sender: { id: Not(userId) } } as any,
+      select: ['id', 'sender', 'customer', 'provider'],
+    });
+
+    const unreadCountMap = new Map<string, number>();
+    for (const row of unreadRows) {
+      const key = userRole === 'customer' ? row.provider?.id : row.customer?.id;
+      if (key) unreadCountMap.set(key, (unreadCountMap.get(key) || 0) + 1);
+    }
+
+    for (const dm of lastMessages) {
+      let partnerId: string;
+      let partnerName: string;
+
+      if (userRole === 'customer' && dm.provider) {
+        partnerId = dm.provider.user?.id || '';
+        partnerName = this.getFullName(dm.provider.firstName, dm.provider.lastName);
+      } else if (userRole === 'provider' && dm.customer) {
+        partnerId = dm.customer.user?.id || '';
+        partnerName = this.getFullName(dm.customer.firstName, dm.customer.lastName);
+      } else {
+        continue;
+      }
+
+      if (!partnerId) continue;
+
+      const partnerProfileKey = userRole === 'customer' ? dm.provider.id : dm.customer.id;
+      conversations.push({
+        id: `direct_${partnerId}`,
+        type: 'direct',
+        partnerId,
+        partnerName,
+        partnerRole,
+        lastMessage: dm.content,
+        lastMessageAt: dm.createdAt,
+        unreadCount: unreadCountMap.get(partnerProfileKey) || 0,
+      });
+    }
   }
 
   async getMessageHistory(

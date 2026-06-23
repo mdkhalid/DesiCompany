@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../l10n/strings.dart';
+import '../models/chat_message.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
@@ -27,8 +28,7 @@ class _ChatScreenState extends State<ChatScreen> {
   late io.Socket _socket;
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final List<Map<String, dynamic>> _messages = [];
-  final Set<String> _readMessageIds = {};
+  final List<ChatMessage> _messages = [];
   String? _directRoomId;
   bool _isTyping = false;
   final Set<String> _typingUsers = {};
@@ -89,24 +89,24 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('direct_chat_history', (data) {
-      final msgs = List<Map<String, dynamic>>.from(data);
+      final msgs = (data as List).map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
       setState(() => _messages.addAll(msgs));
       _scrollToBottom();
     });
 
     _socket.on('history', (data) {
-      final msgs = List<Map<String, dynamic>>.from(data);
+      final msgs = (data as List).map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
       setState(() => _messages.addAll(msgs));
       _scrollToBottom();
     });
 
     _socket.on('new_direct_message', (data) {
-      final msg = Map<String, dynamic>.from(data);
+      final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
       _addMessage(msg);
     });
 
     _socket.on('new_message', (data) {
-      final msg = Map<String, dynamic>.from(data);
+      final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
       _addMessage(msg);
     });
 
@@ -125,20 +125,29 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _socket.on('messages_read', (data) {
       final messageIds = data['messageIds'] as List<dynamic>?;
-      if (messageIds != null) {
-        setState(() => _readMessageIds.addAll(messageIds.cast<String>()));
-      } else {
-        setState(() => _messages
-            .where((m) => m['senderId'] != _currentUserId)
-            .forEach((m) => m['status'] = 'read'));
-      }
+      setState(() {
+        if (messageIds != null) {
+          final ids = messageIds.cast<String>().toSet();
+          for (var i = 0; i < _messages.length; i++) {
+            if (ids.contains(_messages[i].id)) {
+              _messages[i] = _messages[i].copyWith(status: MessageStatus.read, isRead: true);
+            }
+          }
+        } else {
+          for (var i = 0; i < _messages.length; i++) {
+            if (_messages[i].senderId != _currentUserId) {
+              _messages[i] = _messages[i].copyWith(status: MessageStatus.read, isRead: true);
+            }
+          }
+        }
+      });
     });
   }
 
-  void _addMessage(Map<String, dynamic> msg) {
+  void _addMessage(ChatMessage msg) {
     setState(() => _messages.add(msg));
     _scrollToBottom();
-    if (msg['senderId'] != _currentUserId) {
+    if (msg.senderId != _currentUserId) {
       _sendReadReceipt();
     }
   }
@@ -259,20 +268,35 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _translate() async {
+    final visibleMessages = _messages.where((m) => m.isText && (m.senderId != _currentUserId)).toList();
+    if (visibleMessages.isEmpty) return;
+
     setState(() => _translating = true);
-    _targetLang = _targetLang == 'en' ? 'hi' : 'en';
-    setState(() => _translating = false);
-  }
-
-  String _getStatusIcon(Map<String, dynamic> msg) {
-    final s = msg['status'] as String?;
-    if (s == 'read' || _readMessageIds.contains(msg['id'])) return 'read';
-    if (s == 'delivered') return 'delivered';
-    return 'sent';
-  }
-
-  bool _isMyMessage(Map<String, dynamic> msg) {
-    return msg['senderId'] == _currentUserId;
+    try {
+      _targetLang = _targetLang == 'en' ? 'hi' : 'en';
+      final lastMsg = visibleMessages.last;
+      final body = await ApiService.post('/chat/translate', body: {
+        'text': lastMsg.content,
+        'targetLang': _targetLang,
+      });
+      final translated = body['translated'] as String? ?? body['text'] as String?;
+      if (translated != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(translated),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Translation failed')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _translating = false);
+    }
   }
 
   String _formatTime(DateTime? dt) {
@@ -360,9 +384,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     }
 
                     final msg = _messages[i];
-                    final isMe = _isMyMessage(msg);
-                    final mType = msg['messageType'] as String? ?? 'text';
-                    final meta = msg['metadata'] as Map<String, dynamic>?;
+                    final isMe = msg.senderId == _currentUserId;
 
                     return Column(
                       crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -371,18 +393,18 @@ class _ChatScreenState extends State<ChatScreen> {
                           Padding(
                             padding: const EdgeInsets.only(left: 4, bottom: 2),
                             child: Text(
-                              msg['senderName'] as String? ?? '',
+                              msg.senderName,
                               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                             ),
                           ),
                         Row(
                           mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                           children: [
-                            if (mType == 'image')
-                              _buildImageMessage(msg, meta, isMe)
-                            else if (mType == 'quote')
-                              _buildQuoteMessage(msg, meta, isMe)
-                            else if (mType == 'quick_reply')
+                            if (msg.isImage)
+                              _buildImageMessage(msg, isMe)
+                            else if (msg.isQuote)
+                              _buildQuoteMessage(msg, isMe)
+                            else if (msg.isQuickReply)
                               _buildQuickReplyMessage(msg, isMe)
                             else
                               _buildTextMessage(msg, isMe),
@@ -447,7 +469,8 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildTextMessage(Map<String, dynamic> msg, bool isMe) {
+  Widget _buildTextMessage(ChatMessage msg, bool isMe) {
+    final isRead = msg.status == 'read' || msg.isRead;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -464,21 +487,21 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(msg['content'] ?? '', style: const TextStyle(fontSize: 15)),
+          Text(msg.content, style: const TextStyle(fontSize: 15)),
           const SizedBox(height: 2),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                _formatTime(msg['createdAt'] != null ? DateTime.tryParse(msg['createdAt'].toString()) : null),
+                _formatTime(msg.createdAt),
                 style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
               ),
               if (isMe) ...[
                 const SizedBox(width: 3),
                 Icon(
-                  _getStatusIcon(msg) == 'read' ? Icons.done_all : Icons.done,
+                  isRead ? Icons.done_all : Icons.done,
                   size: 14,
-                  color: _getStatusIcon(msg) == 'read' ? Colors.blue : Colors.grey.shade600,
+                  color: isRead ? Colors.blue : Colors.grey.shade600,
                 ),
               ],
             ],
@@ -488,8 +511,8 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildImageMessage(Map<String, dynamic> msg, Map<String, dynamic>? meta, bool isMe) {
-    final imageUrl = meta?['imageUrl'] as String? ?? msg['content'] as String?;
+  Widget _buildImageMessage(ChatMessage msg, bool isMe) {
+    final imageUrl = msg.imageUrl ?? msg.content;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       constraints: BoxConstraints(
@@ -505,7 +528,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.network(
-              imageUrl ?? '',
+              imageUrl,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
                 height: 100,
@@ -536,9 +559,8 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildQuoteMessage(Map<String, dynamic> msg, Map<String, dynamic>? meta, bool isMe) {
-    final amount = meta?['quoteAmount']?.toString() ?? '';
-    final accepted = meta?['accepted'] == true;
+  Widget _buildQuoteMessage(ChatMessage msg, bool isMe) {
+    final amount = msg.quoteAmount?.toStringAsFixed(0) ?? '';
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -551,18 +573,18 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('💰 Quote', style: TextStyle(fontSize: 11, color: isMe ? Colors.green.shade700 : Colors.orange.shade700, fontWeight: FontWeight.bold)),
+          Text('Quote', style: TextStyle(fontSize: 11, color: isMe ? Colors.green.shade700 : Colors.orange.shade700, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text('₹$amount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          if (accepted)
-            Text('✅ Accepted', style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
+          if (msg.quoteAccepted)
+            Text('Accepted', style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
           const SizedBox(height: 4),
           if (isMe)
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _formatTime(msg['createdAt'] != null ? DateTime.tryParse(msg['createdAt'].toString()) : null),
+                  _formatTime(msg.createdAt),
                   style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
                 ),
               ],
@@ -572,7 +594,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildQuickReplyMessage(Map<String, dynamic> msg, bool isMe) {
+  Widget _buildQuickReplyMessage(ChatMessage msg, bool isMe) {
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -583,7 +605,7 @@ class _ChatScreenState extends State<ChatScreen> {
         border: Border.all(color: Colors.blue.shade200, width: 0.5),
       ),
       child: Text(
-        msg['content'] ?? '',
+        msg.content,
         style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: isMe ? Colors.black87 : Colors.black54),
       ),
     );

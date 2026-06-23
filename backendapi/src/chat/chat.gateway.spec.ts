@@ -285,7 +285,7 @@ describe('ChatGateway', () => {
 
       const client = {
         id: 'socket-1',
-        data: { userId: 'user-1' },
+        data: { userId: 'user-1', userName: 'Test User', user: { role: 'customer' } },
         emit: jest.fn(),
       } as unknown as Socket;
 
