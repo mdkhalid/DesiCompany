@@ -3,6 +3,13 @@ import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
 
+export enum MessageType {
+  TEXT = 'text',
+  IMAGE = 'image',
+  QUOTE = 'quote',
+  QUICK_REPLY = 'quick_reply',
+}
+
 @Entity('messages')
 export class Message extends BaseEntity {
   @ManyToOne(() => Booking, { onDelete: 'CASCADE' })
@@ -18,4 +25,10 @@ export class Message extends BaseEntity {
 
   @Column({ default: false })
   isRead: boolean;
+
+  @Column({ type: 'varchar', length: 50, default: MessageType.TEXT })
+  messageType: MessageType;
+
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, any>;
 }

@@ -803,7 +803,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             children: [
               _navItem(Icons.home_rounded, loc.tr('nav_home'), true, () {}),
               _navItem(Icons.book_online_outlined, loc.tr('nav_bookings'), false, () => Navigator.pushNamed(context, '/my-bookings')),
-              _navItem(Icons.chat_bubble_outline, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/chat')),
+              _navItem(Icons.chat_bubble_outline, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/conversations')),
               _navItem(Icons.person_outline, loc.tr('nav_profile'), false, () => Navigator.pushNamed(context, '/profile')),
             ],
           ),

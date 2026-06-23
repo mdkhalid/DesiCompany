@@ -39,6 +39,7 @@ import { PromotionsModule } from './promotions/promotions.module';
 import { PackagesModule } from './packages/packages.module';
 import { VerificationVideosModule } from './verification/verification-videos.module';
 import { SupportModule } from './support/support.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -55,6 +56,8 @@ import { Notification } from './notifications/entities/notification.entity';
 import { CustomerFeedback } from './feedbacks/entities/customer-feedback.entity';
 import { Dispute } from './disputes/entities/dispute.entity';
 import { ActivityLog } from './activity-logs/entities/activity-log.entity';
+import { Message } from './chat/entities/message.entity';
+import { DirectMessage } from './chat/entities/direct-message.entity';
 
 @Module({
   imports: [
@@ -102,6 +105,7 @@ import { ActivityLog } from './activity-logs/entities/activity-log.entity';
     PackagesModule,
     VerificationVideosModule,
     SupportModule,
+    UploadsModule,
     TypeOrmModule.forFeature([
       User,
       Customer,
@@ -119,6 +123,8 @@ import { ActivityLog } from './activity-logs/entities/activity-log.entity';
       CustomerFeedback,
       Dispute,
       ActivityLog,
+      Message,
+      DirectMessage,
     ]),
   ],
   controllers: [AppController],

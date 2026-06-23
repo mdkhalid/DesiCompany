@@ -2,11 +2,19 @@ import { Column, Entity, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from '../../users/entities/user.entity';
 import { Provider } from '../../users/entities/provider.entity';
+import { Customer } from '../../users/entities/customer.entity';
+
+export enum DirectMessageType {
+  TEXT = 'text',
+  IMAGE = 'image',
+  QUOTE = 'quote',
+  QUICK_REPLY = 'quick_reply',
+}
 
 @Entity('direct_messages')
 export class DirectMessage extends BaseEntity {
-  @ManyToOne(() => User)
-  customer: User;
+  @ManyToOne(() => Customer)
+  customer: Customer;
 
   @ManyToOne(() => Provider)
   provider: Provider;
@@ -19,4 +27,10 @@ export class DirectMessage extends BaseEntity {
 
   @Column({ default: false })
   isRead: boolean;
+
+  @Column({ type: 'varchar', length: 50, default: DirectMessageType.TEXT })
+  messageType: DirectMessageType;
+
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, any>;
 }

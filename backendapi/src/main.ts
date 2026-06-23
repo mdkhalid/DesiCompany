@@ -2,11 +2,25 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
+  });
+
+  // Ensure uploads directory exists
+  const uploadsDir = join(process.cwd(), 'uploads', 'chat');
+  if (!existsSync(uploadsDir)) {
+    mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  // Serve uploaded files statically
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
   });
 
   app.setGlobalPrefix(process.env.API_PREFIX || '/api/v1');
@@ -29,7 +43,7 @@ async function bootstrap() {
             'https://fonts.gstatic.com',
             'https://cdn.jsdelivr.net',
           ],
-          imgSrc: ["'self'", 'data:', 'https://fastly.pinkomatic.com'],
+          imgSrc: ["'self'", 'data:', 'blob:', 'http://localhost:3000'],
           connectSrc: ["'self'"],
         },
       },

@@ -17,6 +17,7 @@ class AppStrings {
       'back': 'Back',
       'retry': 'Retry',
       'no_data': 'No data available',
+      'conversations': 'Conversations',
 
       // Auth
       'phone_hint': 'Phone Number',
@@ -398,6 +399,7 @@ class AppStrings {
       'back': 'वापस',
       'retry': 'पुनः प्रयास करें',
       'no_data': 'कोई डेटा उपलब्ध नहीं',
+      'conversations': 'बातचीत',
 
       // Auth
       'phone_hint': 'फ़ोन नंबर',
