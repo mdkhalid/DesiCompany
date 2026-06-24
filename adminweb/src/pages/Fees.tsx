@@ -177,8 +177,8 @@ function ConfigTab() {
       } else if (field === 'featureEnabled') {
         update.configValue = { ...config.configValue, enabled: value };
       }
-      await api.patch(`/admin/fee-configs/${config.configKey}`, update);
-      await load();
+      const saved = await api.patch<PlatformFeeConfig>(`/admin/fee-configs/${config.configKey}`, update);
+      setConfigs((prev) => prev.map((c) => (c.configKey === config.configKey ? saved : c)));
     } catch (e: any) {
       setActionError(e.message || 'Failed to update config');
     } finally {

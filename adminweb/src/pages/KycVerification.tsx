@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 
-interface KycDoc { id: string; providerId: string; providerName: string; documentType: string; status: string; createdAt: string; }
+interface KycProvider { id: string; firstName: string; lastName: string; user?: { phone: string }; }
+interface KycDoc { id: string; provider: KycProvider; documentType: string; status: string; remarks?: string; reviewedAt?: string; createdAt: string; }
 
 export default function KycVerification() {
   const [docs, setDocs] = useState<KycDoc[]>([]);
@@ -13,7 +14,7 @@ export default function KycVerification() {
     setLoading(true);
     setError('');
     try {
-      const data = await api.get<KycDoc[]>('/kyc/documents');
+      const data = await api.get<KycDoc[]>('/kyc');
       setDocs(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load KYC documents');
@@ -28,8 +29,10 @@ export default function KycVerification() {
     setActionError('');
     if (!confirm(`Are you sure you want to ${status} this KYC document?`)) return;
     try {
-      await api.patch(`/kyc/documents/${id}`, { status });
-      setDocs((prev) => prev.map((d) => (d.id === id ? { ...d, status } : d)));
+      const remarks = status === 'rejected' ? prompt('Reason for rejection:') : undefined;
+      if (status === 'rejected' && !remarks) { setActionError('Rejection reason is required'); return; }
+      const updated = await api.patch<KycDoc>(`/kyc/${id}/status`, { status, remarks });
+      setDocs((prev) => prev.map((d) => (d.id === id ? updated : d)));
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : 'Failed to update status');
     }
@@ -42,7 +45,7 @@ export default function KycVerification() {
     return (
       <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
         <div>
-          <p className="font-medium">{doc.providerName}</p>
+          <p className="font-medium">{doc.provider?.firstName} {doc.provider?.lastName}</p>
           <p className="text-sm text-gray-500">{doc.documentType}</p>
           <span className={`text-xs px-2 py-0.5 rounded-full ${doc.status === 'approved' ? 'bg-green-100 text-green-700' : doc.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{doc.status}</span>
         </div>

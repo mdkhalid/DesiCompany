@@ -6,6 +6,7 @@ import { KycDocument } from '../kyc/entities/kyc-document.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 import { ProviderAvailability } from '../services/entities/provider-availability.entity';
+import { ProviderDateOverride } from '../services/entities/provider-date-override.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { BookingCharge } from '../bookings/entities/booking-charge.entity';
 import { Payment } from '../payments/entities/payment.entity';
@@ -15,31 +16,13 @@ import { CommissionConfig } from '../commissions/entities/commission-config.enti
 import { Review } from '../reviews/entities/review.entity';
 import { Notification } from '../notifications/entities/notification.entity';
 import { CustomerFeedback } from '../feedbacks/entities/customer-feedback.entity';
+import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
-
-const entities = [
-  User,
-  Customer,
-  Provider,
-  KycDocument,
-  ServiceCategory,
-  ProviderService,
-  ProviderAvailability,
-  Booking,
-  BookingCharge,
-  Payment,
-  Wallet,
-  Transaction,
-  CommissionConfig,
-  Review,
-  Notification,
-  CustomerFeedback,
-];
 
 async function seed() {
   const dataSource = new DataSource({
@@ -49,7 +32,7 @@ async function seed() {
     username: process.env.DB_USERNAME || 'desicompany',
     password: process.env.DB_PASSWORD || 'desicompany123',
     database: process.env.DB_NAME || 'desicompany',
-    entities,
+    entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize: true,
   });
 
@@ -645,6 +628,27 @@ async function seed() {
         );
         console.log(`Subcategory created: ${sub.nameEn} under ${sub.parent}`);
       }
+    }
+  }
+
+  // ─── Fee Configs & Feature Toggles ───────────────────────────
+  const feeConfigRepo = dataSource.getRepository(PlatformFeeConfig);
+  const defaultConfigs = [
+    { configKey: 'convenience_fee', configValue: { type: 'percentage', value: 5, minAmount: 10, maxAmount: 200 }, isActive: true, description: 'Convenience fee on all bookings' },
+    { configKey: 'instant_payout_fee', configValue: { type: 'fixed', value: 10, minAmount: 0, maxAmount: 0 }, isActive: false, description: 'Fee for instant payout requests' },
+    { configKey: 'lead_quote_fee', configValue: { type: 'fixed', value: 20, minAmount: 0, maxAmount: 0 }, isActive: false, description: 'Fee for lead/quote submissions' },
+    { configKey: 'feature_convenience_fee', configValue: { enabled: true }, isActive: true, description: 'Feature toggle: convenience fee' },
+    { configKey: 'feature_provider_subscriptions', configValue: { enabled: false }, isActive: true, description: 'Feature toggle: provider subscriptions' },
+    { configKey: 'feature_promo_codes', configValue: { enabled: true }, isActive: true, description: 'Feature toggle: promo codes' },
+    { configKey: 'feature_instant_payout', configValue: { enabled: false }, isActive: true, description: 'Feature toggle: instant payout' },
+    { configKey: 'feature_lead_quote_fee', configValue: { enabled: false }, isActive: true, description: 'Feature toggle: lead/quote fee' },
+    { configKey: 'feature_customer_memberships', configValue: { enabled: false }, isActive: true, description: 'Feature toggle: customer memberships' },
+  ];
+  for (const cfg of defaultConfigs) {
+    const exists = await feeConfigRepo.findOne({ where: { configKey: cfg.configKey } });
+    if (!exists) {
+      await feeConfigRepo.save(feeConfigRepo.create(cfg));
+      console.log(`Fee config created: ${cfg.configKey}`);
     }
   }
 
