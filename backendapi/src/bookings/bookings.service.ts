@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,7 +12,11 @@ import { BookingCharge } from './entities/booking-charge.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
+import { Message, MessageType } from '../chat/entities/message.entity';
+import { User } from '../users/entities/user.entity';
+import { ChatGateway } from '../chat/chat.gateway';
 import { BookingStatus } from '../common/enums/booking-status.enum';
+import { getStatusChatTemplate, formatTemplate } from './chat-templates';
 import { UserRole } from '../common/enums/user-role.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
 import { CommissionService } from '../commissions/commission.service';
@@ -30,6 +35,8 @@ import { BookingServiceItem } from './entities/booking-service-item.entity';
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
@@ -43,6 +50,9 @@ export class BookingsService {
     private readonly providerServiceRepository: Repository<ProviderService>,
     @InjectRepository(BookingServiceItem)
     private readonly bookingServiceItemRepository: Repository<BookingServiceItem>,
+    @InjectRepository(Message)
+    private readonly messageRepository: Repository<Message>,
+    private readonly chatGateway: ChatGateway,
     private readonly commissionService: CommissionService,
     private readonly notificationsService: NotificationsService,
     private readonly pushNotificationsService: PushNotificationsService,
@@ -220,6 +230,11 @@ export class BookingsService {
 
     await this.sendStatusNotification(saved, dto.status);
 
+    // Send a system message to the booking chat for status updates
+    await this.sendBookingStatusChatMessage(saved, dto.status).catch((err) =>
+      this.logger.warn(`Failed to save status chat message: ${(err as Error).message}`),
+    );
+
     if (dto.status === BookingStatus.COMPLETED) {
       const recalculated = await this.recalculateTotals(saved.id);
       // Award loyalty points to customer for completed booking
@@ -297,6 +312,32 @@ export class BookingsService {
         )
         .catch(() => {});
     }
+  }
+
+  private async sendBookingStatusChatMessage(
+    booking: Booking,
+    status: BookingStatus,
+  ): Promise<void> {
+    const template = getStatusChatTemplate(status);
+    if (!template) return; // no template defined for this status (e.g. REQUESTED)
+
+    const providerName = `${booking.provider.firstName || ''} ${booking.provider.lastName || ''}`.trim();
+    const customerName = `${booking.customer.firstName || ''} ${booking.customer.lastName || ''}`.trim();
+    const customerUserId = booking.customer.user.id;
+    const providerUserId = booking.provider.user.id;
+
+    const placeholders = { providerName, customerName };
+    const customerContent = formatTemplate(template.customer, placeholders);
+    const providerContent = formatTemplate(template.provider, placeholders);
+
+    await this.chatGateway.emitRoleSpecificSystemMessage(
+      booking.id,
+      customerUserId,
+      providerUserId,
+      customerContent,
+      providerContent,
+      { type: 'status_update', status },
+    );
   }
 
   async reschedule(

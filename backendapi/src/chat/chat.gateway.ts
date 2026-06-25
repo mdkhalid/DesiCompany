@@ -97,20 +97,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private formatHistoryMessages(messages: any[]) {
-    return messages.map((m) => ({
-      id: m.id,
-      content: m.content,
-      senderId: m.sender?.id,
-      senderName: m.sender
-        ? `${(m.sender as any).firstName || ''} ${(m.sender as any).lastName || ''}`.trim() || m.sender.phone
-        : '',
-      senderRole: (m.sender as any)?.role || '',
-      messageType: m.messageType,
-      metadata: m.metadata,
-      createdAt: m.createdAt,
-      status: m.isRead ? 'read' : 'delivered',
-      isRead: m.isRead,
-    }));
+    return messages.map((m) => {
+      const sender = m.sender;
+      let senderName = '';
+      if (sender) {
+        if (sender.customer) {
+          senderName = `${sender.customer.firstName || ''} ${sender.customer.lastName || ''}`.trim();
+        } else if (sender.provider) {
+          senderName = `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
+        }
+        if (!senderName) senderName = sender.phone;
+      }
+      return {
+        id: m.id,
+        content: m.content,
+        senderId: sender?.id,
+        senderName,
+        senderRole: sender?.role || '',
+        messageType: m.messageType,
+        metadata: m.metadata,
+        createdAt: m.createdAt,
+        status: m.isRead ? 'read' : 'delivered',
+        isRead: m.isRead,
+      };
+    });
   }
 
   constructor(
@@ -232,12 +242,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const messages = await this.messageRepository.find({
       where: { booking: { id: payload.bookingId } },
-      relations: { sender: true },
+      relations: { sender: { customer: true, provider: true } },
       order: { createdAt: 'ASC' },
       take: 50,
     });
 
-    client.emit('history', this.formatHistoryMessages(messages));
+    // Filter system messages by targetRole so each user only sees messages meant for their role
+    const userRole = client.data.user?.role;
+    const filteredMessages = userRole
+      ? messages.filter((m) => {
+          const targetRole = (m.metadata as Record<string, any>)?.targetRole;
+          if (!targetRole) return true; // generic messages visible to all
+          return targetRole === userRole.toLowerCase();
+        })
+      : messages;
+
+    client.emit('history', this.formatHistoryMessages(filteredMessages));
     client.emit('messages_read', { bookingId: payload.bookingId });
   }
 
@@ -539,20 +559,105 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('mark_read')
   async handleMarkRead(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: { bookingId: string },
+    @MessageBody() payload: { bookingId?: string; roomId?: string },
   ) {
     if (!client.data.userId) {
       client.emit('error', { message: 'Unauthorized' });
       return;
     }
 
-    await this.messageRepository.update(
-      { booking: { id: payload.bookingId }, isRead: false },
-      { isRead: true }
+    // Handle direct chat read receipts
+    if (payload.roomId) {
+      const parts = payload.roomId.split('_');
+      if (parts.length === 3 && parts[0] === 'direct') {
+        const customerId = parts[1];
+        const providerId = parts[2];
+        await this.directMessageRepository.update(
+          { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
+          { isRead: true }
+        );
+        this.server.to(payload.roomId).emit('messages_read', { roomId: payload.roomId });
+      }
+      return;
+    }
+
+    // Handle booking chat read receipts
+    if (payload.bookingId) {
+      await this.messageRepository.update(
+        { booking: { id: payload.bookingId }, isRead: false },
+        { isRead: true }
+      );
+      const room = `booking_${payload.bookingId}`;
+      this.server.to(room).emit('messages_read', { bookingId: payload.bookingId });
+    }
+  }
+
+  // ==================== PUBLIC API FOR OTHER SERVICES ====================
+
+  /**
+   * Emit role-specific system messages to each participant in a booking chat.
+   * Each user (customer/provider) receives a message tailored to their perspective.
+   * Saves two separate messages with targetRole metadata and emits via private user sockets.
+   */
+  async emitRoleSpecificSystemMessage(
+    bookingId: string,
+    customerUserId: string,
+    providerUserId: string,
+    customerContent: string,
+    providerContent: string,
+    metadata: Record<string, any> = {},
+  ) {
+    const baseMeta = { system: true, ...metadata };
+
+    // Save customer-perspective message
+    const customerMsg = await this.messageRepository.save(
+      this.messageRepository.create({
+        booking: { id: bookingId } as Booking,
+        sender: { id: customerUserId } as User,
+        content: customerContent,
+        messageType: MessageType.TEXT,
+        metadata: { ...baseMeta, targetRole: 'customer' },
+      }),
     );
 
-    const room = `booking_${payload.bookingId}`;
-    this.server.to(room).emit('messages_read', { bookingId: payload.bookingId });
+    // Save provider-perspective message
+    const providerMsg = await this.messageRepository.save(
+      this.messageRepository.create({
+        booking: { id: bookingId } as Booking,
+        sender: { id: providerUserId } as User,
+        content: providerContent,
+        messageType: MessageType.TEXT,
+        metadata: { ...baseMeta, targetRole: 'provider' },
+      }),
+    );
+
+    // Emit to customer privately
+    this.emitToUser(customerUserId, 'new_message', {
+      id: customerMsg.id,
+      content: customerMsg.content,
+      senderId: 'system',
+      senderName: 'System',
+      senderRole: 'system',
+      messageType: customerMsg.messageType,
+      metadata: customerMsg.metadata,
+      createdAt: customerMsg.createdAt,
+      status: 'delivered',
+    });
+
+    // Emit to provider privately
+    this.emitToUser(providerUserId, 'new_message', {
+      id: providerMsg.id,
+      content: providerMsg.content,
+      senderId: 'system',
+      senderName: 'System',
+      senderRole: 'system',
+      messageType: providerMsg.messageType,
+      metadata: providerMsg.metadata,
+      createdAt: providerMsg.createdAt,
+      status: 'delivered',
+    });
+
+    this.logger.log(`[SYSTEM_MSG] Role-specific messages for booking ${bookingId}: customer="${customerContent.substring(0, 50)}" provider="${providerContent.substring(0, 50)}"`);
   }
 
   // ==================== TYPING INDICATORS ====================

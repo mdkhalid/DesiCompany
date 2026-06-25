@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../l10n/strings.dart';
 import '../models/chat_message.dart';
@@ -36,11 +37,22 @@ class _ChatScreenState extends State<ChatScreen> {
   String _targetLang = 'en';
   bool _translating = false;
 
+  // Booking info for header card
+  Map<String, dynamic>? _bookingInfo;
+  bool _loadingBooking = false;
+
+  // Cache key for SharedPreferences
+  String get _cacheKey => 'chat_msgs_${widget.bookingId ?? _directRoomId ?? 'direct_${widget.providerId}'}';
+
   @override
   void initState() {
     super.initState();
     _loadUserId();
+    _loadCachedMessages();
     _connectSocket();
+    if (!_isDirect && widget.bookingId != null) {
+      _fetchBookingInfo();
+    }
   }
 
   Future<void> _loadUserId() async {
@@ -49,6 +61,74 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   bool get _isDirect => widget.mode == 'direct' || widget.mode == 'direct_chat';
+
+  // ==================== MESSAGE CACHING ====================
+
+  Future<void> _loadCachedMessages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_cacheKey);
+      if (cached != null && mounted) {
+        final List<dynamic> decoded = jsonDecode(cached);
+        final msgs = decoded
+            .map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+        setState(() => _messages.addAll(msgs));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveMessagesToCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = jsonEncode(_messages.map((m) => m.toJson()).toList());
+      await prefs.setString(_cacheKey, json);
+    } catch (_) {}
+  }
+
+  // ==================== BOOKING INFO ====================
+
+  Future<void> _fetchBookingInfo() async {
+    if (widget.bookingId == null) return;
+    setState(() => _loadingBooking = true);
+    try {
+      final data = await ApiService.get('/bookings/${widget.bookingId}');
+      if (mounted) {
+        setState(() {
+          _bookingInfo = data as Map<String, dynamic>;
+          _loadingBooking = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingBooking = false);
+    }
+  }
+
+  String _bookingStatusLabel(String? status) {
+    switch (status) {
+      case 'requested': return 'Requested';
+      case 'accepted': return 'Accepted';
+      case 'on_the_way': return 'On The Way';
+      case 'working': return 'Working';
+      case 'completed': return 'Completed';
+      case 'rejected': return 'Rejected';
+      case 'cancelled': return 'Cancelled';
+      default: return status ?? '';
+    }
+  }
+
+  Color _bookingStatusColor(String? status) {
+    switch (status) {
+      case 'requested': return Colors.orange;
+      case 'accepted': return Colors.blue;
+      case 'on_the_way': return Colors.purple;
+      case 'working': return Colors.teal;
+      case 'completed': return Colors.green;
+      case 'rejected': return Colors.red;
+      case 'cancelled': return Colors.grey;
+      default: return Colors.grey;
+    }
+  }
 
   @override
   void dispose() {
@@ -103,6 +183,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final roomId = data['roomId'] as String;
       debugPrint('[CHAT] direct_chat_started: roomId=$roomId');
       _directRoomId = roomId;
+      _loadCachedMessages(); // reload from new cache key (now based on _directRoomId)
       _socket.emit('join_direct_chat', {'roomId': roomId});
     });
 
@@ -113,6 +194,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.clear();
         _messages.addAll(msgs);
       });
+      _saveMessagesToCache();
       _scrollToBottom();
     });
 
@@ -123,17 +205,20 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.clear();
         _messages.addAll(msgs);
       });
+      _saveMessagesToCache();
       _scrollToBottom();
     });
 
     _socket.on('new_direct_message', (data) {
       final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
       _replaceOrAdd(msg);
+      _saveMessagesToCache();
     });
 
     _socket.on('new_message', (data) {
       final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
       _replaceOrAdd(msg);
+      _saveMessagesToCache();
     });
 
     _socket.on('user_typing', (data) {
@@ -167,12 +252,14 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         }
       });
+      _saveMessagesToCache();
     });
   }
 
   void _addMessage(ChatMessage msg) {
     if (_messages.any((m) => m.id == msg.id)) return;
     setState(() => _messages.add(msg));
+    _saveMessagesToCache();
     _scrollToBottom();
     if (msg.senderId != _currentUserId) {
       _sendReadReceipt();
@@ -192,7 +279,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendReadReceipt() {
-    if (widget.bookingId != null) {
+    if (_isDirect && _directRoomId != null) {
+      _socket.emit('mark_read', {'roomId': _directRoomId});
+    } else if (widget.bookingId != null) {
       _socket.emit('mark_read', {'bookingId': widget.bookingId});
     }
   }
@@ -379,6 +468,15 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
       body: Column(children: [
+        // Booking info header card
+        if (!_isDirect && _bookingInfo != null)
+          _buildBookingHeader(),
+        if (_loadingBooking)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+          ),
+        // Direct chat banner
         if (_isDirect)
           Container(
             width: double.infinity,
@@ -425,15 +523,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (_, i) {
                     if (i == _messages.length) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.only(bottom: 8, left: 4),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            SizedBox(
-                              width: 16, height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                            const SizedBox(width: 8),
-                            Text('typing...', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                            _buildTypingDots(),
+                            const SizedBox(width: 6),
+                            Text('typing...', style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontStyle: FontStyle.italic)),
                           ],
                         ),
                       );
@@ -441,6 +537,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
                     final msg = _messages[i];
                     final isMe = msg.senderId == _currentUserId;
+                    final isSystem = msg.metadata?['system'] == true;
+
+                    if (isSystem) {
+                      return _buildSystemMessage(msg);
+                    }
 
                     return Column(
                       crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -471,14 +572,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                 ),
         ),
-        if (_typingUsers.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text(
-              'Someone is typing...',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic),
-            ),
-          ),
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
@@ -663,6 +756,166 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Text(
         msg.content,
         style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: isMe ? Colors.black87 : Colors.black54),
+      ),
+    );
+  }
+
+  // ==================== TYPING DOTS ====================
+
+  Widget _buildTypingDots() {
+    return SizedBox(
+      width: 28,
+      height: 12,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(3, (i) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.3, end: 1.0),
+              duration: Duration(milliseconds: 600 + i * 200),
+              curve: Curves.easeInOut,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF9E9E9E),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                );
+              },
+              onEnd: () => setState(() {}),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ==================== BOOKING HEADER CARD ====================
+
+  Widget _buildBookingHeader() {
+    final info = _bookingInfo!;
+    final status = info['status'] as String? ?? '';
+    final statusColor = _bookingStatusColor(status);
+    final amount = info['totalAmount'] ?? info['amount'] ?? 0;
+    final description = info['description'] as String? ?? info['title'] as String? ?? '';
+    final bookingId = info['id'] as String? ?? '';
+    final shortId = bookingId.length > 8 ? bookingId.substring(0, 8) : bookingId;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF6C3FB4).withValues(alpha: 0.08),
+            const Color(0xFF7C4DFF).withValues(alpha: 0.04),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF6C3FB4).withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C3FB4).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.assignment, size: 20, color: Color(0xFF6C3FB4)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        description.isNotEmpty ? description : 'Booking #$shortId',
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _bookingStatusLabel(status),
+                        style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.currency_rupee, size: 13, color: Color(0xFF6C3FB4)),
+                    const SizedBox(width: 2),
+                    Text(
+                      '₹$amount',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF6C3FB4)),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '#$shortId',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== SYSTEM MESSAGES ====================
+
+  Widget _buildSystemMessage(ChatMessage msg) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF43A047).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF43A047).withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle, size: 18, color: Color(0xFF43A047)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                msg.content,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF2E7D32),
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

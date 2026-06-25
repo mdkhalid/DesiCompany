@@ -13,6 +13,9 @@ import { BookingServiceItem } from './entities/booking-service-item.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
+import { Message } from '../chat/entities/message.entity';
+import { User } from '../users/entities/user.entity';
+import { ChatModule } from '../chat/chat.module';
 import { CommissionsModule } from '../commissions/commissions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
@@ -29,12 +32,15 @@ import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
       Customer,
       Provider,
       ProviderService,
+      Message,
+      User,
     ]),
     PlatformFeesModule,
     CommissionsModule,
     NotificationsModule,
     PushNotificationsModule,
     LoyaltyModule,
+    ChatModule,
   ],
   controllers: [
     BookingsController,
