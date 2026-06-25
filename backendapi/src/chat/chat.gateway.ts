@@ -4,6 +4,7 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
@@ -63,7 +64,7 @@ interface QuickReplyPayload {
   namespace: '/chat',
 })
 @Injectable()
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -139,51 +140,64 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
   ) {}
 
+  /**
+   * Socket.IO middleware — verifies JWT before any events are processed.
+   * Runs before `handleConnection`, preventing the race condition where
+   * client events (like `join`) could arrive before auth completes.
+   */
+  afterInit(server: Server) {
+    server.use(async (socket, next) => {
+      try {
+        const auth = socket.handshake.auth as Record<string, unknown>;
+        const token =
+          (auth?.token as string) ||
+          socket.handshake.headers?.authorization?.replace('Bearer ', '');
+
+        if (!token) {
+          return next(new Error('No token provided'));
+        }
+
+        const payload = this.jwtService.verify<{
+          sub: string;
+          phone: string;
+          role: string;
+        }>(token);
+
+        const user = await this.userRepository.findOne({
+          where: { id: payload.sub },
+          relations: { customer: true, provider: true },
+        });
+
+        if (!user) {
+          return next(new Error('User not found'));
+        }
+
+        // Set auth data BEFORE connection event — handlers can rely on it immediately
+        (socket as AuthenticatedSocket).data.userId = user.id;
+        (socket as AuthenticatedSocket).data.user = user;
+
+        let displayName = user.phone;
+        if (user.customer) {
+          displayName = `${user.customer.firstName || ''} ${user.customer.lastName || ''}`.trim();
+        } else if (user.provider) {
+          displayName = `${user.provider.firstName || ''} ${user.provider.lastName || ''}`.trim();
+        }
+        (socket as AuthenticatedSocket).data.userName = displayName || user.phone;
+
+        next();
+      } catch (err) {
+        next(new Error(`Invalid token: ${(err as Error)?.message || err}`));
+      }
+    });
+  }
+
   async handleConnection(client: AuthenticatedSocket) {
-    try {
-      const auth = client.handshake.auth as Record<string, unknown>;
-      const token =
-        (auth?.token as string) ||
-        client.handshake.headers?.authorization?.replace('Bearer ', '');
-
-      if (!token) {
-        this.logger.warn(`Client ${client.id} rejected: no token provided`);
-        client.disconnect();
-        return;
-      }
-
-      const payload = this.jwtService.verify<{
-        sub: string;
-        phone: string;
-        role: string;
-      }>(token);
-      const user = await this.userRepository.findOne({
-        where: { id: payload.sub },
-        relations: { customer: true, provider: true },
-      });
-
-      if (!user) {
-        this.logger.warn(`Client ${client.id} rejected: user not found`);
-        client.disconnect();
-        return;
-      }
-
-      client.data.userId = user.id;
-      client.data.user = user;
-      
-      // Get display name from customer or provider entity
-      let displayName = user.phone;
-      if (user.customer) {
-        displayName = `${user.customer.firstName || ''} ${user.customer.lastName || ''}`.trim();
-      } else if (user.provider) {
-        displayName = `${user.provider.firstName || ''} ${user.provider.lastName || ''}`.trim();
-      }
-      client.data.userName = displayName || user.phone;
-
-      this.registerSocket(user.id, client.id);
-      this.logger.log(`Client connected: ${client.id} (user: ${user.id})`);
-    } catch (err) {
-      this.logger.warn(`Client ${client.id} rejected: invalid token (${(err as Error)?.message || err})`);
+    // Auth already verified by middleware in afterInit — just register and log
+    if (client.data.userId) {
+      this.registerSocket(client.data.userId, client.id);
+      this.logger.log(`Client connected: ${client.id} (user: ${client.data.userId})`);
+    } else {
+      this.logger.warn(`Client ${client.id} rejected: auth middleware did not set userId`);
       client.disconnect();
     }
   }
@@ -202,63 +216,65 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: { bookingId: string },
   ) {
-    if (!client.data.userId) {
-      client.emit('error', { message: 'Unauthorized' });
-      return;
+    try {
+      if (!client.data.userId) {
+        client.emit('error', { message: 'Unauthorized' });
+        return;
+      }
+
+      if (!payload.bookingId) return;
+
+      const booking = await this.bookingRepository.findOne({
+        where: { id: payload.bookingId },
+        relations: { customer: { user: true }, provider: { user: true } },
+      });
+
+      if (!booking) {
+        client.emit('error', { message: 'Booking not found' });
+        return;
+      }
+
+      const isParticipant =
+        booking.customer?.user?.id === client.data.userId ||
+        booking.provider?.user?.id === client.data.userId;
+
+      if (!isParticipant) {
+        client.emit('error', { message: 'Not a participant of this booking' });
+        return;
+      }
+
+      const room = `booking_${payload.bookingId}`;
+      void client.join(room);
+
+      // Mark messages as read
+      await this.messageRepository.update(
+        { booking: { id: payload.bookingId }, isRead: false },
+        { isRead: true }
+      );
+
+      const messages = await this.messageRepository.find({
+        where: { booking: { id: payload.bookingId } },
+        relations: { sender: { customer: true, provider: true } },
+        order: { createdAt: 'ASC' },
+        take: 50,
+      });
+
+      // Filter system messages by targetRole so each user only sees messages meant for their role
+      const userRole = client.data.user?.role;
+      const filteredMessages = userRole
+        ? messages.filter((m) => {
+            const targetRole = (m.metadata as Record<string, any>)?.targetRole;
+            if (!targetRole) return true;
+            return targetRole === userRole.toLowerCase();
+          })
+        : messages;
+
+      client.emit('history', this.formatHistoryMessages(filteredMessages));
+      client.emit('messages_read', { bookingId: payload.bookingId });
+    } catch (err) {
+      this.logger.error(`[JOIN] Error in handleJoin: ${(err as Error)?.message}`, (err as Error)?.stack);
+      client.emit('error', { message: 'Join failed: internal server error' });
     }
-
-    if (!payload.bookingId) return;
-
-    const booking = await this.bookingRepository.findOne({
-      where: { id: payload.bookingId },
-      relations: { customer: { user: true }, provider: { user: true } },
-    });
-
-    if (!booking) {
-      client.emit('error', { message: 'Booking not found' });
-      return;
-    }
-
-    const isParticipant =
-      booking.customer?.user?.id === client.data.userId ||
-      booking.provider?.user?.id === client.data.userId;
-
-    if (!isParticipant) {
-      client.emit('error', { message: 'Not a participant of this booking' });
-      return;
-    }
-
-    const room = `booking_${payload.bookingId}`;
-    void client.join(room);
-    const roomClients = this.server.sockets.adapter.rooms.get(room);
-    const roomSize = roomClients ? roomClients.size : 0;
-    this.logger.log(`[JOIN] User ${client.data.userId} joined room ${room} (${roomSize} clients in room)`);
-
-    // Mark messages as read
-    await this.messageRepository.update(
-      { booking: { id: payload.bookingId }, isRead: false },
-      { isRead: true }
-    );
-
-    const messages = await this.messageRepository.find({
-      where: { booking: { id: payload.bookingId } },
-      relations: { sender: { customer: true, provider: true } },
-      order: { createdAt: 'ASC' },
-      take: 50,
-    });
-
-    // Filter system messages by targetRole so each user only sees messages meant for their role
-    const userRole = client.data.user?.role;
-    const filteredMessages = userRole
-      ? messages.filter((m) => {
-          const targetRole = (m.metadata as Record<string, any>)?.targetRole;
-          if (!targetRole) return true; // generic messages visible to all
-          return targetRole === userRole.toLowerCase();
-        })
-      : messages;
-
-    client.emit('history', this.formatHistoryMessages(filteredMessages));
-    client.emit('messages_read', { bookingId: payload.bookingId });
   }
 
   @SubscribeMessage('send_message')
