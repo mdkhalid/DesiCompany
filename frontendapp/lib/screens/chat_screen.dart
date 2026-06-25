@@ -78,7 +78,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (_isDirect) {
         _socket.emit('start_direct_chat', {'providerId': widget.providerId});
       } else {
-        _socket.emit('join', {'bookingId': widget.bookingId, 'token': token});
+        _socket.emit('join', {'bookingId': widget.bookingId});
       }
     });
 
