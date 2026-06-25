@@ -216,9 +216,6 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
   }
 
   String _providerId(Map<String, dynamic> p) {
-    if (p['user'] is Map) {
-      return p['user']['id']?.toString() ?? p['id']?.toString() ?? '';
-    }
     return p['id']?.toString() ?? '';
   }
 

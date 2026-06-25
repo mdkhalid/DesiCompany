@@ -30,7 +30,7 @@ class Conversation {
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
     return Conversation(
-      id: json['conversationId'] ?? '',
+      id: json['id'] ?? '',
       partnerId: json['partnerId'] ?? '',
       partnerName: json['partnerName'] ?? '',
       partnerImage: json['partnerImage'],
@@ -38,10 +38,12 @@ class Conversation {
       bookingStatus: json['bookingStatus'],
       lastMessage: json['lastMessage'],
       lastMessageTime: json['lastMessageTime'] != null 
-          ? DateTime.tryParse(json['lastMessageTime'].toString()) 
-          : null,
+          ? DateTime.tryParse(json['lastMessageTime'].toString())
+          : (json['lastMessageAt'] != null
+              ? DateTime.tryParse(json['lastMessageAt'].toString())
+              : null),
       unreadCount: json['unreadCount'] ?? 0,
-      isDirect: json['isDirect'] ?? false,
+      isDirect: json['type'] == 'direct',
     );
   }
 }

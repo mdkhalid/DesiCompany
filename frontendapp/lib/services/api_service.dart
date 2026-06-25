@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'auth_service.dart';
 
 class ApiService {
   /// Base URL for the backend API.
@@ -61,18 +62,40 @@ class ApiService {
     return base.replace(path: '${base.path}$pathPart');
   }
 
+  /// Send a request, automatically refreshing the access token on 401 and retrying once.
+  static Future<http.Response> _sendWithRefresh(
+    Future<http.Response> Function() send, {
+    bool allowRefresh = true,
+  }) async {
+    final res = await send();
+    if (res.statusCode == 401 && allowRefresh) {
+      final newToken = await AuthService.refreshAccessToken();
+      if (newToken != null) {
+        final retry = await send();
+        return retry;
+      }
+    }
+    return res;
+  }
+
   static Future<dynamic> get(String path) async {
-    final res = await http.get(_uri(path), headers: await _headers());
+    final res = await _sendWithRefresh(
+      () async => http.get(_uri(path), headers: await _headers()),
+    );
     if (res.statusCode == 401) throw Exception('Unauthorized');
     if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
     return jsonDecode(res.body);
   }
 
   static Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
-    final res = await http.post(
-      _uri(path),
-      headers: await _headers(),
-      body: body != null ? jsonEncode(body) : null,
+    final res = await _sendWithRefresh(
+      () async => http.post(
+        _uri(path),
+        headers: await _headers(),
+        body: body != null ? jsonEncode(body) : null,
+      ),
+      // Don't auto-refresh on the refresh endpoint itself.
+      allowRefresh: !path.endsWith('/auth/refresh'),
     );
     if (res.statusCode == 401) throw Exception('Unauthorized');
     if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
@@ -80,10 +103,12 @@ class ApiService {
   }
 
   static Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
-    final res = await http.patch(
-      _uri(path),
-      headers: await _headers(),
-      body: body != null ? jsonEncode(body) : null,
+    final res = await _sendWithRefresh(
+      () async => http.patch(
+        _uri(path),
+        headers: await _headers(),
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
     if (res.statusCode == 401) throw Exception('Unauthorized');
     if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
@@ -91,7 +116,9 @@ class ApiService {
   }
 
   static Future<dynamic> delete(String path) async {
-    final res = await http.delete(_uri(path), headers: await _headers());
+    final res = await _sendWithRefresh(
+      () async => http.delete(_uri(path), headers: await _headers()),
+    );
     if (res.statusCode == 401) throw Exception('Unauthorized');
     if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
     return jsonDecode(res.body);

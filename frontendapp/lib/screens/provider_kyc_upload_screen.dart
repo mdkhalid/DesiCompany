@@ -156,7 +156,8 @@ class _ProviderKycUploadScreenState extends State<ProviderKycUploadScreen> {
       request.fields['providerId'] = _providerId!;
       request.fields['documentType'] = _selectedDocType;
       for (final photo in _selectedPhotos) {
-        request.files.add(await http.MultipartFile.fromPath('documents', photo.path));
+        final bytes = await photo.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes('documents', bytes, filename: photo.name, contentType: http.MediaType.parse(photo.mimeType ?? 'image/jpeg')));
       }
       if (token != null) {
         request.headers['Authorization'] = 'Bearer $token';

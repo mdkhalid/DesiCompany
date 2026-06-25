@@ -25,8 +25,10 @@ class AuthService {
     });
     final prefs = await SharedPreferences.getInstance();
     final token = data['tokens']['accessToken'] as String;
+    final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
     await prefs.setString('token', token);
+    if (refreshToken != null) await prefs.setString('refresh_token', refreshToken);
     await prefs.setString('user_data', jsonEncode(userData));
     return User.fromJson(userData, token: token);
   }
@@ -39,6 +41,7 @@ class AuthService {
     });
     final prefs = await SharedPreferences.getInstance();
     final token = data['tokens']['accessToken'] as String;
+    final refreshToken = data['tokens']['refreshToken'] as String?;
 
     // Update stored user data with new role
     final userDataStr = prefs.getString('user_data');
@@ -49,6 +52,7 @@ class AuthService {
     }
 
     await prefs.setString('token', token);
+    if (refreshToken != null) await prefs.setString('refresh_token', refreshToken);
     return User.fromJson(
       jsonDecode(prefs.getString('user_data') ?? '{}') as Map<String, dynamic>,
       token: token,
@@ -68,8 +72,10 @@ class AuthService {
     });
     final prefs = await SharedPreferences.getInstance();
     final token = data['tokens']['accessToken'] as String;
+    final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
     await prefs.setString('token', token);
+    if (refreshToken != null) await prefs.setString('refresh_token', refreshToken);
     await prefs.setString('user_data', jsonEncode(userData));
     return User.fromJson(userData, token: token);
   }
@@ -82,8 +88,10 @@ class AuthService {
     });
     final prefs = await SharedPreferences.getInstance();
     final token = data['tokens']['accessToken'] as String;
+    final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
     await prefs.setString('token', token);
+    if (refreshToken != null) await prefs.setString('refresh_token', refreshToken);
     await prefs.setString('user_data', jsonEncode(userData));
     return User.fromJson(userData, token: token);
   }
@@ -97,7 +105,33 @@ class AuthService {
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
+    await prefs.remove('refresh_token');
     await prefs.remove('user_data');
+  }
+
+  /// Exchange the stored refresh token for a new access token.
+  /// Returns the new access token, or null if no refresh is possible.
+  static Future<String?> refreshAccessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final refreshToken = prefs.getString('refresh_token');
+    if (refreshToken == null || refreshToken.isEmpty) return null;
+    try {
+      final data = await ApiService.post('/auth/refresh', body: {
+        'refreshToken': refreshToken,
+      });
+      final tokens = data['tokens'] as Map<String, dynamic>?;
+      final newAccess = tokens?['accessToken'] as String?;
+      final newRefresh = tokens?['refreshToken'] as String?;
+      if (newAccess != null) {
+        await prefs.setString('token', newAccess);
+      }
+      if (newRefresh != null) {
+        await prefs.setString('refresh_token', newRefresh);
+      }
+      return newAccess;
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<bool> isLoggedIn() async {

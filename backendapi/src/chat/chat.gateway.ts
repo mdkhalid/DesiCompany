@@ -17,6 +17,8 @@ import { DirectMessage, DirectMessageType } from './entities/direct-message.enti
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
+import { Customer } from '../users/entities/customer.entity';
+import { UserRole } from '../common/enums/user-role.enum';
 
 interface AuthenticatedSocket extends Socket {
   data: {
@@ -66,6 +68,50 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private readonly logger = new Logger(ChatGateway.name);
+  private readonly userSockets = new Map<string, Set<string>>();
+
+  private registerSocket(userId: string, socketId: string) {
+    if (!this.userSockets.has(userId)) {
+      this.userSockets.set(userId, new Set());
+    }
+    this.userSockets.get(userId)!.add(socketId);
+  }
+
+  private unregisterSocket(userId: string, socketId: string) {
+    const sockets = this.userSockets.get(userId);
+    if (sockets) {
+      sockets.delete(socketId);
+      if (sockets.size === 0) {
+        this.userSockets.delete(userId);
+      }
+    }
+  }
+
+  private emitToUser(userId: string, event: string, data: any) {
+    const sockets = this.userSockets.get(userId);
+    if (sockets) {
+      for (const socketId of sockets) {
+        this.server.to(socketId).emit(event, data);
+      }
+    }
+  }
+
+  private formatHistoryMessages(messages: any[]) {
+    return messages.map((m) => ({
+      id: m.id,
+      content: m.content,
+      senderId: m.sender?.id,
+      senderName: m.sender
+        ? `${(m.sender as any).firstName || ''} ${(m.sender as any).lastName || ''}`.trim() || m.sender.phone
+        : '',
+      senderRole: (m.sender as any)?.role || '',
+      messageType: m.messageType,
+      metadata: m.metadata,
+      createdAt: m.createdAt,
+      status: m.isRead ? 'read' : 'delivered',
+      isRead: m.isRead,
+    }));
+  }
 
   constructor(
     @InjectRepository(Message)
@@ -78,6 +124,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Provider)
     private readonly providerRepository: Repository<Provider>,
+    @InjectRepository(Customer)
+    private readonly customerRepository: Repository<Customer>,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -121,15 +169,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         displayName = `${user.provider.firstName || ''} ${user.provider.lastName || ''}`.trim();
       }
       client.data.userName = displayName || user.phone;
-      
+
+      this.registerSocket(user.id, client.id);
       this.logger.log(`Client connected: ${client.id} (user: ${user.id})`);
-    } catch {
-      this.logger.warn(`Client ${client.id} rejected: invalid token`);
+    } catch (err) {
+      this.logger.warn(`Client ${client.id} rejected: invalid token (${(err as Error)?.message || err})`);
       client.disconnect();
     }
   }
 
   handleDisconnect(client: AuthenticatedSocket) {
+    if (client.data.userId) {
+      this.unregisterSocket(client.data.userId, client.id);
+    }
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
@@ -144,6 +196,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('error', { message: 'Unauthorized' });
       return;
     }
+
+    if (!payload.bookingId) return;
 
     const booking = await this.bookingRepository.findOne({
       where: { id: payload.bookingId },
@@ -166,7 +220,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const room = `booking_${payload.bookingId}`;
     void client.join(room);
-    this.logger.log(`Client ${client.id} joined room ${room}`);
+    const roomClients = this.server.sockets.adapter.rooms.get(room);
+    const roomSize = roomClients ? roomClients.size : 0;
+    this.logger.log(`[JOIN] User ${client.data.userId} joined room ${room} (${roomSize} clients in room)`);
 
     // Mark messages as read
     await this.messageRepository.update(
@@ -181,7 +237,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       take: 50,
     });
 
-    client.emit('history', messages);
+    client.emit('history', this.formatHistoryMessages(messages));
     client.emit('messages_read', { bookingId: payload.bookingId });
   }
 
@@ -196,7 +252,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     const { bookingId, content, messageType = MessageType.TEXT, metadata } = payload;
-    if (!content?.trim()) return;
+    if (!bookingId || !content?.trim()) return;
 
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
@@ -227,8 +283,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const saved = await this.messageRepository.save(message);
 
     // Include sender info in the emitted message
-    const room = `booking_${bookingId}`;
-    this.server.to(room).emit('new_message', {
+    const messageData = {
       id: saved.id,
       content: saved.content,
       senderId: client.data.userId,
@@ -238,9 +293,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       metadata: saved.metadata,
       createdAt: saved.createdAt,
       status: 'delivered',
-    });
+    };
 
-    this.logger.log(`Message sent in booking ${bookingId} by user ${client.data.userId}`);
+    const room = `booking_${bookingId}`;
+    this.server.to(room).emit('new_message', messageData);
+
+    // Also emit directly to the other participant's sockets as fallback
+    const otherUserId =
+      booking.customer?.user?.id === client.data.userId
+        ? booking.provider?.user?.id
+        : booking.customer?.user?.id;
+    if (otherUserId) {
+      this.emitToUser(otherUserId, 'new_message', messageData);
+      this.logger.log(`[MSG] Sent to room=${room} + direct to user=${otherUserId}`);
+    } else {
+      this.logger.log(`[MSG] Sent to room=${room} (no other user found)`);
+    }
+
+    this.logger.log(`Message saved in booking ${bookingId} by user ${client.data.userId}`);
   }
 
   @SubscribeMessage('send_image')
@@ -316,27 +386,66 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const message = this.messageRepository.create({
-      booking: { id: targetId } as Booking,
-      sender: { id: client.data.userId } as User,
-      content: payload.message || `Quote: ₹${payload.amount}`,
-      messageType: MessageType.QUOTE,
-      metadata: { quoteAmount: payload.amount, accepted: false },
-    });
-    const saved = await this.messageRepository.save(message);
+    const isDirect = targetId.startsWith('direct_');
+    const content = payload.message || `Quote: ₹${payload.amount}`;
 
-    const room = `booking_${targetId}`;
-    this.server.to(room).emit('new_message', {
-      id: saved.id,
-      content: saved.content,
-      senderId: client.data.userId,
-      senderName: client.data.userName,
-      senderRole: client.data.user.role,
-      messageType: MessageType.QUOTE,
-      metadata: saved.metadata,
-      createdAt: saved.createdAt,
-      status: 'delivered',
-    });
+    if (isDirect) {
+      const parts = targetId.split('_');
+      const customerUserId = parts[1];
+      const providerId = parts[2];
+
+      const customerEntity = await this.customerRepository.findOne({
+        where: { user: { id: customerUserId } },
+      });
+      if (!customerEntity) {
+        client.emit('error', { message: 'Customer not found' });
+        return;
+      }
+
+      const message = this.directMessageRepository.create({
+        customer: { id: customerEntity.id } as Customer,
+        provider: { id: providerId } as Provider,
+        sender: { id: client.data.userId } as User,
+        content,
+        messageType: DirectMessageType.QUOTE,
+        metadata: { quoteAmount: payload.amount, accepted: false },
+      });
+      const saved = await this.directMessageRepository.save(message);
+
+      this.server.to(targetId).emit('new_direct_message', {
+        id: saved.id,
+        content: saved.content,
+        senderId: client.data.userId,
+        senderName: client.data.userName,
+        senderRole: client.data.user.role,
+        messageType: DirectMessageType.QUOTE,
+        metadata: saved.metadata,
+        createdAt: saved.createdAt,
+        status: 'delivered',
+      });
+    } else {
+      const message = this.messageRepository.create({
+        booking: { id: targetId } as Booking,
+        sender: { id: client.data.userId } as User,
+        content,
+        messageType: MessageType.QUOTE,
+        metadata: { quoteAmount: payload.amount, accepted: false },
+      });
+      const saved = await this.messageRepository.save(message);
+
+      const room = `booking_${targetId}`;
+      this.server.to(room).emit('new_message', {
+        id: saved.id,
+        content: saved.content,
+        senderId: client.data.userId,
+        senderName: client.data.userName,
+        senderRole: client.data.user.role,
+        messageType: MessageType.QUOTE,
+        metadata: saved.metadata,
+        createdAt: saved.createdAt,
+        status: 'delivered',
+      });
+    }
   }
 
   @SubscribeMessage('send_quick_reply')
@@ -366,28 +475,65 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
 
     const content = quickReplyMessages[payload.quickReplyType] || payload.value;
+    const isDirect = targetId.startsWith('direct_');
 
-    const message = this.messageRepository.create({
-      booking: { id: targetId } as Booking,
-      sender: { id: client.data.userId } as User,
-      content,
-      messageType: MessageType.QUICK_REPLY,
-      metadata: { quickReplyType: payload.quickReplyType, value: payload.value },
-    });
-    const saved = await this.messageRepository.save(message);
+    if (isDirect) {
+      const parts = targetId.split('_');
+      const customerUserId = parts[1];
+      const providerId = parts[2];
 
-    const room = `booking_${targetId}`;
-    this.server.to(room).emit('new_message', {
-      id: saved.id,
-      content: saved.content,
-      senderId: client.data.userId,
-      senderName: client.data.userName,
-      senderRole: client.data.user.role,
-      messageType: MessageType.QUICK_REPLY,
-      metadata: saved.metadata,
-      createdAt: saved.createdAt,
-      status: 'delivered',
-    });
+      const customerEntity = await this.customerRepository.findOne({
+        where: { user: { id: customerUserId } },
+      });
+      if (!customerEntity) {
+        client.emit('error', { message: 'Customer not found' });
+        return;
+      }
+
+      const message = this.directMessageRepository.create({
+        customer: { id: customerEntity.id } as Customer,
+        provider: { id: providerId } as Provider,
+        sender: { id: client.data.userId } as User,
+        content,
+        messageType: DirectMessageType.QUICK_REPLY,
+        metadata: { quickReplyType: payload.quickReplyType, value: payload.value },
+      });
+      const saved = await this.directMessageRepository.save(message);
+
+      this.server.to(targetId).emit('new_direct_message', {
+        id: saved.id,
+        content: saved.content,
+        senderId: client.data.userId,
+        senderName: client.data.userName,
+        senderRole: client.data.user.role,
+        messageType: DirectMessageType.QUICK_REPLY,
+        metadata: saved.metadata,
+        createdAt: saved.createdAt,
+        status: 'delivered',
+      });
+    } else {
+      const message = this.messageRepository.create({
+        booking: { id: targetId } as Booking,
+        sender: { id: client.data.userId } as User,
+        content,
+        messageType: MessageType.QUICK_REPLY,
+        metadata: { quickReplyType: payload.quickReplyType, value: payload.value },
+      });
+      const saved = await this.messageRepository.save(message);
+
+      const room = `booking_${targetId}`;
+      this.server.to(room).emit('new_message', {
+        id: saved.id,
+        content: saved.content,
+        senderId: client.data.userId,
+        senderName: client.data.userName,
+        senderRole: client.data.user.role,
+        messageType: MessageType.QUICK_REPLY,
+        metadata: saved.metadata,
+        createdAt: saved.createdAt,
+        status: 'delivered',
+      });
+    }
   }
 
   @SubscribeMessage('mark_read')
@@ -447,32 +593,68 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const provider = await this.providerRepository.findOne({
-      where: { id: payload.providerId },
-      relations: { user: true },
-    });
+    const callerRole = client.data.user?.role;
+    const isCallerProvider = callerRole === UserRole.PROVIDER;
 
-    if (!provider) {
-      client.emit('error', { message: 'Provider not found' });
-      return;
+    let provider: Provider | null = null;
+    let partnerUserId: string;
+
+    if (isCallerProvider) {
+      const partner = await this.userRepository.findOne({
+        where: { id: payload.providerId },
+        relations: { customer: true, provider: true },
+      });
+      if (!partner) {
+        client.emit('error', { message: 'Chat partner not found' });
+        return;
+      }
+      if (!partner.customer) {
+        client.emit('error', { message: 'Chat partner is not a customer' });
+        return;
+      }
+      provider = await this.providerRepository.findOne({
+        where: { user: { id: client.data.userId } },
+        relations: { user: true },
+      });
+      if (!provider) {
+        client.emit('error', { message: 'Provider profile not found' });
+        return;
+      }
+      partnerUserId = partner.id;
+    } else {
+      provider = await this.providerRepository.findOne({
+        where: { id: payload.providerId },
+        relations: { user: true },
+      });
+      if (!provider) {
+        provider = await this.providerRepository.findOne({
+          where: { user: { id: payload.providerId } },
+          relations: { user: true },
+        });
+      }
+      if (!provider) {
+        client.emit('error', { message: 'Provider not found' });
+        return;
+      }
+      partnerUserId = client.data.userId;
     }
 
-    const room = `direct_${client.data.userId}_${provider.id}`;
+    const customerUserId = isCallerProvider ? partnerUserId : client.data.userId;
+    const providerEntityId = provider.id;
+    const providerName = `${provider.firstName || ''} ${provider.lastName || ''}`.trim();
+
+    const room = `direct_${customerUserId}_${providerEntityId}`;
     void client.join(room);
 
-    this.server.to(room).emit('direct_chat_started', {
+    const payloadOut = {
       roomId: room,
-      customerId: client.data.userId,
-      providerId: provider.id,
-      providerName: `${provider.firstName || ''} ${provider.lastName || ''}`.trim(),
-    });
+      customerId: customerUserId,
+      providerId: providerEntityId,
+      providerName,
+    };
 
-    client.emit('direct_chat_started', {
-      roomId: room,
-      customerId: client.data.userId,
-      providerId: provider.id,
-      providerName: `${provider.firstName || ''} ${provider.lastName || ''}`.trim(),
-    });
+    this.server.to(room).emit('direct_chat_started', payloadOut);
+    client.emit('direct_chat_started', payloadOut);
   }
 
   @SubscribeMessage('send_direct_message')
@@ -493,11 +675,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('error', { message: 'Invalid room ID format' });
       return;
     }
-    const customerId = parts[1];
+    const customerUserId = parts[1];
     const providerId = parts[2];
 
+    const customerEntity = await this.customerRepository.findOne({
+      where: { user: { id: customerUserId } },
+    });
+    if (!customerEntity) {
+      client.emit('error', { message: 'Customer not found' });
+      return;
+    }
+
     const message = this.directMessageRepository.create({
-      customer: { id: customerId } as User,
+      customer: { id: customerEntity.id } as Customer,
       provider: { id: providerId } as Provider,
       sender: { id: client.data.userId } as User,
       content,
@@ -517,6 +707,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       createdAt: saved.createdAt,
       status: 'delivered',
     });
+    this.logger.log(`[DIRECT_MSG] Sent to room=${roomId} by user ${client.data.userId}`);
   }
 
   @SubscribeMessage('send_direct_image')
@@ -534,11 +725,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('error', { message: 'Invalid room ID format' });
       return;
     }
-    const customerId = parts[1];
+    const customerUserId = parts[1];
     const providerId = parts[2];
 
+    const customerEntity = await this.customerRepository.findOne({
+      where: { user: { id: customerUserId } },
+    });
+    if (!customerEntity) {
+      client.emit('error', { message: 'Customer not found' });
+      return;
+    }
+
     const message = this.directMessageRepository.create({
-      customer: { id: customerId } as User,
+      customer: { id: customerEntity.id } as Customer,
       provider: { id: providerId } as Provider,
       sender: { id: client.data.userId } as User,
       content: payload.caption || 'Sent an image',
@@ -575,11 +774,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('error', { message: 'Invalid room ID format' });
       return;
     }
-    const customerId = parts[1];
+    const customerUserId = parts[1];
     const providerId = parts[2];
 
+    const customerEntity = await this.customerRepository.findOne({
+      where: { user: { id: customerUserId } },
+    });
+    if (!customerEntity) {
+      client.emit('error', { message: 'Customer not found' });
+      return;
+    }
+
     const message = this.directMessageRepository.create({
-      customer: { id: customerId } as User,
+      customer: { id: customerEntity.id } as Customer,
       provider: { id: providerId } as Provider,
       sender: { id: client.data.userId } as User,
       content: payload.message || `Quote: ₹${payload.amount}`,
@@ -635,7 +842,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       take: 50,
     });
 
-    client.emit('direct_chat_history', messages);
+    client.emit('direct_chat_history', this.formatHistoryMessages(messages));
     this.server.to(room).emit('messages_read', { roomId: room });
   }
 

@@ -75,39 +75,65 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.onConnect((_) {
+      debugPrint('[CHAT] Socket connected');
       if (_isDirect) {
+        debugPrint('[CHAT] Starting direct chat with providerId: ${widget.providerId}');
         _socket.emit('start_direct_chat', {'providerId': widget.providerId});
-      } else {
+      } else if (widget.bookingId != null) {
+        debugPrint('[CHAT] Joining booking: ${widget.bookingId}');
         _socket.emit('join', {'bookingId': widget.bookingId});
+      } else {
+        debugPrint('[CHAT] No bookingId or providerId - cannot join');
+      }
+    });
+
+    _socket.onConnectError((err) async {
+      debugPrint('[CHAT] Connection error: $err');      final msg = err.toString().toLowerCase();
+      if (msg.contains('unauthorized') || msg.contains('invalid token') || msg.contains('401')) {
+        final refreshed = await AuthService.refreshAccessToken();
+        if (refreshed != null && mounted) {
+          _socket.disconnect();
+          _socket.dispose();
+          _connectSocket();
+        }
       }
     });
 
     _socket.on('direct_chat_started', (data) {
       final roomId = data['roomId'] as String;
+      debugPrint('[CHAT] direct_chat_started: roomId=$roomId');
       _directRoomId = roomId;
       _socket.emit('join_direct_chat', {'roomId': roomId});
     });
 
     _socket.on('direct_chat_history', (data) {
+      debugPrint('[CHAT] Got direct_chat_history: ${(data as List).length} messages');
       final msgs = (data as List).map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
-      setState(() => _messages.addAll(msgs));
+      setState(() {
+        _messages.clear();
+        _messages.addAll(msgs);
+      });
       _scrollToBottom();
     });
 
     _socket.on('history', (data) {
+      debugPrint('[CHAT] Got history: ${(data as List).length} messages');
       final msgs = (data as List).map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
-      setState(() => _messages.addAll(msgs));
+      setState(() {
+        _messages.clear();
+        _messages.addAll(msgs);
+      });
       _scrollToBottom();
     });
 
     _socket.on('new_direct_message', (data) {
       final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
-      _addMessage(msg);
+      _replaceOrAdd(msg);
     });
 
     _socket.on('new_message', (data) {
       final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
-      _addMessage(msg);
+      _replaceOrAdd(msg);
     });
 
     _socket.on('user_typing', (data) {
@@ -145,10 +171,23 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _addMessage(ChatMessage msg) {
+    if (_messages.any((m) => m.id == msg.id)) return;
     setState(() => _messages.add(msg));
     _scrollToBottom();
     if (msg.senderId != _currentUserId) {
       _sendReadReceipt();
+    }
+  }
+
+  void _replaceOrAdd(ChatMessage msg) {
+    final tempIndex = _messages.indexWhere(
+      (m) => m.id.startsWith('temp_') && m.senderId == msg.senderId,
+    );
+    if (tempIndex != -1) {
+      setState(() => _messages[tempIndex] = msg);
+      _scrollToBottom();
+    } else {
+      _addMessage(msg);
     }
   }
 
@@ -173,12 +212,26 @@ class _ChatScreenState extends State<ChatScreen> {
   void _sendMessage() {
     if (_controller.text.trim().isEmpty) return;
     final content = _controller.text.trim();
+    final tempMsg = ChatMessage(
+      id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      content: content,
+      senderId: _currentUserId ?? '',
+      senderName: 'You',
+      messageType: MessageType.text,
+      createdAt: DateTime.now(),
+      status: MessageStatus.sent,
+    );
+    _addMessage(tempMsg);
     if (_isDirect && _directRoomId != null) {
+      debugPrint('[CHAT] Sending direct_message to room $_directRoomId');
       _socket.emit('send_direct_message', {
         'roomId': _directRoomId,
         'content': content,
       });
-    } else {
+    } else if (_isDirect) {
+      debugPrint('[CHAT] Cannot send: _directRoomId is null');
+      return;
+    } else if (widget.bookingId != null) {
       _socket.emit('send_message', {
         'bookingId': widget.bookingId,
         'content': content,
@@ -213,7 +266,8 @@ class _ChatScreenState extends State<ChatScreen> {
         Uri.parse('${ApiService.baseUrl}/uploads/chat-image'),
       );
       request.headers['Authorization'] = 'Bearer $token';
-      request.files.add(await http.MultipartFile.fromPath('file', picked.path));
+      final bytes = await picked.readAsBytes();
+      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: picked.name, contentType: http.MediaType.parse(picked.mimeType ?? 'image/jpeg')));
       final response = await request.send();
       if (response.statusCode == 201) {
         final body = await response.stream.bytesToString();
@@ -339,27 +393,29 @@ class _ChatScreenState extends State<ChatScreen> {
         Expanded(
           child: _messages.isEmpty
               ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.chat_bubble_outline, size: 48, color: Colors.grey.shade400),
-                      const SizedBox(height: 12),
-                      Text('No messages yet', style: TextStyle(color: Colors.grey.shade600)),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          ActionChip(
-                            label: const Text('Hello'),
-                            onPressed: () => _sendQuickReply('need_more_info'),
-                          ),
-                          ActionChip(
-                            label: const Text('Price?'),
-                            onPressed: () => _sendQuickReply('price_negotiate'),
-                          ),
-                        ],
-                      ),
-                    ],
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.chat_bubble_outline, size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text('No messages yet', style: TextStyle(color: Colors.grey.shade600)),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            ActionChip(
+                              label: const Text('Hello'),
+                              onPressed: () => _sendQuickReply('need_more_info'),
+                            ),
+                            ActionChip(
+                              label: const Text('Price?'),
+                              onPressed: () => _sendQuickReply('price_negotiate'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 )
               : ListView.builder(
