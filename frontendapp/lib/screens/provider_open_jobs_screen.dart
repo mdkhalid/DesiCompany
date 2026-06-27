@@ -323,15 +323,12 @@ class _ProviderOpenJobsScreenState extends State<ProviderOpenJobsScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () async {
-                      final result = await Navigator.of(context).push(
+                      await Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => ProviderSubmitQuoteScreen(jobRequestId: job['id']),
                         ),
                       );
                       if (mounted) _loadJobs();
-                      if (result == true && mounted) {
-                        // already refreshed above
-                      }
                     },
                     icon: Icon(
                       myQuote != null ? Icons.edit : Icons.send,

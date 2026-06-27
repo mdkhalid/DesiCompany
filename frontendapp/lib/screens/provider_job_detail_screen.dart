@@ -56,7 +56,7 @@ class _ProviderJobDetailScreenState extends State<ProviderJobDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(loc.tr('withdraw_quote')),
-        content: const Text(''),
+        content: Text(loc.tr('cancel_request_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -357,8 +357,8 @@ class _ProviderJobDetailScreenState extends State<ProviderJobDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFFF5F0FF), Colors.white],
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF5F0FF), Colors.white],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

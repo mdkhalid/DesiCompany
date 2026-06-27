@@ -236,7 +236,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                   if (_error != null)
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Color(0xFFFFE0E0), borderRadius: BorderRadius.circular(12)),
+                      decoration: const BoxDecoration(color: Color(0xFFFFE0E0), borderRadius: BorderRadius.all(Radius.circular(12))),
                       child: Text(loc.tr('could_not_load_services'), style: TextStyle(color: Colors.red.shade700, fontSize: 13)),
                     ),
                   const SizedBox(height: 12),
@@ -279,7 +279,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
-                            child: Text(isBooked ? loc.tr('booked') : loc.tr('book'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            child: Text(isBooked ? loc.tr('booked') : loc.tr('book'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                           ),
                         ]),
                       ),

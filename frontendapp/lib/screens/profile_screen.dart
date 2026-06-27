@@ -293,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Center(
                               child: Text(
                                 _profile?['role']?.toString().toUpperCase() ?? '',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppTheme.primary,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
@@ -363,7 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             label: Text(loc.tr('set_my_location'), style: const TextStyle(fontSize: 14)),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.primary,
-              side: BorderSide(color: AppTheme.primary),
+              side: const BorderSide(color: AppTheme.primary),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),

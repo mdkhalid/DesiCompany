@@ -45,7 +45,7 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(loc.tr('cancel_request')),
-        content: const Text(''),
+        content: Text(loc.tr('cancel_request_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

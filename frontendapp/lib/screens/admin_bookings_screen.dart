@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../utils/id_helpers.dart';
 
 class AdminBookingsScreen extends StatefulWidget {
   const AdminBookingsScreen({super.key});
@@ -91,7 +92,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Booking #${booking['id'].toString().substring(0, 8)}',
+                  'Booking #${shortId(booking['id']?.toString())}',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppTheme.textPrimary),
                 ),
                 Container(
@@ -219,7 +220,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                                   padding: const EdgeInsets.all(16),
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                      Text('Booking #${b['id'].toString().substring(0, 8)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
+                                      Text('Booking #${shortId(b['id']?.toString())}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),

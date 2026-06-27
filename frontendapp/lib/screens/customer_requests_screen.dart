@@ -224,7 +224,7 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                       Row(
                                         children: [
                                           if (item['price'] != null) ...[
-                                            Text('₹${item['price']}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primary)),
+                                            Text('₹${item['price']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primary)),
                                             const SizedBox(width: 8),
                                           ],
                                           Text(

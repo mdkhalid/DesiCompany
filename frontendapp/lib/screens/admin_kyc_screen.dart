@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../utils/id_helpers.dart';
 
 class AdminKycScreen extends StatefulWidget {
   const AdminKycScreen({super.key});
@@ -156,7 +157,6 @@ class _AdminKycScreenState extends State<AdminKycScreen>
 
   @override
   Widget build(BuildContext context) {
-    final loc = LocalizationProvider.of(context);
     final filtered = _filteredDocs;
 
     return Scaffold(
@@ -201,7 +201,7 @@ class _AdminKycScreenState extends State<AdminKycScreen>
                         children: [
                           Icon(Icons.verified_user, size: 64, color: Colors.grey.shade300),
                           const SizedBox(height: 16),
-                          Text(
+                          const Text(
                             'No documents found',
                             style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
                           ),
@@ -288,7 +288,7 @@ class _AdminKycScreenState extends State<AdminKycScreen>
             const SizedBox(height: 12),
             _infoRow(Icons.description, 'Document', doc['documentType'] ?? '-'),
             const SizedBox(height: 6),
-            _infoRow(Icons.tag, 'Doc Number', (doc['documentNumber'] ?? doc['id'] ?? '-').toString().substring(0, 8)),
+            _infoRow(Icons.tag, 'Doc Number', shortId((doc['documentNumber'] ?? doc['id'] ?? '-').toString())),
             if (dateStr.isNotEmpty) ...[
               const SizedBox(height: 6),
               _infoRow(Icons.calendar_today, 'Submitted', dateStr),

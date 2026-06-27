@@ -189,7 +189,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _socket.on('direct_chat_history', (data) {
       debugPrint('[CHAT] Got direct_chat_history: ${(data as List).length} messages');
-      final msgs = (data as List).map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
+      final msgs = data.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
       setState(() {
         _messages.clear();
         _messages.addAll(msgs);
@@ -200,7 +200,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _socket.on('history', (data) {
       debugPrint('[CHAT] Got history: ${(data as List).length} messages');
-      final msgs = (data as List).map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
+      final msgs = data.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
       setState(() {
         _messages.clear();
         _messages.addAll(msgs);

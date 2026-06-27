@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';

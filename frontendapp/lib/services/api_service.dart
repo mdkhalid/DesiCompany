@@ -63,6 +63,7 @@ class ApiService {
   }
 
   /// Send a request, automatically refreshing the access token on 401 and retrying once.
+  /// The retry always rebuilds headers so the freshly-issued access token is used.
   static Future<http.Response> _sendWithRefresh(
     Future<http.Response> Function() send, {
     bool allowRefresh = true,
@@ -71,8 +72,8 @@ class ApiService {
     if (res.statusCode == 401 && allowRefresh) {
       final newToken = await AuthService.refreshAccessToken();
       if (newToken != null) {
-        final retry = await send();
-        return retry;
+        // Rebuild the request so the new Authorization header is sent.
+        return await send();
       }
     }
     return res;
@@ -115,9 +116,13 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<dynamic> delete(String path) async {
+  static Future<dynamic> delete(String path, {Map<String, dynamic>? body}) async {
     final res = await _sendWithRefresh(
-      () async => http.delete(_uri(path), headers: await _headers()),
+      () async => http.delete(
+        _uri(path),
+        headers: await _headers(),
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
     if (res.statusCode == 401) throw Exception('Unauthorized');
     if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');

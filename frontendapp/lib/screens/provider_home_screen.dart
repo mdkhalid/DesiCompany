@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../utils/id_helpers.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -12,9 +13,26 @@ class ProviderHomeScreen extends StatefulWidget {
 class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   List _bookings = [];
   bool _loading = true;
+  String _providerName = '';
 
   @override
-  void initState() { super.initState(); _loadBookings(); }
+  void initState() { super.initState(); _loadBookings(); _loadProviderName(); }
+
+  Future<void> _loadProviderName() async {
+    try {
+      final profile = await ApiService.get('/users/profile');
+      if (!mounted) return;
+      final provider = profile is Map ? profile['provider'] : null;
+      if (provider is Map) {
+        final first = (provider['firstName'] ?? '').toString();
+        final last = (provider['lastName'] ?? '').toString();
+        final name = '$first $last'.trim();
+        if (name.isNotEmpty) {
+          setState(() => _providerName = name);
+        }
+      }
+    } catch (_) {}
+  }
 
   Future<void> _loadBookings() async {
     try {
@@ -158,7 +176,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                                 Expanded(
-                                  child: Text('${loc.tr('booking_number')}${b['id'].toString().substring(0, 8)}',
+                                  child: Text('${loc.tr('booking_number')}${shortId(b['id']?.toString())}',
                                     style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -220,7 +238,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                                     Navigator.pushNamed(context, '/provider-customer-feedback', arguments: {
                                       'bookingId': b['id'],
                                       'customerName': customerName,
-                                      'providerName': 'Provider',
+                                      'providerName': _providerName.isNotEmpty ? _providerName : 'Provider',
                                     });
                                   },
                                   icon: const Icon(Icons.feedback_outlined, size: 16),

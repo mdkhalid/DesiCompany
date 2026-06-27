@@ -87,7 +87,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _allProviders = provs as List;
+        _allProviders = provs;
         _applyFilters();
         _loading = false;
       });
@@ -238,7 +238,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           ),
                           Text(
                             loc.tr('find_services'),
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -371,7 +371,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           decoration: InputDecoration(
             hintText: loc.tr('search_hint'),
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-            prefixIcon: Icon(Icons.search, color: AppTheme.primary, size: 22),
+            prefixIcon: const Icon(Icons.search, color: AppTheme.primary, size: 22),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear, size: 20),
@@ -462,7 +462,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           children: [
             Text(
               loc.tr('categories'),
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textPrimary,

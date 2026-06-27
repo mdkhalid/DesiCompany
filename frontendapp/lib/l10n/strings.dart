@@ -28,6 +28,8 @@ class AppStrings {
       'wrong_number': '← Wrong number? Edit phone',
       'invalid_phone': 'Enter a valid 10-digit phone number',
       'enter_otp': 'Enter the OTP',
+      'required_field': 'This field is required',
+      'budget_invalid': 'Min must be less than or equal to max',
 
       // Profile Switching
       'switch_profile_title': 'Which profile?',
@@ -283,6 +285,7 @@ class AppStrings {
       'quote_accepted': 'Booking created!',
       'quote_accept_failed': 'Failed to accept quote: {error}',
       'cancel_request': 'Cancel Request',
+      'cancel_request_confirm': 'Are you sure you want to cancel this request?',
       'request_cancelled': 'Request cancelled',
       'estimated_hours': 'Estimated: {hours} hrs',
       'valid_until': 'Valid until: {date}',
@@ -319,6 +322,7 @@ class AppStrings {
       'subscribe': 'Subscribe',
       'join_membership': 'Join',
       'subscription_active': 'Active',
+      'cancel_subscription': 'Cancel Subscription',
       'subscription_cancelled': 'Cancelled',
       'subscription_expired': 'Expired',
       'no_subscriptions': 'No plans available',
@@ -410,6 +414,8 @@ class AppStrings {
       'wrong_number': '← गलत नंबर? फ़ोन बदलें',
       'invalid_phone': '10 अंकों का वैध फ़ोन नंबर दर्ज करें',
       'enter_otp': 'OTP दर्ज करें',
+      'required_field': 'यह फ़ील्ड आवश्यक है',
+      'budget_invalid': 'न्यूनतम अधिकतम से कम या बराबर होना चाहिए',
 
       // Profile Switching
       'switch_profile_title': 'कौन सा प्रोफ़ाइल?',
@@ -665,6 +671,7 @@ class AppStrings {
       'quote_accepted': 'बुकिंग बन गई!',
       'quote_accept_failed': 'कोटेशन स्वीकार करने में विफल: {error}',
       'cancel_request': 'अनुरोध रद्द करें',
+      'cancel_request_confirm': 'क्या आप वाकई यह अनुरोध रद्द करना चाहते हैं?',
       'request_cancelled': 'अनुरोध रद्द हो गया',
       'estimated_hours': 'अनुमानित: {hours} घंटे',
       'valid_until': 'तक मान्य: {date}',
@@ -701,6 +708,7 @@ class AppStrings {
       'subscribe': 'सब्सक्राइब करें',
       'join_membership': 'ज्वाइन करें',
       'subscription_active': 'सक्रिय',
+      'cancel_subscription': 'सदस्यता रद्द करें',
       'subscription_cancelled': 'रद्द',
       'subscription_expired': 'समाप्त',
       'no_subscriptions': 'कोई योजना उपलब्ध नहीं',

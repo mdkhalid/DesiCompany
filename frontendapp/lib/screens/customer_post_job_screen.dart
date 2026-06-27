@@ -181,7 +181,7 @@ class _CustomerPostJobScreenState extends State<CustomerPostJobScreen> {
                                 hintText: loc.tr('title_label'),
                               ),
                               validator: (v) => (v == null || v.trim().isEmpty)
-                                ? loc.tr('title_label') : null,
+                                ? loc.tr('required_field') : null,
                             ),
                             const SizedBox(height: 16),
                             _buildLabel(loc.tr('services')),
@@ -196,7 +196,7 @@ class _CustomerPostJobScreenState extends State<CustomerPostJobScreen> {
                                 hintText: loc.tr('description_label'),
                               ),
                               validator: (v) => (v == null || v.trim().isEmpty)
-                                ? loc.tr('description_label') : null,
+                                ? loc.tr('required_field') : null,
                             ),
                             const SizedBox(height: 16),
                             _buildLabel(loc.tr('address')),
@@ -247,7 +247,7 @@ class _CustomerPostJobScreenState extends State<CustomerPostJobScreen> {
                                         ? double.tryParse(_budgetMaxController.text.trim())
                                         : null;
                                       if (min != null && max != null && min > max) {
-                                        return '>';
+                                        return loc.tr('budget_invalid');
                                       }
                                       return null;
                                     },
@@ -274,7 +274,7 @@ class _CustomerPostJobScreenState extends State<CustomerPostJobScreen> {
                                         ? double.tryParse(_budgetMinController.text.trim())
                                         : null;
                                       if (min != null && max != null && min > max) {
-                                        return '<';
+                                        return loc.tr('budget_invalid');
                                       }
                                       return null;
                                     },

@@ -388,7 +388,7 @@ class _ProviderKycUploadScreenState extends State<ProviderKycUploadScreen> {
                   label: Text(loc.tr('take_photo'), style: const TextStyle(fontSize: 13)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.primary,
-                    side: BorderSide(color: AppTheme.primary),
+                    side: const BorderSide(color: AppTheme.primary),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -402,7 +402,7 @@ class _ProviderKycUploadScreenState extends State<ProviderKycUploadScreen> {
                   label: Text(loc.tr('choose_from_gallery'), style: const TextStyle(fontSize: 13)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.primary,
-                    side: BorderSide(color: AppTheme.primary),
+                    side: const BorderSide(color: AppTheme.primary),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),

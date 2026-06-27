@@ -316,7 +316,7 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
                         color: AppTheme.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.check, size: 14, color: AppTheme.primary),
+                      child: const Icon(Icons.check, size: 14, color: AppTheme.primary),
                     ),
                     const SizedBox(width: 10),
                     Expanded(

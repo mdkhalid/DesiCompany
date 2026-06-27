@@ -42,10 +42,10 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
   }
 
   Future<void> _subscribe(String planId) async {
-    final loc = DesiCompanyApp.localeProvider!;      setState(() => _subscribingId = true);
+    final loc = DesiCompanyApp.localeProvider!;
+    setState(() => _subscribingId = true);
     try {
       await ApiService.post('/subscription-plans/$planId/subscribe');
-      if (!mounted) return;
       if (!mounted) return;
       setState(() => _subscribingId = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -56,7 +56,7 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
       if (!mounted) return;
       setState(() => _subscribingId = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${e.toString().replaceFirst('Exception: ', '')}')),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
   }
@@ -66,8 +66,8 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(loc.tr('cancel')),
-        content: Text(loc.tr('subscription_cancelled')),
+        title: Text(loc.tr('cancel_subscription')),
+        content: Text(loc.tr('subscription_details')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(loc.tr('back'))),
           TextButton(
@@ -194,7 +194,7 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
           ),
         ),                        TextButton(
                           onPressed: _cancelSubscription,
-                          child: Text(loc.tr('subscription_cancelled'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                          child: Text(loc.tr('cancel_subscription'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         ),
       ]),
     );

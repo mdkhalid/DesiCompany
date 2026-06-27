@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../utils/id_helpers.dart';
 import 'write_review_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -117,7 +118,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            Text('${loc.tr('booking_number')}${b['id'].toString().substring(0, 8)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
+                            Text('${loc.tr('booking_number')}${shortId(b['id']?.toString())}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
@@ -156,7 +157,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                                     const SizedBox(width: 4),
                                     Text(
                                       loc.tr('reviewed'),
-                                      style: TextStyle(color: AppTheme.secondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                      style: const TextStyle(color: AppTheme.secondary, fontSize: 12, fontWeight: FontWeight.w600),
                                     ),
                                   ],
                                 ),
