@@ -111,6 +111,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                           () => Navigator.pushNamed(context, '/provider-services')),
                         _buildHeaderButton(Icons.star_rate, loc.tr('header_reviews'),
                           () => Navigator.pushNamed(context, '/provider-reviews')),
+                        _buildHeaderButton(Icons.schedule, 'Schedule',
+                          () => Navigator.pushNamed(context, '/provider-schedule')),
                         _buildHeaderButton(Icons.verified_user, loc.tr('header_kyc'),
                           () => Navigator.pushNamed(context, '/provider-kyc-upload')),
                         _buildHeaderButton(Icons.card_membership, loc.tr('subscription_plans'),

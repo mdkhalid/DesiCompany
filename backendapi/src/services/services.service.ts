@@ -4,12 +4,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In, LessThan, MoreThan } from 'typeorm';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
 import { ProviderDateOverride } from './entities/provider-date-override.entity';
 import { Provider } from '../users/entities/provider.entity';
+import { Booking } from '../bookings/entities/booking.entity';
+import { BookingStatus } from '../common/enums/booking-status.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
 import { UpdateProviderServiceDto } from './dto/update-provider-service.dto';
@@ -40,6 +42,8 @@ export class ServicesService {
     private readonly dateOverrideRepository: Repository<ProviderDateOverride>,
     @InjectRepository(Provider)
     private readonly providerRepository: Repository<Provider>,
+    @InjectRepository(Booking)
+    private readonly bookingRepository: Repository<Booking>,
   ) {}
 
   async findAllCategories() {
@@ -226,6 +230,43 @@ export class ServicesService {
     await this.availabilityRepository.remove(availability);
   }
 
+  async setWeeklySchedule(
+    providerId: string,
+    slots: { dayOfWeek: number; startTime: string; endTime: string }[],
+  ) {
+    const provider = await this.providerRepository.findOne({
+      where: { id: providerId },
+    });
+    if (!provider) {
+      throw new NotFoundException('Provider not found');
+    }
+
+    for (const slot of slots) {
+      if (slot.startTime >= slot.endTime) {
+        throw new BadRequestException(
+          `startTime must be before endTime for day ${slot.dayOfWeek}`,
+        );
+      }
+    }
+
+    await this.availabilityRepository.delete({
+      provider: { id: providerId },
+    });
+
+    if (slots.length === 0) return [];
+
+    const entities = slots.map((slot) =>
+      this.availabilityRepository.create({
+        provider,
+        dayOfWeek: slot.dayOfWeek,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      }),
+    );
+
+    return this.availabilityRepository.save(entities);
+  }
+
   async createDateOverride(providerId: string, dto: CreateDateOverrideDto) {
     const provider = await this.providerRepository.findOne({
       where: { id: providerId },
@@ -312,8 +353,10 @@ export class ServicesService {
       throw new NotFoundException('Provider not found');
     }
 
-    const dateObj = new Date(date);
+    const dateObj = new Date(date + 'T00:00:00');
     const dayOfWeek = dateObj.getDay();
+    const nextDay = new Date(dateObj);
+    nextDay.setDate(nextDay.getDate() + 1);
 
     const override = await this.dateOverrideRepository.findOne({
       where: { provider: { id: providerId }, overrideDate: date },
@@ -335,10 +378,11 @@ export class ServicesService {
       startTime = override.startTime;
       endTime = override.endTime;
     } else {
-      const availability = await this.availabilityRepository.findOne({
+      const availability = await this.availabilityRepository.find({
         where: { provider: { id: providerId }, dayOfWeek },
+        order: { startTime: 'ASC' },
       });
-      if (!availability) {
+      if (availability.length === 0) {
         return {
           date,
           available: false,
@@ -346,25 +390,79 @@ export class ServicesService {
           slots: [],
         };
       }
-      startTime = availability.startTime;
-      endTime = availability.endTime;
+
+      const allSlots: { start: string; end: string }[] = [];
+      const activeStatuses = [
+        BookingStatus.REQUESTED,
+        BookingStatus.ACCEPTED,
+        BookingStatus.ON_THE_WAY,
+        BookingStatus.WORKING,
+      ];
+
+      const existingBookings = await this.bookingRepository.find({
+        where: {
+          provider: { id: providerId },
+          scheduledDate: MoreThan(dateObj) as any,
+          status: In(activeStatuses),
+        },
+        select: { id: true, scheduledDate: true, estimatedHours: true },
+      });
+
+      const bookedRanges = existingBookings
+        .filter((b) => {
+          const bDate = new Date(b.scheduledDate);
+          return bDate >= dateObj && bDate < nextDay;
+        })
+        .map((b) => {
+          const bDate = new Date(b.scheduledDate);
+          const startMinutes =
+            bDate.getHours() * 60 + bDate.getMinutes();
+          const duration = (b.estimatedHours || 1) * 60;
+          return { startMin: startMinutes, endMin: startMinutes + duration };
+        });
+
+      const isOverlapping = (slotStart: number, slotEnd: number) =>
+        bookedRanges.some(
+          (b) => slotStart < b.endMin && slotEnd > b.startMin,
+        );
+
+      for (const avail of availability) {
+        const slots = this.generateTimeSlotRanges(
+          avail.startTime,
+          avail.endTime,
+          60,
+        );
+        for (const slot of slots) {
+          if (!isOverlapping(slot.startMin, slot.endMin)) {
+            allSlots.push({ start: slot.start, end: slot.end });
+          }
+        }
+      }
+
+      return {
+        date,
+        available: allSlots.length > 0,
+        slots: allSlots,
+      };
     }
 
-    const slots = this.generateTimeSlots(startTime, endTime, 60);
+    const slots = this.generateTimeSlotRanges(startTime, endTime, 60).map(
+      (s) => ({ start: s.start, end: s.end }),
+    );
 
     return {
       date,
-      available: true,
+      available: slots.length > 0,
       slots,
     };
   }
 
-  private generateTimeSlots(
+  private generateTimeSlotRanges(
     startTime: string,
     endTime: string,
     durationMinutes: number,
-  ): string[] {
-    const slots: string[] = [];
+  ): { start: string; end: string; startMin: number; endMin: number }[] {
+    const slots: { start: string; end: string; startMin: number; endMin: number }[] = [];
     const [startHour, startMin] = startTime.split(':').map(Number);
     const [endHour, endMin] = endTime.split(':').map(Number);
 
@@ -372,11 +470,18 @@ export class ServicesService {
     const endMinutes = endHour * 60 + endMin;
 
     while (currentMinutes + durationMinutes <= endMinutes) {
-      const hour = Math.floor(currentMinutes / 60);
-      const min = currentMinutes % 60;
-      slots.push(
-        `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
-      );
+      const slotStart = currentMinutes;
+      const slotEnd = currentMinutes + durationMinutes;
+      const sHour = Math.floor(slotStart / 60);
+      const sMin = slotStart % 60;
+      const eHour = Math.floor(slotEnd / 60);
+      const eMin = slotEnd % 60;
+      slots.push({
+        start: `${sHour.toString().padStart(2, '0')}:${sMin.toString().padStart(2, '0')}`,
+        end: `${eHour.toString().padStart(2, '0')}:${eMin.toString().padStart(2, '0')}`,
+        startMin: slotStart,
+        endMin: slotEnd,
+      });
       currentMinutes += durationMinutes;
     }
 

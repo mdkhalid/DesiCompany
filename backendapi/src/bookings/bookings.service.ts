@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Booking } from './entities/booking.entity';
 import { BookingCharge } from './entities/booking-charge.entity';
 import { Customer } from '../users/entities/customer.entity';
@@ -19,6 +19,8 @@ import { BookingStatus } from '../common/enums/booking-status.enum';
 import { getStatusChatTemplate, formatTemplate } from './chat-templates';
 import { UserRole } from '../common/enums/user-role.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
+import { ProviderAvailability } from '../services/entities/provider-availability.entity';
+import { ProviderDateOverride } from '../services/entities/provider-date-override.entity';
 import { CommissionService } from '../commissions/commission.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
@@ -52,6 +54,10 @@ export class BookingsService {
     private readonly bookingServiceItemRepository: Repository<BookingServiceItem>,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
+    @InjectRepository(ProviderAvailability)
+    private readonly availabilityRepository: Repository<ProviderAvailability>,
+    @InjectRepository(ProviderDateOverride)
+    private readonly dateOverrideRepository: Repository<ProviderDateOverride>,
     private readonly chatGateway: ChatGateway,
     private readonly commissionService: CommissionService,
     private readonly notificationsService: NotificationsService,
@@ -92,6 +98,8 @@ export class BookingsService {
         'Provider is temporarily suspended due to outstanding commissions',
       );
     }
+
+    await this.validateBookingSlot(provider.id, dto.scheduledDate);
 
     const providerService = await this.providerServiceRepository.findOne({
       where: {
@@ -516,6 +524,94 @@ export class BookingsService {
 
     await this.chargeRepository.remove(charge);
     return this.recalculateTotals(charge.booking.id);
+  }
+
+  private async validateBookingSlot(providerId: string, scheduledDate: string) {
+    const dateObj = new Date(scheduledDate);
+    const dateStr = dateObj.toISOString().slice(0, 10);
+    const dayOfWeek = dateObj.getDay();
+    const bookingMinutes = dateObj.getHours() * 60 + dateObj.getMinutes();
+
+    const override = await this.dateOverrideRepository.findOne({
+      where: { provider: { id: providerId }, overrideDate: dateStr },
+    });
+
+    if (override) {
+      if (!override.isAvailable) {
+        throw new BadRequestException(
+          `Provider is not available on ${dateStr}: ${override.reason || 'day off'}`,
+        );
+      }
+      if (override.startTime && override.endTime) {
+        const [sH, sM] = override.startTime.split(':').map(Number);
+        const [eH, eM] = override.endTime.split(':').map(Number);
+        const overrideStart = sH * 60 + sM;
+        const overrideEnd = eH * 60 + eM;
+        if (bookingMinutes < overrideStart || bookingMinutes >= overrideEnd) {
+          throw new BadRequestException(
+            `Booking time falls outside provider's special hours (${override.startTime}-${override.endTime}) on ${dateStr}`,
+          );
+        }
+      }
+      return;
+    }
+
+    const availabilities = await this.availabilityRepository.find({
+      where: { provider: { id: providerId }, dayOfWeek },
+    });
+
+    if (availabilities.length === 0) {
+      throw new BadRequestException(
+        'Provider is not available on this day of the week',
+      );
+    }
+
+    const inAnySlot = availabilities.some((a) => {
+      const [sH, sM] = a.startTime.split(':').map(Number);
+      const [eH, eM] = a.endTime.split(':').map(Number);
+      const slotStart = sH * 60 + sM;
+      const slotEnd = eH * 60 + eM;
+      return bookingMinutes >= slotStart && bookingMinutes < slotEnd;
+    });
+
+    if (!inAnySlot) {
+      throw new BadRequestException(
+        'Booking time falls outside provider\'s available hours',
+      );
+    }
+
+    const nextDay = new Date(dateObj);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const estimatedHours = 1;
+    const bookingEnd = bookingMinutes + estimatedHours * 60;
+
+    const conflictingBookings = await this.bookingRepository.find({
+      where: {
+        provider: { id: providerId },
+        status: In([
+          BookingStatus.REQUESTED,
+          BookingStatus.ACCEPTED,
+          BookingStatus.ON_THE_WAY,
+          BookingStatus.WORKING,
+        ]),
+      },
+      select: { id: true, scheduledDate: true, estimatedHours: true },
+    });
+
+    const hasConflict = conflictingBookings.some((b) => {
+      const bDate = new Date(b.scheduledDate);
+      if (bDate < dateObj || bDate >= nextDay) return false;
+      const bStart = bDate.getHours() * 60 + bDate.getMinutes();
+      const bEnd = bStart + (b.estimatedHours || 1) * 60;
+      return bookingMinutes < bEnd && bookingEnd > bStart;
+    });
+
+    if (hasConflict) {
+      throw new BadRequestException(
+        'This time slot conflicts with an existing booking',
+      );
+    }
   }
 
   private async recalculateTotals(bookingId: string) {

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Param,
   Patch,
@@ -26,6 +27,7 @@ import { UpdateProviderServiceDto } from './dto/update-provider-service.dto';
 import { CreateProviderAvailabilityDto } from './dto/create-provider-availability.dto';
 import { SearchProvidersDto } from './dto/search-providers.dto';
 import { CreateDateOverrideDto } from './dto/date-override.dto';
+import { SetWeeklyScheduleDto } from './dto/set-weekly-schedule.dto';
 
 @ApiTags('Services')
 @ApiBearerAuth()
@@ -174,6 +176,17 @@ export class ServicesController {
   @ApiOperation({ summary: 'Delete availability slot' })
   deleteProviderAvailability(@Param('id') id: string) {
     return this.servicesService.deleteProviderAvailability(id);
+  }
+
+  @Put('availabilities/weekly')
+  @Roles(UserRole.PROVIDER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Replace entire weekly schedule (batch set)' })
+  @ApiResponse({ status: 200, description: 'Weekly schedule updated' })
+  setWeeklySchedule(
+    @Query('providerId') providerId: string,
+    @Body() dto: SetWeeklyScheduleDto,
+  ) {
+    return this.servicesService.setWeeklySchedule(providerId, dto.slots);
   }
 
   @Get('date-overrides')

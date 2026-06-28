@@ -113,18 +113,145 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
   }
 
   Future<void> _bookService(Map service) async {
-    final now = DateTime.now().add(const Duration(days: 1));
-    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}T10:00:00Z';
+    final loc = LocalizationProvider.of(context);
+    DateTime? date;
+    String? selectedSlot;
+    List slots = [];
+    bool loadingSlots = false;
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Book Service'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: DateTime.now().add(const Duration(days: 1)),
+                      firstDate: DateTime.now().add(const Duration(days: 1)),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setDialogState(() {
+                        date = picked;
+                        selectedSlot = null;
+                        slots = [];
+                        loadingSlots = true;
+                      });
+                      try {
+                        final dateStr = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                        final data = await ApiService.get('/services/available-slots?providerId=${widget.provider['id']}&date=$dateStr');
+                        if (!ctx.mounted) return;
+                        final parsed = (data is Map ? data['slots'] : []) as List;
+                        setDialogState(() { slots = parsed; loadingSlots = false; });
+                      } catch (e) {
+                        if (ctx.mounted) setDialogState(() => loadingSlots = false);
+                      }
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.calendar_today, color: AppTheme.primary, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        date == null ? loc.tr('preferred_date') : '${date!.day}/${date!.month}/${date!.year}',
+                        style: TextStyle(fontWeight: FontWeight.w500, color: date == null ? AppTheme.textSecondary : AppTheme.textPrimary),
+                      ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (loadingSlots)
+                  const Center(child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(),
+                  ))
+                else if (date != null && slots.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('No available slots for this date', style: TextStyle(color: AppTheme.textSecondary)),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: slots.map((s) {
+                      final start = s['start'] as String? ?? '';
+                      final end = s['end'] as String? ?? '';
+                      final display = start.length >= 5
+                          ? '${int.parse(start.split(':')[0]) > 12 ? int.parse(start.split(':')[0]) - 12 : (int.parse(start.split(':')[0]) == 0 ? 12 : int.parse(start.split(':')[0]))}:${start.split(':')[1]} ${int.parse(start.split(':')[0]) >= 12 ? 'PM' : 'AM'}'
+                          : start;
+                      final isSelected = selectedSlot == start;
+                      return GestureDetector(
+                        onTap: () => setDialogState(() => selectedSlot = start),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppTheme.primary : Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isSelected ? AppTheme.primary : Colors.grey.shade300),
+                          ),
+                          child: Text(
+                            display,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : AppTheme.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(loc.tr('cancel'))),
+            ElevatedButton(
+              onPressed: date == null || selectedSlot == null
+                  ? null
+                  : () => Navigator.pop(ctx, {
+                      'date': '${date!.year}-${date!.month.toString().padLeft(2, '0')}-${date!.day.toString().padLeft(2, '0')}',
+                      'time': selectedSlot!,
+                    }),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text(loc.tr('book'), style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
     try {
       await ApiService.post('/bookings', body: {
         'customerId': 'me',
         'providerId': widget.provider['id'],
         'providerServiceId': service['id'],
-        'scheduledDate': dateStr,
+        'scheduledDate': '${result['date']}T${result['time']}:00Z',
       });
       if (!mounted) return;
       setState(() => _bookedServiceIds.add(service['id'] as String));
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(LocalizationProvider.of(context).tr('booking_requested'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.tr('booking_requested'))));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));

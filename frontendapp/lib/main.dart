@@ -35,6 +35,7 @@ import 'screens/provider_submit_quote_screen.dart';
 import 'screens/provider_my_quotes_screen.dart';
 import 'screens/provider_job_detail_screen.dart';
 import 'screens/provider_subscription_screen.dart';
+import 'screens/provider_schedule_screen.dart';
 import 'screens/customer_membership_screen.dart';
 import 'screens/admin_revenue_screen.dart';
 void main() async {
@@ -130,6 +131,7 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
           '/conversations': (_) => const ConversationListScreen(),
           '/customer-requests': (_) => const CustomerRequestsScreen(),
           '/provider-requests': (_) => const ProviderRequestsScreen(),
+          '/provider-schedule': (_) => const ProviderScheduleScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name == '/provider-detail') {

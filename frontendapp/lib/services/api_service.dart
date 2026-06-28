@@ -103,6 +103,19 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  static Future<dynamic> put(String path, {Map<String, dynamic>? body}) async {
+    final res = await _sendWithRefresh(
+      () async => http.put(
+        _uri(path),
+        headers: await _headers(),
+        body: body != null ? jsonEncode(body) : null,
+      ),
+    );
+    if (res.statusCode == 401) throw Exception('Unauthorized');
+    if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
+    return jsonDecode(res.body);
+  }
+
   static Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
     final res = await _sendWithRefresh(
       () async => http.patch(

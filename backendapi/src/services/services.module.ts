@@ -9,6 +9,7 @@ import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
 import { ProviderDateOverride } from './entities/provider-date-override.entity';
 import { Provider } from '../users/entities/provider.entity';
+import { Booking } from '../bookings/entities/booking.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Provider } from '../users/entities/provider.entity';
       ProviderAvailability,
       ProviderDateOverride,
       Provider,
+      Booking,
     ]),
   ],
   controllers: [ServicesController, ServiceAreaMapController],
