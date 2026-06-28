@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'dart:convert';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../l10n/strings.dart';
 import '../models/chat_message.dart';
+import '../models/hive_chat_message.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
@@ -41,17 +43,58 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, dynamic>? _bookingInfo;
   bool _loadingBooking = false;
 
-  // Cache key for SharedPreferences
-  String get _cacheKey => 'chat_msgs_${widget.bookingId ?? _directRoomId ?? 'direct_${widget.providerId}'}';
+  // Hive box names
+  String get _messagesBoxName => 'chat_messages_${widget.bookingId ?? _directRoomId ?? 'direct_${widget.providerId}'}';
+  String get _pendingBoxName => 'pending_messages_${widget.bookingId ?? _directRoomId ?? 'direct_${widget.providerId}'}';
+
+  // Hive boxes
+  late Box<HiveChatMessage> _messagesBox;
+  late Box<HiveChatMessage> _pendingBox;
+
+  // Retry timer
+  Timer? _retryTimer;
 
   @override
   void initState() {
     super.initState();
     _loadUserId();
-    _loadCachedMessages();
+    _initHive();
     _connectSocket();
     if (!_isDirect && widget.bookingId != null) {
       _fetchBookingInfo();
+    }
+    _startRetryTimer();
+  }
+
+  Future<void> _initHive() async {
+    _messagesBox = await Hive.openBox<HiveChatMessage>(_messagesBoxName);
+    _pendingBox = await Hive.openBox<HiveChatMessage>(_pendingBoxName);
+    _loadCachedMessages();
+  }
+
+  void _startRetryTimer() {
+    _retryTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _retryPendingMessages();
+    });
+  }
+
+  Future<void> _retryPendingMessages() async {
+    if (_pendingBox.isEmpty || !_socket.connected) return;
+
+    final pendingMessages = _pendingBox.values.toList();
+    for (final hiveMsg in pendingMessages) {
+      final msg = hiveMsg.toChatMessage();
+      if (_isDirect && _directRoomId != null) {
+        _socket.emit('send_direct_message', {
+          'roomId': _directRoomId,
+          'content': msg.content,
+        });
+      } else if (widget.bookingId != null) {
+        _socket.emit('send_message', {
+          'bookingId': widget.bookingId,
+          'content': msg.content,
+        });
+      }
     }
   }
 
@@ -66,23 +109,39 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _loadCachedMessages() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString(_cacheKey);
-      if (cached != null && mounted) {
-        final List<dynamic> decoded = jsonDecode(cached);
-        final msgs = decoded
-            .map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m)))
-            .toList();
-        setState(() => _messages.addAll(msgs));
+      if (_messagesBox.isNotEmpty) {
+        final msgs = _messagesBox.values.map((hiveMsg) => hiveMsg.toChatMessage()).toList();
+        if (mounted) {
+          setState(() => _messages.addAll(msgs));
+        }
       }
     } catch (_) {}
   }
 
   Future<void> _saveMessagesToCache() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final json = jsonEncode(_messages.map((m) => m.toJson()).toList());
-      await prefs.setString(_cacheKey, json);
+      await _messagesBox.clear();
+      for (final msg in _messages) {
+        await _messagesBox.add(HiveChatMessage.fromChatMessage(msg));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _addPendingMessage(ChatMessage msg) async {
+    try {
+      await _pendingBox.add(HiveChatMessage.fromChatMessage(msg, isPending: true));
+    } catch (_) {}
+  }
+
+  Future<void> _removePendingMessage(String id) async {
+    try {
+      final key = _pendingBox.keys.firstWhere(
+        (key) => _pendingBox.get(key)?.id == id,
+        orElse: () => null,
+      );
+      if (key != null) {
+        await _pendingBox.delete(key);
+      }
     } catch (_) {}
   }
 
@@ -136,6 +195,9 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollController.dispose();
     _socket.disconnect();
     _socket.dispose();
+    _retryTimer?.cancel();
+    _messagesBox.close();
+    _pendingBox.close();
     super.dispose();
   }
 
@@ -268,10 +330,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _replaceOrAdd(ChatMessage msg) {
     final tempIndex = _messages.indexWhere(
-      (m) => m.id.startsWith('temp_') && m.senderId == msg.senderId,
+      (m) => m.id.startsWith('temp_') && m.senderId == msg.senderId && m.content == msg.content,
     );
     if (tempIndex != -1) {
       setState(() => _messages[tempIndex] = msg);
+      _removePendingMessage(_messages[tempIndex].id);
       _scrollToBottom();
     } else {
       _addMessage(msg);
@@ -311,20 +374,23 @@ class _ChatScreenState extends State<ChatScreen> {
       status: MessageStatus.sent,
     );
     _addMessage(tempMsg);
-    if (_isDirect && _directRoomId != null) {
-      debugPrint('[CHAT] Sending direct_message to room $_directRoomId');
-      _socket.emit('send_direct_message', {
-        'roomId': _directRoomId,
-        'content': content,
-      });
-    } else if (_isDirect) {
-      debugPrint('[CHAT] Cannot send: _directRoomId is null');
-      return;
-    } else if (widget.bookingId != null) {
-      _socket.emit('send_message', {
-        'bookingId': widget.bookingId,
-        'content': content,
-      });
+    
+    if (_socket.connected) {
+      if (_isDirect && _directRoomId != null) {
+        debugPrint('[CHAT] Sending direct_message to room $_directRoomId');
+        _socket.emit('send_direct_message', {
+          'roomId': _directRoomId,
+          'content': content,
+        });
+      } else if (widget.bookingId != null) {
+        _socket.emit('send_message', {
+          'bookingId': widget.bookingId,
+          'content': content,
+        });
+      }
+    } else {
+      debugPrint('[CHAT] Offline: Adding message to pending queue');
+      _addPendingMessage(tempMsg);
     }
     _controller.clear();
   }

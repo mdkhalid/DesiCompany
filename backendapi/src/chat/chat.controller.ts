@@ -12,13 +12,17 @@ import {
   DefaultValuePipe,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ChatService } from './chat.service';
 import { TranslationService, SupportedLanguage } from './translation.service';
 import { MessageType } from './entities/message.entity';
 import { DirectMessageType } from './entities/direct-message.entity';
+
+@UseGuards(ThrottlerGuard)
 
 interface AuthRequest {
   user: { id: string; role: string };
@@ -58,6 +62,7 @@ export class ChatController {
     return this.chatService.getMessageHistory(req.user.id, type, targetId, page, limit);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('messages')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Send a message' })
@@ -105,6 +110,7 @@ export class ChatController {
     return { message, success: true };
   }
 
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Patch('messages/read')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark messages as read' })
