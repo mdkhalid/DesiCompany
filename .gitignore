@@ -20,6 +20,7 @@ temp_tasklist.txt
 temp_typerom.txt
 check_pg_svc.ps1
 check_procs.ps1
+opencode.json
 backendapi/debug-*.mjs
 backendapi/diag-*.mjs
 backendapi/test-*.mjs

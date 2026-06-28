@@ -1,11 +1,11 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 
 function getToken(): string | null {
-  return localStorage.getItem('token');
+  return sessionStorage.getItem('token');
 }
 
 function getRefreshToken(): string | null {
-  return localStorage.getItem('refreshToken');
+  return sessionStorage.getItem('refreshToken');
 }
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -20,8 +20,8 @@ async function refreshAccessToken(): Promise<string | null> {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    localStorage.setItem('token', data.tokens.accessToken);
-    localStorage.setItem('refreshToken', data.tokens.refreshToken);
+    sessionStorage.setItem('token', data.tokens.accessToken);
+    sessionStorage.setItem('refreshToken', data.tokens.refreshToken);
     return data.tokens.accessToken;
   } catch {
     return null;
@@ -43,17 +43,17 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
     if (newToken) {
       return request<T>(path, options, true);
     }
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('user');
     window.location.href = '/login';
     throw new Error('Unauthorized');
   }
 
   if (res.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('user');
     window.location.href = '/login';
     throw new Error('Unauthorized');
   }

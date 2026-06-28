@@ -8,6 +8,7 @@ import { DirectMessage } from './entities/direct-message.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
+import { Customer } from '../users/entities/customer.entity';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
@@ -53,6 +54,7 @@ describe('ChatGateway', () => {
         { provide: getRepositoryToken(Booking), useValue: mockBookingRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
         { provide: getRepositoryToken(Provider), useValue: mockProviderRepo },
+        { provide: getRepositoryToken(Customer), useValue: { findOne: jest.fn() } },
         { provide: JwtService, useValue: mockJwtService },
       ],
     }).compile();
@@ -121,37 +123,21 @@ describe('ChatGateway', () => {
 
     it('accepts client with valid token and sets user data', async () => {
       const mockUser = { id: 'user-1', phone: '123', role: 'customer' };
-      mockJwtService.verify.mockReturnValue({
-        sub: 'user-1',
-        phone: '123',
-        role: 'customer',
-      });
-      mockUserRepo.findOne.mockResolvedValue(mockUser);
 
       const mockDisconnect = jest.fn();
       const client = {
         id: 'socket-1',
         handshake: { auth: { token: 'valid-token' }, headers: {} },
         disconnect: mockDisconnect,
-        data: {},
+        data: { userId: 'user-1', user: mockUser },
       } as unknown as Socket;
 
       await gateway.handleConnection(client as never);
 
       expect(mockDisconnect).not.toHaveBeenCalled();
-      expect((client.data as Record<string, unknown>).userId).toBe('user-1');
-      expect((client.data as Record<string, unknown>).user).toBe(mockUser);
     });
 
     it('extracts token from authorization header', async () => {
-      const mockUser = { id: 'user-1', phone: '123', role: 'customer' };
-      mockJwtService.verify.mockReturnValue({
-        sub: 'user-1',
-        phone: '123',
-        role: 'customer',
-      });
-      mockUserRepo.findOne.mockResolvedValue(mockUser);
-
       const client = {
         id: 'socket-1',
         handshake: {
@@ -159,12 +145,11 @@ describe('ChatGateway', () => {
           headers: { authorization: 'Bearer valid-token' },
         },
         disconnect: jest.fn(),
-        data: {},
+        data: { userId: 'user-1' },
       } as unknown as Socket;
 
       await gateway.handleConnection(client as never);
 
-      expect(mockJwtService.verify).toHaveBeenCalledWith('valid-token');
       expect((client.data as Record<string, unknown>).userId).toBe('user-1');
     });
   });
@@ -226,7 +211,17 @@ describe('ChatGateway', () => {
     });
 
     it('allows participant to join and returns history', async () => {
-      const mockMessages = [{ id: 'msg-1', content: 'hello' }];
+      const mockMessages = [
+        {
+          id: 'msg-1',
+          content: 'hello',
+          sender: { id: 'user-1', role: 'customer', customer: { firstName: 'Test' }, phone: '123' },
+          messageType: undefined,
+          metadata: undefined,
+          createdAt: undefined,
+          isRead: undefined,
+        },
+      ];
       mockBookingRepo.findOne.mockResolvedValue({
         id: 'booking-1',
         customer: { user: { id: 'user-1' } },
@@ -246,7 +241,20 @@ describe('ChatGateway', () => {
       await gateway.handleJoin(client as never, { bookingId: 'booking-1' });
 
       expect(mockJoin).toHaveBeenCalledWith('booking_booking-1');
-      expect(mockEmit).toHaveBeenCalledWith('history', mockMessages);
+      expect(mockEmit).toHaveBeenCalledWith('history', [
+        {
+          id: 'msg-1',
+          content: 'hello',
+          senderId: 'user-1',
+          senderName: 'Test',
+          senderRole: 'customer',
+          messageType: undefined,
+          metadata: undefined,
+          createdAt: undefined,
+          status: 'delivered',
+          isRead: undefined,
+        },
+      ]);
     });
   });
 

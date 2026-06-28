@@ -684,8 +684,26 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildTextMessage(ChatMessage msg, bool isMe) {
+  Widget _buildReadStatusIcon(ChatMessage msg) {
     final isRead = msg.status == 'read' || msg.isRead;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          _formatTime(msg.createdAt),
+          style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+        ),
+        const SizedBox(width: 3),
+        Icon(
+          isRead ? Icons.done_all : Icons.done,
+          size: 14,
+          color: isRead ? Colors.blue : Colors.grey.shade600,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextMessage(ChatMessage msg, bool isMe) {
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -704,23 +722,13 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Text(msg.content, style: const TextStyle(fontSize: 15)),
           const SizedBox(height: 2),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _formatTime(msg.createdAt),
-                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-              ),
-              if (isMe) ...[
-                const SizedBox(width: 3),
-                Icon(
-                  isRead ? Icons.done_all : Icons.done,
-                  size: 14,
-                  color: isRead ? Colors.blue : Colors.grey.shade600,
-                ),
-              ],
-            ],
-          ),
+          if (isMe)
+            _buildReadStatusIcon(msg)
+          else
+            Text(
+              _formatTime(msg.createdAt),
+              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+            ),
         ],
       ),
     );
@@ -763,11 +771,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (isMe)
             Padding(
               padding: const EdgeInsets.only(top: 2, right: 4),
-              child: Icon(
-                Icons.done_all,
-                size: 14,
-                color: Colors.grey.shade600,
-              ),
+              child: _buildReadStatusIcon(msg),
             ),
         ],
       ),
@@ -795,15 +799,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Text('Accepted', style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
           const SizedBox(height: 4),
           if (isMe)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _formatTime(msg.createdAt),
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-                ),
-              ],
-            ),
+            _buildReadStatusIcon(msg),
         ],
       ),
     );
@@ -819,9 +815,22 @@ class _ChatScreenState extends State<ChatScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.blue.shade200, width: 0.5),
       ),
-      child: Text(
-        msg.content,
-        style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: isMe ? Colors.black87 : Colors.black54),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            msg.content,
+            style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: isMe ? Colors.black87 : Colors.black54),
+          ),
+          const SizedBox(height: 2),
+          if (isMe)
+            _buildReadStatusIcon(msg)
+          else
+            Text(
+              _formatTime(msg.createdAt),
+              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+            ),
+        ],
       ),
     );
   }

@@ -15,6 +15,8 @@ import { Provider } from '../users/entities/provider.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 import { Booking } from '../bookings/entities/booking.entity';
+import { Message } from '../chat/entities/message.entity';
+import { ChatGateway } from '../chat/chat.gateway';
 import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 type MockRepo = {
@@ -128,6 +130,11 @@ describe('QuotesService', () => {
           useValue: providerServiceRepository,
         },
         { provide: getRepositoryToken(Booking), useValue: bookingRepository },
+        { provide: getRepositoryToken(Message), useValue: makeRepoMock() },
+        {
+          provide: ChatGateway,
+          useValue: { emitRoleSpecificSystemMessage: jest.fn().mockResolvedValue(undefined) },
+        },
         {
           provide: PlatformFeesService,
           useValue: {

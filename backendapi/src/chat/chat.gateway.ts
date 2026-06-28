@@ -246,11 +246,19 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const room = `booking_${payload.bookingId}`;
       void client.join(room);
 
-      // Mark messages as read
-      await this.messageRepository.update(
-        { booking: { id: payload.bookingId }, isRead: false },
-        { isRead: true }
-      );
+      // Get unread IDs before marking as read
+      const unreadMessages = await this.messageRepository.find({
+        where: { booking: { id: payload.bookingId }, isRead: false },
+        select: { id: true },
+      });
+      const unreadIds = unreadMessages.map(m => m.id);
+
+      if (unreadIds.length > 0) {
+        await this.messageRepository.update(
+          { booking: { id: payload.bookingId }, isRead: false },
+          { isRead: true }
+        );
+      }
 
       const messages = await this.messageRepository.find({
         where: { booking: { id: payload.bookingId } },
@@ -270,7 +278,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         : messages;
 
       client.emit('history', this.formatHistoryMessages(filteredMessages));
-      client.emit('messages_read', { bookingId: payload.bookingId });
+      client.emit('messages_read', { bookingId: payload.bookingId, messageIds: unreadIds });
     } catch (err) {
       this.logger.error(`[JOIN] Error in handleJoin: ${(err as Error)?.message}`, (err as Error)?.stack);
       client.emit('error', { message: 'Join failed: internal server error' });
@@ -588,23 +596,37 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       if (parts.length === 3 && parts[0] === 'direct') {
         const customerId = parts[1];
         const providerId = parts[2];
-        await this.directMessageRepository.update(
-          { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
-          { isRead: true }
-        );
-        this.server.to(payload.roomId).emit('messages_read', { roomId: payload.roomId });
+        const unreadDms = await this.directMessageRepository.find({
+          where: { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
+          select: { id: true },
+        });
+        const unreadIds = unreadDms.map(m => m.id);
+        if (unreadIds.length > 0) {
+          await this.directMessageRepository.update(
+            { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
+            { isRead: true }
+          );
+        }
+        this.server.to(payload.roomId).emit('messages_read', { roomId: payload.roomId, messageIds: unreadIds });
       }
       return;
     }
 
     // Handle booking chat read receipts
     if (payload.bookingId) {
-      await this.messageRepository.update(
-        { booking: { id: payload.bookingId }, isRead: false },
-        { isRead: true }
-      );
+      const unreadBookingMessages = await this.messageRepository.find({
+        where: { booking: { id: payload.bookingId }, isRead: false },
+        select: { id: true },
+      });
+      const unreadIds = unreadBookingMessages.map(m => m.id);
+      if (unreadIds.length > 0) {
+        await this.messageRepository.update(
+          { booking: { id: payload.bookingId }, isRead: false },
+          { isRead: true }
+        );
+      }
       const room = `booking_${payload.bookingId}`;
-      this.server.to(room).emit('messages_read', { bookingId: payload.bookingId });
+      this.server.to(room).emit('messages_read', { bookingId: payload.bookingId, messageIds: unreadIds });
     }
   }
 
@@ -950,11 +972,19 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
     void client.join(room);
 
-    // Mark as read
-    await this.directMessageRepository.update(
-      { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
-      { isRead: true }
-    );
+    // Get unread IDs before marking as read
+    const unreadDirectMessages = await this.directMessageRepository.find({
+      where: { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
+      select: { id: true },
+    });
+    const unreadIds = unreadDirectMessages.map(m => m.id);
+
+    if (unreadIds.length > 0) {
+      await this.directMessageRepository.update(
+        { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
+        { isRead: true }
+      );
+    }
 
     const messages = await this.directMessageRepository.find({
       where: [{ customer: { id: customerId }, provider: { id: providerId } }],
@@ -964,7 +994,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     });
 
     client.emit('direct_chat_history', this.formatHistoryMessages(messages));
-    this.server.to(room).emit('messages_read', { roomId: room });
+    this.server.to(room).emit('messages_read', { roomId: room, messageIds: unreadIds });
   }
 
   // ==================== LOCATION SHARING ====================

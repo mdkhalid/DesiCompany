@@ -2,24 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import cors from 'cors';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
   });
-
-  // CORS first — must run before Helmet to handle preflight OPTIONS requests
-  app.use(cors({
-    origin: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    credentials: true,
-  }));
 
   // Ensure uploads directory exists
   const uploadsDir = join(process.cwd(), 'uploads', 'chat');
@@ -75,7 +67,8 @@ async function bootstrap() {
     }),
   );
 
-  // Production: restrict origins via env
+  app.useGlobalFilters(new AllExceptionsFilter());
+
   const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((o) => o.trim())
@@ -88,12 +81,13 @@ async function bootstrap() {
       allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
       credentials: true,
     });
-  }
-
-  if (allowedOrigins.length === 0 && process.env.NODE_ENV === 'production') {
+  } else if (process.env.NODE_ENV === 'production') {
     console.warn(
       'WARNING: CORS_ALLOWED_ORIGINS is not set. CORS will deny all origins in production.',
     );
+  } else {
+    // Dev: allow all origins
+    app.enableCors({ origin: true, credentials: true });
   }
 
   const config = new DocumentBuilder()
@@ -106,6 +100,23 @@ async function bootstrap() {
   if (process.env.NODE_ENV !== 'production') {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api', app, document);
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    const adminDist = join(process.cwd(), '..', 'adminweb', 'dist');
+    if (existsSync(adminDist)) {
+      app.useStaticAssets(adminDist);
+      app.use((req, res, next) => {
+        if (
+          !req.path.startsWith('/api/') &&
+          !req.path.startsWith('/uploads/')
+        ) {
+          res.sendFile(join(adminDist, 'index.html'));
+        } else {
+          next();
+        }
+      });
+    }
   }
 
   await app.listen(process.env.PORT ?? 3000);
