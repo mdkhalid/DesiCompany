@@ -41,6 +41,8 @@ import { VerificationVideosModule } from './verification/verification-videos.mod
 import { SupportModule } from './support/support.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { AdvertisementsModule } from './advertisements/advertisements.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -108,6 +110,8 @@ import { DirectMessage } from './chat/entities/direct-message.entity';
     SupportModule,
     UploadsModule,
     MonitoringModule,
+    SubscriptionsModule,
+    AdvertisementsModule,
     TypeOrmModule.forFeature([
       User,
       Customer,

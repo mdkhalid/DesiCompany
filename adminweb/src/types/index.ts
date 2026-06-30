@@ -167,3 +167,81 @@ export interface CustomerMembership {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Advertisement {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl: string;
+  thumbnailUrl?: string;
+  targetUrl?: string;
+  targetScreen?: string;
+  placement: AdPlacement;
+  status: AdStatus;
+  targetAudience: AdTargetAudience;
+  startDate: string;
+  endDate: string;
+  priority: number;
+  isActive: boolean;
+  impressions: number;
+  clicks: number;
+  uniqueImpressions: number;
+  uniqueClicks: number;
+  categoryId?: string;
+  maxImpressions?: number;
+  maxClicks?: number;
+  dailyImpressionLimit?: number;
+  showCloseButton: boolean;
+  autoCloseSeconds?: number;
+  backgroundColor?: string;
+  textColor?: string;
+  createdBy?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AdPlacement =
+  | 'home_banner'
+  | 'category_top'
+  | 'search_results_top'
+  | 'search_results_inline'
+  | 'provider_list_top'
+  | 'booking_confirmation'
+  | 'notification_ad'
+  | 'splash_screen'
+  | 'footer_banner';
+
+export type AdStatus = 'draft' | 'scheduled' | 'active' | 'paused' | 'expired';
+
+export type AdTargetAudience = 'all' | 'customers' | 'providers' | 'new_users' | 'returning_users';
+
+export interface AdDashboardStats {
+  total: number;
+  active: number;
+  scheduled: number;
+  paused: number;
+  expired: number;
+  totalImpressions: number;
+  totalClicks: number;
+}
+
+export interface AdAnalytics {
+  id: string;
+  title: string;
+  status: string;
+  placement: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  maxImpressions?: number;
+  maxClicks?: number;
+  impressionProgress?: number;
+  clickProgress?: number;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  elapsedDays: number;
+  remainingDays: number;
+  dailyImpressionLimit?: number;
+}

@@ -13,6 +13,7 @@ import Fees from './pages/Fees';
 import Refunds from './pages/Refunds';
 import Reviews from './pages/Reviews';
 import CustomerFeedback from './pages/CustomerFeedback';
+import Advertisements from './pages/Advertisements';
 
 function NotFound() {
   return (
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/refunds" element={<ProtectedRoute><Layout><Refunds /></Layout></ProtectedRoute>} />
         <Route path="/reviews" element={<ProtectedRoute><Layout><Reviews /></Layout></ProtectedRoute>} />
         <Route path="/customer-feedback" element={<ProtectedRoute><Layout><CustomerFeedback /></Layout></ProtectedRoute>} />
+        <Route path="/advertisements" element={<ProtectedRoute><Layout><Advertisements /></Layout></ProtectedRoute>} />
         <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>

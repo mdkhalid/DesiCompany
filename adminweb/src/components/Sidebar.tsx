@@ -13,6 +13,7 @@ const links = [
   { to: '/refunds', label: 'Refunds', icon: '↩️' },
   { to: '/reviews', label: 'Reviews', icon: '⭐' },
   { to: '/customer-feedback', label: 'Customer Feedback', icon: '💬' },
+  { to: '/advertisements', label: 'Advertisements', icon: '📢' },
 ];
 
 export default function Sidebar() {
