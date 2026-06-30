@@ -96,7 +96,7 @@ export interface CommissionConfig {
 export interface PlatformFeeConfig {
   id: string;
   configKey: string;
-  configValue: Record<string, any>;
+  configValue: Record<string, unknown>;
   isActive: boolean;
   description?: string;
   createdAt: string;
@@ -108,7 +108,7 @@ export interface SubscriptionPlan {
   name: string;
   description?: string;
   monthlyPrice: number;
-  benefits: Record<string, any>;
+  benefits: Record<string, unknown>;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -124,7 +124,7 @@ export interface PromoCode {
   validFrom?: string;
   validUntil?: string;
   isActive: boolean;
-  restrictions?: Record<string, any>;
+  restrictions?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -149,7 +149,7 @@ export interface CustomerMembershipPlan {
   description?: string;
   monthlyPrice: number;
   yearlyPrice: number;
-  benefits: Record<string, any>;
+  benefits: Record<string, unknown>;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -278,7 +278,7 @@ export interface GrievanceMessage {
   id: string;
   sender: 'bot' | 'customer' | 'admin' | 'system';
   content: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   isRead: boolean;
   createdAt: string;
 }
@@ -353,6 +353,34 @@ export interface CustomerRetention {
   newCustomers: number;
   returningCustomers: number;
   retentionRate: number;
+}
+
+export type ErrorCategory = 'VALIDATION' | 'AUTH' | 'DATABASE' | 'EXTERNAL' | 'INTERNAL';
+
+export interface ErrorLog {
+  id: string;
+  statusCode: number;
+  message?: string;
+  errorCode?: string;
+  category?: ErrorCategory;
+  method?: string;
+  url?: string;
+  userId?: string;
+  stack?: string;
+  fingerprint?: string;
+  traceId?: string;
+  requestBody?: Record<string, unknown>;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ErrorLogStats {
+  total: number;
+  byStatusCode: Record<string, number>;
+  last24h: number;
+  last7d: number;
 }
 
 export interface AnalyticsDashboard {

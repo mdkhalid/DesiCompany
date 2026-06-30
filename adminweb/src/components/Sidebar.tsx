@@ -15,6 +15,7 @@ const links = [
   { to: '/customer-feedback', label: 'Customer Feedback', icon: '💬' },
   { to: '/advertisements', label: 'Advertisements', icon: '📢' },
   { to: '/grievances', label: 'Grievances', icon: '🎧' },
+  { to: '/error-logs', label: 'Error Logs', icon: '🛑' },
 ];
 
 export default function Sidebar() {

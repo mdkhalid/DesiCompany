@@ -1,22 +1,25 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToasterProvider } from './components/Toast';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Users from './pages/Users';
-import KycVerification from './pages/KycVerification';
-import Categories from './pages/Categories';
-import Bookings from './pages/Bookings';
-import PaymentGateways from './pages/PaymentGateways';
-import Commissions from './pages/Commissions';
-import Fees from './pages/Fees';
-import Refunds from './pages/Refunds';
-import Reviews from './pages/Reviews';
-import CustomerFeedback from './pages/CustomerFeedback';
-import Advertisements from './pages/Advertisements';
-import Grievances from './pages/Grievances';
+
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Users = lazy(() => import('./pages/Users'));
+const KycVerification = lazy(() => import('./pages/KycVerification'));
+const Categories = lazy(() => import('./pages/Categories'));
+const Bookings = lazy(() => import('./pages/Bookings'));
+const PaymentGateways = lazy(() => import('./pages/PaymentGateways'));
+const Commissions = lazy(() => import('./pages/Commissions'));
+const Fees = lazy(() => import('./pages/Fees'));
+const Refunds = lazy(() => import('./pages/Refunds'));
+const Reviews = lazy(() => import('./pages/Reviews'));
+const CustomerFeedback = lazy(() => import('./pages/CustomerFeedback'));
+const Advertisements = lazy(() => import('./pages/Advertisements'));
+const Grievances = lazy(() => import('./pages/Grievances'));
+const ErrorLogs = lazy(() => import('./pages/ErrorLogs'));
 
 function NotFound() {
   return (
@@ -41,27 +44,38 @@ function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ToasterProvider />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-        <Route path="/users" element={<ProtectedRoute><Layout><Users /></Layout></ProtectedRoute>} />
-        <Route path="/kyc" element={<ProtectedRoute><Layout><KycVerification /></Layout></ProtectedRoute>} />
-        <Route path="/categories" element={<ProtectedRoute><Layout><Categories /></Layout></ProtectedRoute>} />
-        <Route path="/bookings" element={<ProtectedRoute><Layout><Bookings /></Layout></ProtectedRoute>} />
-        <Route path="/gateways" element={<ProtectedRoute><Layout><PaymentGateways /></Layout></ProtectedRoute>} />
-        <Route path="/fees" element={<ProtectedRoute><Layout><Fees /></Layout></ProtectedRoute>} />
-        <Route path="/commissions" element={<ProtectedRoute><Layout><Commissions /></Layout></ProtectedRoute>} />
-        <Route path="/refunds" element={<ProtectedRoute><Layout><Refunds /></Layout></ProtectedRoute>} />
-        <Route path="/reviews" element={<ProtectedRoute><Layout><Reviews /></Layout></ProtectedRoute>} />
-        <Route path="/customer-feedback" element={<ProtectedRoute><Layout><CustomerFeedback /></Layout></ProtectedRoute>} />
-        <Route path="/advertisements" element={<ProtectedRoute><Layout><Advertisements /></Layout></ProtectedRoute>} />
-        <Route path="/grievances" element={<ProtectedRoute><Layout><Grievances /></Layout></ProtectedRoute>} />
-        <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+          <Route path="/users" element={<ProtectedRoute><Layout><Users /></Layout></ProtectedRoute>} />
+          <Route path="/kyc" element={<ProtectedRoute><Layout><KycVerification /></Layout></ProtectedRoute>} />
+          <Route path="/categories" element={<ProtectedRoute><Layout><Categories /></Layout></ProtectedRoute>} />
+          <Route path="/bookings" element={<ProtectedRoute><Layout><Bookings /></Layout></ProtectedRoute>} />
+          <Route path="/gateways" element={<ProtectedRoute><Layout><PaymentGateways /></Layout></ProtectedRoute>} />
+          <Route path="/fees" element={<ProtectedRoute><Layout><Fees /></Layout></ProtectedRoute>} />
+          <Route path="/commissions" element={<ProtectedRoute><Layout><Commissions /></Layout></ProtectedRoute>} />
+          <Route path="/refunds" element={<ProtectedRoute><Layout><Refunds /></Layout></ProtectedRoute>} />
+          <Route path="/reviews" element={<ProtectedRoute><Layout><Reviews /></Layout></ProtectedRoute>} />
+          <Route path="/customer-feedback" element={<ProtectedRoute><Layout><CustomerFeedback /></Layout></ProtectedRoute>} />
+          <Route path="/advertisements" element={<ProtectedRoute><Layout><Advertisements /></Layout></ProtectedRoute>} />
+          <Route path="/grievances" element={<ProtectedRoute><Layout><Grievances /></Layout></ProtectedRoute>} />
+          <Route path="/error-logs" element={<ProtectedRoute><Layout><ErrorLogs /></Layout></ProtectedRoute>} />
+          <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
