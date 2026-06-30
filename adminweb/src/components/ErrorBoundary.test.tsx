@@ -2,11 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ErrorBoundary from '../components/ErrorBoundary';
 
-function ThrowingComponent() {
+function ThrowingComponent(): React.ReactNode {
   throw new Error('Test error');
 }
 
-function WorkingComponent() {
+function WorkingComponent(): React.ReactNode {
   return <div>No Error</div>;
 }
 

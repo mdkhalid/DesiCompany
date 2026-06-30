@@ -246,6 +246,85 @@ export interface AdAnalytics {
   dailyImpressionLimit?: number;
 }
 
+export type GrievanceCategory =
+  | 'service_quality'
+  | 'delay_no_show'
+  | 'billing_overcharge'
+  | 'damaged_property'
+  | 'rude_behavior'
+  | 'incomplete_work'
+  | 'wrong_service'
+  | 'other';
+
+export type GrievanceStatus =
+  | 'open'
+  | 'in_progress'
+  | 'escalated'
+  | 'admin_review'
+  | 'resolved'
+  | 'closed';
+
+export type GrievancePriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export type ResolutionType =
+  | 'discount_coupon'
+  | 'auto_reschedule'
+  | 'refund'
+  | 'escalated_to_admin'
+  | 'provider_feedback'
+  | 'no_action';
+
+export interface GrievanceMessage {
+  id: string;
+  sender: 'bot' | 'customer' | 'admin' | 'system';
+  content: string;
+  metadata?: Record<string, any>;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface Grievance {
+  id: string;
+  booking: {
+    id: string;
+    scheduledDate: string;
+    totalAmount: number;
+    provider?: {
+      firstName?: string;
+      user?: { phone: string };
+    };
+  };
+  customer: {
+    id: string;
+    phone: string;
+    firstName?: string;
+  };
+  category: GrievanceCategory;
+  status: GrievanceStatus;
+  priority: GrievancePriority;
+  subject?: string;
+  description?: string;
+  resolutionType?: ResolutionType;
+  resolutionDetails?: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  adminNotes?: string;
+  adminCallInitiated: boolean;
+  adminCallNotes?: string;
+  couponCode?: string;
+  messages: GrievanceMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GrievanceStats {
+  total: number;
+  open: number;
+  escalated: number;
+  resolved: number;
+  avgResolutionTime: number;
+}
+
 export interface RevenueData {
   date: string;
   revenue: number;
