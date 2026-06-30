@@ -1,8 +1,11 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { DynamicPricingService } from './dynamic-pricing.service';
 
 @ApiTags('Pricing')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('pricing')
 export class PricingController {
   constructor(private readonly pricingService: DynamicPricingService) {}

@@ -82,16 +82,18 @@ export class AuthService {
   ) {}
 
   async requestOtp(phone: string): Promise<{ message: string }> {
-    const code =
-      process.env.OTP_MOCK === 'true'
-        ? process.env.OTP_MOCK_CODE || '123456'
-        : this.generateOtp();
+    // Safety: block OTP mock in production
+    const isMockMode = process.env.OTP_MOCK === 'true' && process.env.NODE_ENV !== 'production';
+
+    const code = isMockMode
+      ? process.env.OTP_MOCK_CODE || '123456'
+      : this.generateOtp();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     this.otpStore.set(phone, { code, expiresAt });
 
     // Send SMS if not in mock mode
-    if (process.env.OTP_MOCK !== 'true') {
+    if (!isMockMode) {
       try {
         await this.smsService.sendOtp(phone, code);
       } catch (error) {
