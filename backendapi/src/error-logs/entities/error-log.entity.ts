@@ -52,4 +52,10 @@ export class ErrorLog extends BaseEntity {
     name: 'fingerprint',
   })
   fingerprint: string;
+
+  @Column({ type: 'timestamp', nullable: true, name: 'resolved_at' })
+  resolvedAt: Date;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'resolved_by' })
+  resolvedBy: string;
 }

@@ -1,12 +1,15 @@
 import {
   Controller,
   Get,
+  Patch,
   Delete,
   Param,
   Query,
+  Req,
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -19,6 +22,10 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 import { ListErrorLogsQueryDto } from './dto/list-error-logs-query.dto';
+
+interface AuthenticatedRequest {
+  user: { id: string };
+}
 
 @ApiTags('Admin — Error Logs')
 @ApiBearerAuth()
@@ -56,6 +63,22 @@ export class AdminErrorLogsController {
       throw new NotFoundException(`Error log ${id} not found`);
     }
     return errorLog;
+  }
+
+  @Patch(':id/resolve')
+  @ApiOperation({ summary: 'Mark an error log as resolved' })
+  @ApiResponse({ status: 200, description: 'Error log resolved' })
+  @ApiResponse({ status: 404, description: 'Not found' })
+  async resolve(
+    @Param('id') id: string,
+    @Req() req: Request & AuthenticatedRequest,
+  ) {
+    const resolvedBy = req.user.id;
+    const result = await this.errorLogsService.resolve(id, resolvedBy);
+    if (!result) {
+      throw new NotFoundException(`Error log ${id} not found`);
+    }
+    return result;
   }
 
   @Delete('purge')

@@ -40,6 +40,17 @@ export class ErrorLogsService {
     return this.errorLogRepository.findOneBy({ id });
   }
 
+  async resolve(id: string, resolvedBy: string): Promise<ErrorLog | null> {
+    const result = await this.errorLogRepository.update(id, {
+      resolvedAt: new Date(),
+      resolvedBy,
+    });
+    if ((result.affected ?? 0) === 0) {
+      return null;
+    }
+    return this.findOne(id);
+  }
+
   async getStats(): Promise<{
     total: number;
     byStatusCode: Record<string, number>;
