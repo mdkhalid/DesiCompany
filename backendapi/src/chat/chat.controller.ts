@@ -22,15 +22,13 @@ import { TranslationService, SupportedLanguage } from './translation.service';
 import { MessageType } from './entities/message.entity';
 import { DirectMessageType } from './entities/direct-message.entity';
 
-@UseGuards(ThrottlerGuard)
-
 interface AuthRequest {
   user: { id: string; role: string };
 }
 
 @ApiTags('Chat')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(ThrottlerGuard, JwtAuthGuard)
 @Controller('chat')
 export class ChatController {
   constructor(

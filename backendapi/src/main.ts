@@ -5,13 +5,19 @@ import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import { Logger } from 'nestjs-pino';
+import { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
+    bufferLogs: true,
   });
+
+  // Use Pino logger
+  app.useLogger(app.get(Logger));
 
   // Ensure uploads directory exists
   const uploadsDir = join(process.cwd(), 'uploads', 'chat');
@@ -82,9 +88,11 @@ async function bootstrap() {
       credentials: true,
     });
   } else if (process.env.NODE_ENV === 'production') {
-    console.warn(
-      'WARNING: CORS_ALLOWED_ORIGINS is not set. CORS will deny all origins in production.',
-    );
+    app
+      .get(Logger)
+      .warn(
+        'CORS_ALLOWED_ORIGINS is not set. CORS will deny all origins in production.',
+      );
   } else {
     // Dev: allow all origins
     app.enableCors({ origin: true, credentials: true });
@@ -106,7 +114,7 @@ async function bootstrap() {
     const adminDist = join(process.cwd(), '..', 'adminweb', 'dist');
     if (existsSync(adminDist)) {
       app.useStaticAssets(adminDist);
-      app.use((req, res, next) => {
+      app.use((req: Request, res: Response, next: NextFunction) => {
         if (
           !req.path.startsWith('/api/') &&
           !req.path.startsWith('/uploads/')
@@ -120,6 +128,11 @@ async function bootstrap() {
   }
 
   await app.listen(process.env.PORT ?? 3000);
+  app
+    .get(Logger)
+    .log(
+      `Application is running on: http://localhost:${process.env.PORT ?? 3000}`,
+    );
 }
 bootstrap().catch((err) => {
   console.error('Application failed to start:', err);

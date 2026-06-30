@@ -40,6 +40,7 @@ import { PackagesModule } from './packages/packages.module';
 import { VerificationVideosModule } from './verification/verification-videos.module';
 import { SupportModule } from './support/support.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -106,6 +107,7 @@ import { DirectMessage } from './chat/entities/direct-message.entity';
     VerificationVideosModule,
     SupportModule,
     UploadsModule,
+    MonitoringModule,
     TypeOrmModule.forFeature([
       User,
       Customer,
