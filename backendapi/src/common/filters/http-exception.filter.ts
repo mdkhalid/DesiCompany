@@ -174,7 +174,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
           url: request.url,
           ip: hashIp(request.ip),
           userAgent: request.get('user-agent'),
-          stack: status >= 500 ? (exception as Error)?.stack : undefined,
+          stack:
+            status >= 500 || process.env.ERROR_LOG_INCLUDE_STACK_4XX === 'true'
+              ? (exception as Error)?.stack
+              : undefined,
           userId,
           requestBody,
           fingerprint,
