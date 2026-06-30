@@ -41,6 +41,7 @@ import 'screens/provider_subscription_screen.dart';
 import 'screens/provider_schedule_screen.dart';
 import 'screens/customer_membership_screen.dart';
 import 'screens/admin_revenue_screen.dart';
+import 'screens/grievance_chat_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -187,6 +188,15 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
                   bookingId: args['bookingId']!,
                   customerName: args['customerName']!,
                   providerName: args['providerName']!,
+                ),
+              );
+            }
+            if (settings.name == '/grievance') {
+              final args = settings.arguments as Map<String, dynamic>;
+              return MaterialPageRoute(
+                builder: (_) => GrievanceChatScreen(
+                  bookingId: args['bookingId'] as String,
+                  grievanceId: args['grievanceId'] as String?,
                 ),
               );
             }

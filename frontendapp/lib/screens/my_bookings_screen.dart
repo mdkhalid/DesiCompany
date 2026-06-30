@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../theme.dart';
 import '../utils/id_helpers.dart';
 import 'write_review_screen.dart';
+import 'grievance_chat_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -15,6 +16,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   List _bookings = [];
   bool _loading = true;
   final Set<String> _reviewedBookingIds = {};
+  final Set<String> _eligibleForGrievance = {};
+  final Map<String, dynamic> _grievanceEligibility = {};
 
   @override
   void initState() {
@@ -42,6 +45,36 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         } catch (_) {}
       }
     }
+    _checkGrievanceEligibility();
+  }
+
+  Future<void> _checkGrievanceEligibility() async {
+    for (final b in _bookings) {
+      if (b['status'] == 'completed') {
+        try {
+          final data = await ApiService.get('/grievances/check-eligibility/${b['id']}');
+          if (mounted && data['eligible'] == true) {
+            setState(() {
+              _eligibleForGrievance.add(b['id'] as String);
+              _grievanceEligibility[b['id']] = data;
+            });
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
+  void _openGrievanceChat(Map booking) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GrievanceChatScreen(
+          bookingId: booking['id'] as String,
+        ),
+      ),
+    ).then((_) {
+      _checkGrievanceEligibility();
+    });
   }
 
   Color _statusColor(String status) {
@@ -143,6 +176,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           ],
                           if (isCompleted) ...[
                             const SizedBox(height: 12),
+                            // Raise Issue button
+                            if (_eligibleForGrievance.contains(b['id']))
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _openGrievanceChat(b),
+                                  icon: const Icon(Icons.support_agent, size: 18),
+                                  label: Text('Raise Issue${_grievanceEligibility[b['id']] != null ? ' (${_grievanceEligibility[b['id']]['remainingDays']}d left)' : ''}'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.orange.shade700,
+                                    side: BorderSide(color: Colors.orange.shade700),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
                             if (isReviewed)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
