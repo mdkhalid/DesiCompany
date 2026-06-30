@@ -11,6 +11,7 @@ import * as Sentry from '@sentry/nestjs';
 import { Request, Response } from 'express';
 import { ErrorLogsService } from '../../error-logs/error-logs.service';
 import { ErrorCategory } from '../../error-logs/enums/error-category.enum';
+import { redactObject } from '../../error-logs/redact.util';
 
 @Injectable()
 @Catch()
@@ -144,6 +145,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const userId =
         (request as Request & { user?: { id?: string } }).user?.id ?? undefined;
 
+      const rawBody = (request as unknown as Record<string, unknown>).body as
+        | Record<string, unknown>
+        | undefined;
+      const requestBody = rawBody
+        ? (redactObject(rawBody) ?? undefined)
+        : undefined;
+
       this.errorLogsService
         .create({
           statusCode: status,
@@ -156,6 +164,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           userAgent: request.get('user-agent'),
           stack: status >= 500 ? (exception as Error)?.stack : undefined,
           userId,
+          requestBody,
         })
         .catch((err: Error) => {
           this.logger.error('Failed to persist error log', err);

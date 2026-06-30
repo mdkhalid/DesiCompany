@@ -40,4 +40,7 @@ export class ErrorLog extends BaseEntity {
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'user_id' })
   userId: string;
+
+  @Column({ type: 'jsonb', nullable: true, name: 'request_body' })
+  requestBody: Record<string, unknown>;
 }
