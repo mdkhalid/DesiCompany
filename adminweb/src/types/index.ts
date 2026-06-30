@@ -245,3 +245,46 @@ export interface AdAnalytics {
   remainingDays: number;
   dailyImpressionLimit?: number;
 }
+
+export interface RevenueData {
+  date: string;
+  revenue: number;
+  bookings: number;
+  commissions: number;
+}
+
+export interface BookingTrend {
+  date: string;
+  total: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface ProviderPerformance {
+  id: string;
+  name: string;
+  bookings: number;
+  revenue: number;
+  rating: number;
+  completionRate: number;
+}
+
+export interface CustomerRetention {
+  date: string;
+  newCustomers: number;
+  returningCustomers: number;
+  retentionRate: number;
+}
+
+export interface AnalyticsDashboard {
+  revenueData: RevenueData[];
+  bookingTrends: BookingTrend[];
+  topProviders: ProviderPerformance[];
+  customerRetention: CustomerRetention[];
+  summary: {
+    totalRevenue: number;
+    avgBookingValue: number;
+    completionRate: number;
+    customerRetentionRate: number;
+  };
+}
