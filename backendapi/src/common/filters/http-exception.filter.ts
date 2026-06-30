@@ -161,6 +161,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         userId,
       );
 
+      const traceId =
+        Sentry.getCurrentScope().getPropagationContext().traceId ?? undefined;
+
       this.errorLogsService
         .create({
           statusCode: status,
@@ -175,6 +178,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           userId,
           requestBody,
           fingerprint,
+          traceId,
         })
         .catch((err: Error) => {
           this.logger.error('Failed to persist error log', err);

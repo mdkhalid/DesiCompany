@@ -58,4 +58,7 @@ export class ErrorLog extends BaseEntity {
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'resolved_by' })
   resolvedBy: string;
+
+  @Column({ type: 'varchar', length: 64, nullable: true, name: 'trace_id' })
+  traceId: string;
 }
