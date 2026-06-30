@@ -1,0 +1,7 @@
+export enum ErrorCategory {
+  VALIDATION = 'VALIDATION',
+  AUTH = 'AUTH',
+  DATABASE = 'DATABASE',
+  EXTERNAL = 'EXTERNAL',
+  INTERNAL = 'INTERNAL',
+}

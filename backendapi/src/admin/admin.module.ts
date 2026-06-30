@@ -9,6 +9,7 @@ import { AdminRefundsController } from './admin-refunds.controller';
 import { AdminRefundsService } from './admin-refunds.service';
 import { AdminConfigController } from './admin-config.controller';
 import { AdminPlatformFeesController } from './admin-platform-fees.controller';
+import { AdminErrorLogsController } from './admin-error-logs.controller';
 import { User } from '../users/entities/user.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
@@ -26,6 +27,7 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ReviewsModule } from '../reviews/reviews.module';
 import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
+import { ErrorLogsModule } from '../error-logs/error-logs.module';
 
 @Module({
   imports: [
@@ -48,6 +50,7 @@ import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
     ActivityLogsModule,
     NotificationsModule,
     ReviewsModule,
+    ErrorLogsModule,
   ],
   controllers: [
     AdminController,
@@ -55,6 +58,7 @@ import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
     AdminRefundsController,
     AdminConfigController,
     AdminPlatformFeesController,
+    AdminErrorLogsController,
   ],
   providers: [
     AdminService,

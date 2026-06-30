@@ -7,3 +7,5 @@ coverage
 .idea
 *.log
 .DS_Store
+ERROR_LOGS_ROADMAP.md
+ISSUES.md

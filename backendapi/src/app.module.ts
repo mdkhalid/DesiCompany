@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { databaseConfig } from './config/database.config';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { ErrorLogsModule } from './error-logs/error-logs.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -77,6 +80,7 @@ import { DirectMessage } from './chat/entities/direct-message.entity';
         limit: 30,
       },
     ]),
+    ScheduleModule.forRoot(),
     AuthModule,
     UsersModule,
     KycModule,
@@ -114,6 +118,7 @@ import { DirectMessage } from './chat/entities/direct-message.entity';
     SubscriptionsModule,
     AdvertisementsModule,
     GrievancesModule,
+    ErrorLogsModule,
     TypeOrmModule.forFeature([
       User,
       Customer,
@@ -141,6 +146,10 @@ import { DirectMessage } from './chat/entities/direct-message.entity';
     {
       provide: APP_GUARD,
       useClass: ThrottlerBehindProxyGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
     },
   ],
 })
