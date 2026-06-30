@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
+import 'app_logger.dart';
 
 class PushNotificationService {
   static FirebaseMessaging? _messaging;
@@ -55,9 +56,9 @@ class PushNotificationService {
           _handleMessageOpenedApp(initialMessage);
         }
       }
-    } catch (e) {
-      // Firebase not configured, skip
-      print('Push notifications not available: $e');
+    } catch (e, st) {
+      // Firebase not configured — skip silently in production
+      AppLogger.e('FCM', 'Push notifications not available', e, st);
     }
   }
 
@@ -75,7 +76,7 @@ class PushNotificationService {
     );
 
     await _localNotifications!.initialize(
-      initSettings,
+      settings: initSettings,
       onDidReceiveNotificationResponse: (details) {
         // Handle notification tap
         _handleNotificationTap(details.payload);
@@ -158,10 +159,10 @@ class PushNotificationService {
     );
 
     await _localNotifications!.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      title,
-      body,
-      details,
+      id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title: title,
+      body: body,
+      notificationDetails: details,
       payload: payload,
     );
   }
