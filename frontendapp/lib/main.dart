@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'l10n/strings.dart';
 import 'theme.dart';
+import 'services/cache_service.dart';
+import 'services/push_notification_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/customer_home_screen.dart';
 import 'screens/provider_home_screen.dart';
@@ -40,9 +43,21 @@ import 'screens/customer_membership_screen.dart';
 import 'screens/admin_revenue_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Hive cache
+  await CacheService.init();
+  
+  // Initialize push notifications
+  await PushNotificationService.initialize();
+  
   final prefs = await SharedPreferences.getInstance();
   final savedLanguage = prefs.getString('app_language') ?? 'en';
-  runApp(DesiCompanyApp(initialLanguage: savedLanguage));
+  
+  runApp(
+    ProviderScope(
+      child: DesiCompanyApp(initialLanguage: savedLanguage),
+    ),
+  );
 }
 
 class DesiCompanyApp extends StatefulWidget {
