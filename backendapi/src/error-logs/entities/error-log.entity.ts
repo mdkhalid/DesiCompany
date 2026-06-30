@@ -29,7 +29,7 @@ export class ErrorLog extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   url: string;
 
-  @Column({ type: 'varchar', length: 45, nullable: true })
+  @Column({ type: 'varchar', length: 64, nullable: true })
   ip: string;
 
   @Column({ type: 'text', nullable: true, name: 'user_agent' })

@@ -13,6 +13,7 @@ import { ErrorLogsService } from '../../error-logs/error-logs.service';
 import { ErrorCategory } from '../../error-logs/enums/error-category.enum';
 import { redactObject } from '../../error-logs/redact.util';
 import { generateFingerprint } from '../../error-logs/fingerprint.util';
+import { hashIp } from '../../error-logs/ip-hash.util';
 
 @Injectable()
 @Catch()
@@ -168,7 +169,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           category,
           method: request.method,
           url: request.url,
-          ip: request.ip,
+          ip: hashIp(request.ip),
           userAgent: request.get('user-agent'),
           stack: status >= 500 ? (exception as Error)?.stack : undefined,
           userId,
