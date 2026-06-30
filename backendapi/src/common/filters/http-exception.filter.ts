@@ -12,6 +12,7 @@ import { Request, Response } from 'express';
 import { ErrorLogsService } from '../../error-logs/error-logs.service';
 import { ErrorCategory } from '../../error-logs/enums/error-category.enum';
 import { redactObject } from '../../error-logs/redact.util';
+import { generateFingerprint } from '../../error-logs/fingerprint.util';
 
 @Injectable()
 @Catch()
@@ -152,6 +153,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? (redactObject(rawBody) ?? undefined)
         : undefined;
 
+      const fingerprint = generateFingerprint(
+        status,
+        request.url,
+        message,
+        userId,
+      );
+
       this.errorLogsService
         .create({
           statusCode: status,
@@ -165,6 +173,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           stack: status >= 500 ? (exception as Error)?.stack : undefined,
           userId,
           requestBody,
+          fingerprint,
         })
         .catch((err: Error) => {
           this.logger.error('Failed to persist error log', err);

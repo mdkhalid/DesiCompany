@@ -43,4 +43,13 @@ export class ErrorLog extends BaseEntity {
 
   @Column({ type: 'jsonb', nullable: true, name: 'request_body' })
   requestBody: Record<string, unknown>;
+
+  @Column({
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+    unique: true,
+    name: 'fingerprint',
+  })
+  fingerprint: string;
 }
