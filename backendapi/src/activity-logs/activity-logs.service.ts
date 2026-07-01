@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ActivityLog } from './entities/activity-log.entity';
-import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class ActivityLogsService {
@@ -16,7 +15,7 @@ export class ActivityLogsService {
     entityType: string,
     entityId?: string,
     actorId?: string,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ) {
     const log = this.activityLogRepository.create({
       action,

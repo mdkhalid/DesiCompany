@@ -51,11 +51,23 @@ describe('ServicesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ServicesService,
-        { provide: getRepositoryToken(ServiceCategory), useValue: makeRepoMock() },
+        {
+          provide: getRepositoryToken(ServiceCategory),
+          useValue: makeRepoMock(),
+        },
         { provide: getRepositoryToken(Provider), useValue: providerRepo },
-        { provide: getRepositoryToken(ProviderAvailability), useValue: availabilityRepo },
-        { provide: getRepositoryToken(ProviderDateOverride), useValue: overrideRepo },
-        { provide: getRepositoryToken(ProviderService), useValue: makeRepoMock() },
+        {
+          provide: getRepositoryToken(ProviderAvailability),
+          useValue: availabilityRepo,
+        },
+        {
+          provide: getRepositoryToken(ProviderDateOverride),
+          useValue: overrideRepo,
+        },
+        {
+          provide: getRepositoryToken(ProviderService),
+          useValue: makeRepoMock(),
+        },
         { provide: getRepositoryToken(Booking), useValue: bookingRepo },
       ],
     }).compile();
@@ -70,7 +82,9 @@ describe('ServicesService', () => {
   describe('getAvailableSlots', () => {
     it('should throw NotFoundException when provider not found', async () => {
       providerRepo.findOne.mockResolvedValue(null);
-      await expect(service.getAvailableSlots(providerId, '2026-07-01')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getAvailableSlots(providerId, '2026-07-01'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should return unavailable when override exists with isAvailable false', async () => {
@@ -158,7 +172,9 @@ describe('ServicesService', () => {
   describe('setWeeklySchedule', () => {
     it('should throw NotFoundException when provider not found', async () => {
       providerRepo.findOne.mockResolvedValue(null);
-      await expect(service.setWeeklySchedule(providerId, [])).rejects.toThrow(NotFoundException);
+      await expect(service.setWeeklySchedule(providerId, [])).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw BadRequestException when startTime >= endTime', async () => {
@@ -174,8 +190,16 @@ describe('ServicesService', () => {
       providerRepo.findOne.mockResolvedValue(mockProvider);
       availabilityRepo.delete.mockResolvedValue({ affected: 0 });
       availabilityRepo.create
-        .mockReturnValueOnce({ dayOfWeek: 1, startTime: '09:00', endTime: '12:00' })
-        .mockReturnValueOnce({ dayOfWeek: 3, startTime: '10:00', endTime: '14:00' });
+        .mockReturnValueOnce({
+          dayOfWeek: 1,
+          startTime: '09:00',
+          endTime: '12:00',
+        })
+        .mockReturnValueOnce({
+          dayOfWeek: 3,
+          startTime: '10:00',
+          endTime: '14:00',
+        });
       availabilityRepo.save.mockResolvedValue([]);
 
       await service.setWeeklySchedule(providerId, [
@@ -183,7 +207,9 @@ describe('ServicesService', () => {
         { dayOfWeek: 3, startTime: '10:00', endTime: '14:00' },
       ]);
 
-      expect(availabilityRepo.delete).toHaveBeenCalledWith({ provider: { id: providerId } });
+      expect(availabilityRepo.delete).toHaveBeenCalledWith({
+        provider: { id: providerId },
+      });
       expect(availabilityRepo.create).toHaveBeenCalledTimes(2);
       expect(availabilityRepo.save).toHaveBeenCalledTimes(1);
     });
@@ -202,9 +228,24 @@ describe('ServicesService', () => {
     it('should generate hourly slots between start and end', () => {
       const slots = service.generateTimeSlotRanges('09:00', '12:00', 60);
       expect(slots).toHaveLength(3);
-      expect(slots[0]).toEqual({ start: '09:00', end: '10:00', startMin: 540, endMin: 600 });
-      expect(slots[1]).toEqual({ start: '10:00', end: '11:00', startMin: 600, endMin: 660 });
-      expect(slots[2]).toEqual({ start: '11:00', end: '12:00', startMin: 660, endMin: 720 });
+      expect(slots[0]).toEqual({
+        start: '09:00',
+        end: '10:00',
+        startMin: 540,
+        endMin: 600,
+      });
+      expect(slots[1]).toEqual({
+        start: '10:00',
+        end: '11:00',
+        startMin: 600,
+        endMin: 660,
+      });
+      expect(slots[2]).toEqual({
+        start: '11:00',
+        end: '12:00',
+        startMin: 660,
+        endMin: 720,
+      });
     });
 
     it('should generate 30-minute slots when duration is 30', () => {

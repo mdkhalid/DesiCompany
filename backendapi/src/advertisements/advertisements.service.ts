@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, MoreThanOrEqual, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   Advertisement,
   AdPlacement,
@@ -43,13 +43,14 @@ export class AdvertisementsService {
       textColor?: string;
       notes?: string;
     },
-  ) {
+  ): Promise<Advertisement> {
     if (data.startDate >= data.endDate) {
       throw new BadRequestException('End date must be after start date');
     }
 
     const now = new Date();
-    const initialStatus = data.startDate > now ? AdStatus.SCHEDULED : AdStatus.ACTIVE;
+    const initialStatus =
+      data.startDate > now ? AdStatus.SCHEDULED : AdStatus.ACTIVE;
 
     const ad = this.adRepository.create({
       ...data,
@@ -87,7 +88,7 @@ export class AdvertisementsService {
       status: AdStatus;
       isActive: boolean;
     }>,
-  ) {
+  ): Promise<Advertisement> {
     const ad = await this.adRepository.findOne({ where: { id: adId } });
     if (!ad) throw new NotFoundException('Advertisement not found');
 
@@ -106,7 +107,7 @@ export class AdvertisementsService {
     return this.adRepository.save(ad);
   }
 
-  async deleteAd(adId: string) {
+  async deleteAd(adId: string): Promise<{ success: boolean; message: string }> {
     const ad = await this.adRepository.findOne({ where: { id: adId } });
     if (!ad) throw new NotFoundException('Advertisement not found');
 
@@ -114,7 +115,7 @@ export class AdvertisementsService {
     return { success: true, message: 'Advertisement deleted' };
   }
 
-  async getAdById(adId: string) {
+  async getAdById(adId: string): Promise<Advertisement> {
     const ad = await this.adRepository.findOne({ where: { id: adId } });
     if (!ad) throw new NotFoundException('Advertisement not found');
     return ad;
@@ -124,8 +125,8 @@ export class AdvertisementsService {
     status?: AdStatus;
     placement?: AdPlacement;
     isActive?: boolean;
-  }) {
-    const where: any = {};
+  }): Promise<Advertisement[]> {
+    const where: Record<string, unknown> = {};
 
     if (filters?.status) where.status = filters.status;
     if (filters?.placement) where.placement = filters.placement;
@@ -137,7 +138,10 @@ export class AdvertisementsService {
     });
   }
 
-  async getActiveAdsForPlacement(placement: AdPlacement, categoryId?: string) {
+  async getActiveAdsForPlacement(
+    placement: AdPlacement,
+    categoryId?: string,
+  ): Promise<Advertisement[]> {
     const now = new Date();
 
     const query = this.adRepository
@@ -159,18 +163,14 @@ export class AdvertisementsService {
     query.andWhere(
       '(ad.max_impressions IS NULL OR ad.impressions < ad.max_impressions)',
     );
-    query.andWhere(
-      '(ad.max_clicks IS NULL OR ad.clicks < ad.max_clicks)',
-    );
+    query.andWhere('(ad.max_clicks IS NULL OR ad.clicks < ad.max_clicks)');
 
-    query
-      .orderBy('ad.priority', 'DESC')
-      .addOrderBy('ad.created_at', 'DESC');
+    query.orderBy('ad.priority', 'DESC').addOrderBy('ad.created_at', 'DESC');
 
     return query.getMany();
   }
 
-  async pauseAd(adId: string) {
+  async pauseAd(adId: string): Promise<Advertisement> {
     const ad = await this.adRepository.findOne({ where: { id: adId } });
     if (!ad) throw new NotFoundException('Advertisement not found');
 
@@ -178,7 +178,7 @@ export class AdvertisementsService {
     return this.adRepository.save(ad);
   }
 
-  async resumeAd(adId: string) {
+  async resumeAd(adId: string): Promise<Advertisement> {
     const ad = await this.adRepository.findOne({ where: { id: adId } });
     if (!ad) throw new NotFoundException('Advertisement not found');
 
@@ -191,7 +191,7 @@ export class AdvertisementsService {
     return this.adRepository.save(ad);
   }
 
-  async recordImpression(adId: string, userId?: string) {
+  async recordImpression(adId: string, _userId?: string): Promise<void> {
     const ad = await this.adRepository.findOne({ where: { id: adId } });
     if (!ad) return;
 
@@ -205,7 +205,7 @@ export class AdvertisementsService {
     await this.adRepository.save(ad);
   }
 
-  async recordClick(adId: string, userId?: string) {
+  async recordClick(adId: string, _userId?: string): Promise<void> {
     const ad = await this.adRepository.findOne({ where: { id: adId } });
     if (!ad) return;
 
@@ -219,7 +219,7 @@ export class AdvertisementsService {
     await this.adRepository.save(ad);
   }
 
-  async getAdAnalytics(adId: string) {
+  async getAdAnalytics(adId: string): Promise<Record<string, unknown>> {
     const ad = await this.adRepository.findOne({ where: { id: adId } });
     if (!ad) throw new NotFoundException('Advertisement not found');
 
@@ -239,7 +239,10 @@ export class AdvertisementsService {
       placement: ad.placement,
       impressions: ad.impressions,
       clicks: ad.clicks,
-      ctr: ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : 0,
+      ctr:
+        ad.impressions > 0
+          ? ((ad.clicks / ad.impressions) * 100).toFixed(2)
+          : 0,
       maxImpressions: ad.maxImpressions,
       maxClicks: ad.maxClicks,
       impressionProgress: ad.maxImpressions
@@ -257,9 +260,7 @@ export class AdvertisementsService {
     };
   }
 
-  async getDashboardStats() {
-    const now = new Date();
-
+  async getDashboardStats(): Promise<Record<string, unknown>> {
     const [total, active, scheduled, paused, expired] = await Promise.all([
       this.adRepository.count(),
       this.adRepository.count({ where: { status: AdStatus.ACTIVE } }),
@@ -268,12 +269,13 @@ export class AdvertisementsService {
       this.adRepository.count({ where: { status: AdStatus.EXPIRED } }),
     ]);
 
-    const totalImpressions = await this.adRepository
-      .createQueryBuilder('ad')
-      .select('SUM(ad.impressions)', 'sum')
-      .getRawOne();
+    const totalImpressions: { sum: string } | undefined =
+      await this.adRepository
+        .createQueryBuilder('ad')
+        .select('SUM(ad.impressions)', 'sum')
+        .getRawOne();
 
-    const totalClicks = await this.adRepository
+    const totalClicks: { sum: string } | undefined = await this.adRepository
       .createQueryBuilder('ad')
       .select('SUM(ad.clicks)', 'sum')
       .getRawOne();
@@ -289,7 +291,7 @@ export class AdvertisementsService {
     };
   }
 
-  async processScheduledAds() {
+  async processScheduledAds(): Promise<void> {
     const now = new Date();
 
     // Activate scheduled ads that should start now

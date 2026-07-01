@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import type { Grievance, GrievanceStats, GrievanceStatus, GrievancePriority, ResolutionType } from '../types';
 import SearchInput from '../components/SearchInput';
 import { TableSkeleton } from '../components/LoadingSkeleton';
-import { notify } from '../components/Toast';
+import { notify } from '../services/notify';
 
 const CATEGORY_LABELS: Record<string, string> = {
   service_quality: 'Service Quality',
@@ -71,6 +71,7 @@ export default function Grievances() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [statusFilter, priorityFilter]);
 
   const filtered = grievances.filter((g) => {
@@ -88,7 +89,7 @@ export default function Grievances() {
       const data = await api.get<Grievance>(`/grievances/admin/${grievance.id}`);
       setSelectedGrievance(data);
       setShowDetailModal(true);
-    } catch (e: unknown) {
+    } catch {
       notify.error('Failed to load grievance details');
     }
   }
@@ -100,7 +101,7 @@ export default function Grievances() {
       notify.success('Grievance assigned');
       load();
       handleViewDetail(selectedGrievance);
-    } catch (e: unknown) {
+    } catch {
       notify.error('Failed to assign grievance');
     }
   }
@@ -117,7 +118,7 @@ export default function Grievances() {
       setShowResolveModal(false);
       load();
       handleViewDetail(selectedGrievance);
-    } catch (e: unknown) {
+    } catch {
       notify.error('Failed to resolve grievance');
     }
   }
@@ -130,7 +131,7 @@ export default function Grievances() {
       setShowCallModal(false);
       load();
       handleViewDetail(selectedGrievance);
-    } catch (e: unknown) {
+    } catch {
       notify.error('Failed to record call');
     }
   }
@@ -141,7 +142,7 @@ export default function Grievances() {
       await api.post(`/grievances/admin/${selectedGrievance.id}/message`, { message: adminMessage });
       setAdminMessage('');
       handleViewDetail(selectedGrievance);
-    } catch (e: unknown) {
+    } catch {
       notify.error('Failed to send message');
     }
   }
@@ -353,7 +354,7 @@ export default function Grievances() {
                         <p>{msg.content}</p>
                         {msg.metadata?.options && (
                           <div className="mt-2 space-y-1">
-                            {msg.metadata.options.map((opt: any, i: number) => (
+                            {msg.metadata.options.map((opt: { label?: string } & Record<string, unknown>, i: number) => (
                               <div key={i} className="bg-white bg-opacity-20 rounded px-2 py-1 text-xs">
                                 {opt.label || opt}
                               </div>

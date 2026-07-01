@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import '../services/api_service.dart';
 import '../theme.dart';
 import 'customer_post_job_screen.dart';
 import 'customer_job_detail_screen.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class CustomerRequestsScreen extends StatefulWidget {
   const CustomerRequestsScreen({super.key});
   @override
@@ -99,7 +100,7 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
     if (iso == null) return '';
     try {
       return intl.DateFormat('d MMM yyyy').format(DateTime.parse(iso));
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('customer_requests_screen', 'Operation failed', e, st);
       return '';
     }
   }

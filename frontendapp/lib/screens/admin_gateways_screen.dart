@@ -1,8 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class AdminGatewaysScreen extends StatefulWidget {
   const AdminGatewaysScreen({super.key});
 
@@ -60,7 +61,7 @@ class _AdminGatewaysScreenState extends State<AdminGatewaysScreen> {
         if (keys.length == 1) return '${keys.first}: ****';
         return '${keys.first}: ****, ${keys.last}: ****';
       }
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('admin_gateways_screen', 'Operation failed', e, st); }
     return '****';
   }
 
@@ -184,7 +185,7 @@ class _AdminGatewaysScreenState extends State<AdminGatewaysScreen> {
                   if (credCtrl.text.isNotEmpty) {
                     parsedCreds = jsonDecode(credCtrl.text) as Map<String, dynamic>;
                   }
-                } catch (_) {
+                } catch (e, st) { AppLogger.e('admin_gateways_screen', 'Operation failed', e, st);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Invalid JSON in credentials'), backgroundColor: AppTheme.error),
                   );
@@ -273,7 +274,7 @@ class _AdminGatewaysScreenState extends State<AdminGatewaysScreen> {
                   if (credCtrl.text.isNotEmpty) {
                     parsedCreds = jsonDecode(credCtrl.text) as Map<String, dynamic>;
                   }
-                } catch (_) {
+                } catch (e, st) { AppLogger.e('admin_gateways_screen', 'Operation failed', e, st);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Invalid JSON in credentials'), backgroundColor: AppTheme.error),
                   );

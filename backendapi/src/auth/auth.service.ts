@@ -83,7 +83,8 @@ export class AuthService {
 
   async requestOtp(phone: string): Promise<{ message: string }> {
     // Safety: block OTP mock in production
-    const isMockMode = process.env.OTP_MOCK === 'true' && process.env.NODE_ENV !== 'production';
+    const isMockMode =
+      process.env.OTP_MOCK === 'true' && process.env.NODE_ENV !== 'production';
 
     const code = isMockMode
       ? process.env.OTP_MOCK_CODE || '123456'
@@ -96,7 +97,7 @@ export class AuthService {
     if (!isMockMode) {
       try {
         await this.smsService.sendOtp(phone, code);
-      } catch (error) {
+      } catch {
         // Log but don't fail — OTP is still stored for verification
       }
     }
@@ -375,7 +376,7 @@ export class AuthService {
 
   async logout(refreshToken: string): Promise<{ message: string }> {
     try {
-      const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
+      this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
 

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import '../l10n/strings.dart';
 import '../main.dart';
@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../theme.dart';
 import 'provider_submit_quote_screen.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ProviderJobDetailScreen extends StatefulWidget {
   final String jobRequestId;
   const ProviderJobDetailScreen({super.key, required this.jobRequestId});
@@ -124,7 +125,7 @@ class _ProviderJobDetailScreenState extends State<ProviderJobDetailScreen> {
     try {
       final dt = DateTime.parse(iso);
       return intl.DateFormat('d MMM yyyy').format(dt);
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('provider_job_detail_screen', 'Operation failed', e, st);
       return '';
     }
   }

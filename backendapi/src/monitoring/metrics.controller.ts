@@ -10,7 +10,7 @@ export class MetricsController {
   @Header('Content-Type', 'text/plain')
   async getMetrics(@Res() res: Response) {
     const metrics = await this.metricsService.getMetrics();
-    const contentType = await this.metricsService.getContentType();
+    const contentType = this.metricsService.getContentType();
     res.setHeader('Content-Type', contentType);
     res.send(metrics);
   }

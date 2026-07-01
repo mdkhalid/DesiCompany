@@ -12,15 +12,17 @@ import {
   DefaultValuePipe,
   HttpCode,
   HttpStatus,
-  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ChatService } from './chat.service';
 import { TranslationService, SupportedLanguage } from './translation.service';
-import { MessageType } from './entities/message.entity';
-import { DirectMessageType } from './entities/direct-message.entity';
 
 interface AuthRequest {
   user: { id: string; role: string };
@@ -57,7 +59,13 @@ export class ChatController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
   ) {
-    return this.chatService.getMessageHistory(req.user.id, type, targetId, page, limit);
+    return this.chatService.getMessageHistory(
+      req.user.id,
+      type,
+      targetId,
+      page,
+      limit,
+    );
   }
 
   @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -90,7 +98,7 @@ export class ChatController {
         throw new Error('providerId is required for direct messages');
       }
       // Create direct chat room ID
-      const user = await this.chatService.getConversations(req.user.id, 1, 1);
+      await this.chatService.getConversations(req.user.id, 1, 1);
       targetId = `direct_${req.user.id}_${body.providerId}`;
       conversationType = 'direct';
     }
@@ -127,7 +135,7 @@ export class ChatController {
   @Post('translate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Translate message to target language' })
-  async translate(
+  translate(
     @Body()
     body: {
       text: string;

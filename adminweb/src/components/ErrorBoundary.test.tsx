@@ -6,10 +6,6 @@ function ThrowingComponent(): React.ReactNode {
   throw new Error('Test error');
 }
 
-function WorkingComponent(): React.ReactNode {
-  return <div>No Error</div>;
-}
-
 describe('ErrorBoundary', () => {
   it('renders children when no error', () => {
     render(

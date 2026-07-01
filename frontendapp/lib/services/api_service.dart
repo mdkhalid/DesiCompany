@@ -1,9 +1,10 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ApiService {
   /// Base URL for the backend API.
   ///
@@ -31,15 +32,14 @@ class ApiService {
         // Android emulator routes 10.0.2.2 to host machine's localhost.
         return 'http://10.0.2.2:3000/api/v1';
       }
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('api_service', 'Operation failed', e, st);
       // Platform may not be available (e.g. web).
     }
     return 'http://localhost:3000/api/v1';
   }
 
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
+    return AuthService.getToken();
   }
 
   static Future<Map<String, String>> _headers() async {

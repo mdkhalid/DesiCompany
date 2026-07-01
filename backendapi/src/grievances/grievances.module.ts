@@ -9,7 +9,9 @@ import { ChatbotService } from './chatbot.service';
 import { GrievancesController } from './grievances.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Grievance, GrievanceMessage, Booking, User])],
+  imports: [
+    TypeOrmModule.forFeature([Grievance, GrievanceMessage, Booking, User]),
+  ],
   controllers: [GrievancesController],
   providers: [GrievancesService, ChatbotService],
   exports: [GrievancesService, ChatbotService],

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'l10n/strings.dart';
 import 'theme.dart';
 import 'services/cache_service.dart';
 import 'services/push_notification_service.dart';
+import 'services/error_handler.dart';
 import 'screens/login_screen.dart';
 import 'screens/customer_home_screen.dart';
 import 'screens/provider_home_screen.dart';
@@ -44,6 +47,9 @@ import 'screens/admin_revenue_screen.dart';
 import 'screens/grievance_chat_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize error handler (includes Sentry)
+  await ErrorHandler.initialize();
   
   // Initialize Hive cache
   await CacheService.init();

@@ -13,8 +13,7 @@ import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
-import { Message, MessageType } from '../chat/entities/message.entity';
-import { User } from '../users/entities/user.entity';
+import { Message } from '../chat/entities/message.entity';
 import { ChatGateway } from '../chat/chat.gateway';
 import { getBookingConfirmationMessages } from '../bookings/chat-templates';
 import { CreateJobRequestDto } from './dto/create-job-request.dto';
@@ -426,14 +425,17 @@ export class QuotesService {
       userId,
     );
     if (feeResult.finalFee > 0) {
-      savedBooking.totalAmount = Number(savedBooking.totalAmount) + feeResult.finalFee;
+      savedBooking.totalAmount =
+        Number(savedBooking.totalAmount) + feeResult.finalFee;
       savedBooking.convenienceFee = feeResult.finalFee;
       await this.bookingRepository.save(savedBooking);
     }
 
     // Send role-specific booking confirmation messages to the chat
-    const providerName = `${quote.provider.firstName || ''} ${quote.provider.lastName || ''}`.trim();
-    const customerName = `${jobRequest.customer.firstName || ''} ${jobRequest.customer.lastName || ''}`.trim();
+    const providerName =
+      `${quote.provider.firstName || ''} ${quote.provider.lastName || ''}`.trim();
+    const customerName =
+      `${jobRequest.customer.firstName || ''} ${jobRequest.customer.lastName || ''}`.trim();
     const customerUserId = userId;
     const providerUserId = quote.provider.user.id;
 
@@ -443,16 +445,20 @@ export class QuotesService {
       serviceAmount,
     );
 
-    this.chatGateway.emitRoleSpecificSystemMessage(
-      savedBooking.id,
-      customerUserId,
-      providerUserId,
-      confirmationTemplates.customer,
-      confirmationTemplates.provider,
-      { type: 'booking_confirmation', quoteAmount: serviceAmount },
-    ).catch((err) => {
-      this.logger.warn(`Failed to emit booking confirmation messages: ${(err as Error).message}`);
-    });
+    this.chatGateway
+      .emitRoleSpecificSystemMessage(
+        savedBooking.id,
+        customerUserId,
+        providerUserId,
+        confirmationTemplates.customer,
+        confirmationTemplates.provider,
+        { type: 'booking_confirmation', quoteAmount: serviceAmount },
+      )
+      .catch((err) => {
+        this.logger.warn(
+          `Failed to emit booking confirmation messages: ${(err as Error).message}`,
+        );
+      });
 
     return this.bookingRepository.findOne({
       where: { id: savedBooking.id },

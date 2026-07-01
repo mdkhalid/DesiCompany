@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 import '../utils/id_helpers.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class AdminKycScreen extends StatefulWidget {
   const AdminKycScreen({super.key});
   @override
@@ -232,7 +233,7 @@ class _AdminKycScreenState extends State<AdminKycScreen>
       try {
         final dt = DateTime.parse(createdAt);
         dateStr = '${dt.day}/${dt.month}/${dt.year}';
-      } catch (_) {
+      } catch (e, st) { AppLogger.e('admin_kyc_screen', 'Operation failed', e, st);
         dateStr = createdAt.toString();
       }
     }

@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 
 export enum AdPlacement {
@@ -75,7 +75,11 @@ export class Advertisement extends BaseEntity {
   @Column({ name: 'end_date', type: 'timestamp' })
   endDate: Date;
 
-  @Column({ name: 'priority', default: 0, comment: 'Higher priority shows first' })
+  @Column({
+    name: 'priority',
+    default: 0,
+    comment: 'Higher priority shows first',
+  })
   priority: number;
 
   @Column({ name: 'is_active', default: true })
@@ -96,10 +100,18 @@ export class Advertisement extends BaseEntity {
   @Column({ name: 'category_id', nullable: true })
   categoryId: string;
 
-  @Column({ name: 'max_impressions', nullable: true, comment: 'Limit total impressions, null = unlimited' })
+  @Column({
+    name: 'max_impressions',
+    nullable: true,
+    comment: 'Limit total impressions, null = unlimited',
+  })
   maxImpressions: number;
 
-  @Column({ name: 'max_clicks', nullable: true, comment: 'Limit total clicks, null = unlimited' })
+  @Column({
+    name: 'max_clicks',
+    nullable: true,
+    comment: 'Limit total clicks, null = unlimited',
+  })
   maxClicks: number;
 
   @Column({ name: 'daily_impression_limit', nullable: true })
@@ -108,7 +120,11 @@ export class Advertisement extends BaseEntity {
   @Column({ name: 'show_close_button', default: true })
   showCloseButton: boolean;
 
-  @Column({ name: 'auto_close_seconds', nullable: true, comment: 'Auto close after X seconds, null = no auto close' })
+  @Column({
+    name: 'auto_close_seconds',
+    nullable: true,
+    comment: 'Auto close after X seconds, null = no auto close',
+  })
   autoCloseSeconds: number;
 
   @Column({ name: 'background_color', length: 20, nullable: true })
@@ -120,6 +136,11 @@ export class Advertisement extends BaseEntity {
   @Column({ name: 'created_by', nullable: true })
   createdBy: string;
 
-  @Column({ name: 'notes', type: 'text', nullable: true, comment: 'Internal admin notes' })
+  @Column({
+    name: 'notes',
+    type: 'text',
+    nullable: true,
+    comment: 'Internal admin notes',
+  })
   notes: string;
 }

@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -37,14 +38,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await ApiService.patch('/notifications/$id/read');
       _loadNotifications();
-    } catch (e) {}
+    } catch (e, st) { AppLogger.e('notifications_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _markAllAsRead() async {
     try {
       await ApiService.patch('/notifications/read-all');
       _loadNotifications();
-    } catch (e) {}
+    } catch (e, st) { AppLogger.e('notifications_screen', 'Operation failed', e, st); }
   }
 
   IconData _notifIcon(String title) {

@@ -13,7 +13,7 @@ export class ProviderSubscriptionPlan extends BaseEntity {
   monthlyPrice: number;
 
   @Column({ type: 'jsonb', nullable: true })
-  benefits: Record<string, any>;
+  benefits: Record<string, unknown>;
 
   @Column({ default: true, name: 'is_active' })
   isActive: boolean;

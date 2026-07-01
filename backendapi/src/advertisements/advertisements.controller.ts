@@ -21,8 +21,17 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
+import { Request } from 'express';
 import { AdvertisementsService } from './advertisements.service';
-import { AdPlacement, AdStatus, AdTargetAudience } from './entities/advertisement.entity';
+import {
+  AdPlacement,
+  AdStatus,
+  AdTargetAudience,
+} from './entities/advertisement.entity';
+
+interface AuthenticatedRequest extends Request {
+  user: { id: string };
+}
 
 @ApiTags('Advertisements')
 @Controller('advertisements')
@@ -107,7 +116,7 @@ export class AdvertisementsController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new advertisement (admin)' })
   async createAd(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body()
     body: {
       title: string;
@@ -172,9 +181,11 @@ export class AdvertisementsController {
       isActive: boolean;
     }>,
   ) {
-    const updateData: any = { ...body };
-    if (body.startDate) updateData.startDate = new Date(body.startDate);
-    if (body.endDate) updateData.endDate = new Date(body.endDate);
+    const updateData = {
+      ...body,
+      ...(body.startDate ? { startDate: new Date(body.startDate) } : {}),
+      ...(body.endDate ? { endDate: new Date(body.endDate) } : {}),
+    };
 
     return this.adsService.updateAd(adId, updateData);
   }

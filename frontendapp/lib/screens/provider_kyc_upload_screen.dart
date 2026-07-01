@@ -146,8 +146,7 @@ class _ProviderKycUploadScreenState extends State<ProviderKycUploadScreen> {
     setState(() => _uploading = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await AuthService.getToken();
 
       final request = http.MultipartRequest(
         'POST',

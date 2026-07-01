@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ProviderSubscriptionScreen extends StatefulWidget {
   const ProviderSubscriptionScreen({super.key});
 
@@ -29,7 +30,7 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
       Map<String, dynamic>? activeSub;
       try {
         activeSub = await ApiService.get('/subscription-plans/my') as Map<String, dynamic>?;
-      } catch (_) {}
+      } catch (e, st) { AppLogger.e('provider_subscription_screen', 'Operation failed', e, st); }
       if (!mounted) return;
       setState(() {
         _plans = plans as List;
@@ -84,7 +85,7 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
       if (!mounted) return;
       setState(() => _subscribingId = false);
       _load();
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('provider_subscription_screen', 'Operation failed', e, st);
       if (mounted) setState(() => _subscribingId = false);
     }
   }

@@ -26,15 +26,15 @@ export class UploadsController {
   @Post('chat-image')
   @ApiOperation({ summary: 'Upload chat image attachment' })
   @UseInterceptors(FileInterceptor('file'))
-  async uploadChatImage(
+  uploadChatImage(
     @UploadedFile() file: Express.Multer.File,
-    @Req() req: AuthRequest,
+    @Req() _req: AuthRequest,
   ) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
 
-    const url = await this.uploadsService.getFileUrl(file.filename);
+    const url = this.uploadsService.getFileUrl(file.filename);
     return {
       url,
       filename: file.filename,

@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class CustomerMembershipScreen extends StatefulWidget {
   const CustomerMembershipScreen({super.key});
 
@@ -31,7 +32,7 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
         if (result is Map && result['membership'] != null) {
           active = result['membership'] as Map<String, dynamic>?;
         }
-      } catch (_) {}
+      } catch (e, st) { AppLogger.e('customer_membership_screen', 'Operation failed', e, st); }
       if (!mounted) return;
       setState(() {
         _plans = plans as List;
@@ -83,7 +84,7 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
       await ApiService.delete('/membership-plans/cancel');
       if (!mounted) return;
       _load();
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('customer_membership_screen', 'Operation failed', e, st); }
   }
 
   String _formatBenefit(String key, dynamic value) {

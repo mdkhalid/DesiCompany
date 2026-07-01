@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import type { User } from '../types';
 import SearchInput from '../components/SearchInput';
 import { TableSkeleton } from '../components/LoadingSkeleton';
-import { notify } from '../components/Toast';
+import { notify } from '../services/notify';
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);

@@ -11,7 +11,9 @@ export enum MessageSender {
 
 @Entity('grievance_messages')
 export class GrievanceMessage extends BaseEntity {
-  @ManyToOne(() => Grievance, (grievance) => grievance.messages, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Grievance, (grievance) => grievance.messages, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'grievance_id' })
   grievance: Grievance;
 
@@ -25,7 +27,7 @@ export class GrievanceMessage extends BaseEntity {
   content: string;
 
   @Column({ name: 'metadata', type: 'jsonb', nullable: true })
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 
   @Column({ name: 'is_read', default: false })
   isRead: boolean;

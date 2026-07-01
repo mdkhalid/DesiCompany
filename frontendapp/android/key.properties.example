@@ -1,0 +1,8 @@
+# Release keystore configuration for Android
+# Generate a keystore: keytool -genkey -v -keystore release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias desicompany
+# Then fill in the values below and rename this file to key.properties
+
+storePassword=<your-store-password>
+keyPassword=<your-key-password>
+keyAlias=desicompany
+storeFile=<path-to-your-release-key.jks>

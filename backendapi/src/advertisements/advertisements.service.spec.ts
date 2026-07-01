@@ -139,9 +139,9 @@ describe('AdvertisementsService', () => {
 
     it('throws NotFoundException when ad not found', async () => {
       adRepo.findOne.mockResolvedValue(null);
-      await expect(service.updateAd('unknown', { title: 'Test' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateAd('unknown', { title: 'Test' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -156,7 +156,9 @@ describe('AdvertisementsService', () => {
 
     it('throws NotFoundException when ad not found', async () => {
       adRepo.findOne.mockResolvedValue(null);
-      await expect(service.deleteAd('unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.deleteAd('unknown')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -206,7 +208,9 @@ describe('AdvertisementsService', () => {
         endDate: pastDate,
       } as Advertisement);
 
-      await expect(service.resumeAd('ad-1')).rejects.toThrow(BadRequestException);
+      await expect(service.resumeAd('ad-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -288,18 +292,20 @@ describe('AdvertisementsService', () => {
 
     it('throws NotFoundException when ad not found', async () => {
       adRepo.findOne.mockResolvedValue(null);
-      await expect(service.getAdAnalytics('unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.getAdAnalytics('unknown')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('getDashboardStats', () => {
     it('returns dashboard statistics', async () => {
       adRepo.count
-        .mockResolvedValueOnce(10)  // total
-        .mockResolvedValueOnce(5)   // active
-        .mockResolvedValueOnce(2)   // scheduled
-        .mockResolvedValueOnce(1)   // paused
-        .mockResolvedValueOnce(2);  // expired
+        .mockResolvedValueOnce(10) // total
+        .mockResolvedValueOnce(5) // active
+        .mockResolvedValueOnce(2) // scheduled
+        .mockResolvedValueOnce(1) // paused
+        .mockResolvedValueOnce(2); // expired
 
       const mockQueryBuilder = {
         select: jest.fn().mockReturnThis(),

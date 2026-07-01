@@ -2,6 +2,7 @@ node_modules/
 dist/
 build/
 .env
+ISSUES.md
 *.log
 server.log
 server-error.log

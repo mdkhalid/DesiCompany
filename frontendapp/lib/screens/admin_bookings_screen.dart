@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 import '../utils/id_helpers.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class AdminBookingsScreen extends StatefulWidget {
   const AdminBookingsScreen({super.key});
 
@@ -74,7 +75,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
       try {
         final date = DateTime.parse(booking['scheduledDate']);
         dateStr = '${date.day}/${date.month}/${date.year}';
-      } catch (_) {}
+      } catch (e, st) { AppLogger.e('admin_bookings_screen', 'Operation failed', e, st); }
     }
 
     showModalBottomSheet(
@@ -204,7 +205,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                               try {
                                 final date = DateTime.parse(b['scheduledDate']);
                                 dateStr = '${date.day}/${date.month}/${date.year}';
-                              } catch (_) {}
+                              } catch (e, st) { AppLogger.e('admin_bookings_screen', 'Operation failed', e, st); }
                             }
 
                             return GestureDetector(

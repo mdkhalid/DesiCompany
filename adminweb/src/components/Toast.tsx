@@ -1,4 +1,4 @@
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 
 export function ToasterProvider() {
   return (
@@ -29,16 +29,3 @@ export function ToasterProvider() {
     />
   );
 }
-
-export const notify = {
-  success: (message: string) => toast.success(message),
-  error: (message: string) => toast.error(message),
-  loading: (message: string) => toast.loading(message),
-  info: (message: string) => toast(message, { icon: 'ℹ️' }),
-  promise: <T,>(
-    promise: Promise<T>,
-    msgs: { loading: string; success: string; error: string }
-  ) => toast.promise(promise, msgs),
-};
-
-export default toast;

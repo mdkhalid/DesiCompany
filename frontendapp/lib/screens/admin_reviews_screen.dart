@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class AdminReviewsScreen extends StatefulWidget {
   const AdminReviewsScreen({super.key});
 
@@ -67,7 +68,7 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
     try {
       final date = DateTime.parse(value.toString());
       return '${date.day}/${date.month}/${date.year}';
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('admin_reviews_screen', 'Operation failed', e, st);
       return '';
     }
   }

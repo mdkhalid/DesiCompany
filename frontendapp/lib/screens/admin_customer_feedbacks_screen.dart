@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class AdminCustomerFeedbacksScreen extends StatefulWidget {
   const AdminCustomerFeedbacksScreen({super.key});
 
@@ -88,7 +89,7 @@ class _AdminCustomerFeedbacksScreenState extends State<AdminCustomerFeedbacksScr
     try {
       final date = DateTime.parse(value.toString());
       return '${date.day}/${date.month}/${date.year}';
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('admin_customer_feedbacks_screen', 'Operation failed', e, st);
       return '';
     }
   }

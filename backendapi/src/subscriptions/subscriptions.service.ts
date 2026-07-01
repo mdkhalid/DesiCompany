@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   Subscription,
   SubscriptionPlan,
@@ -28,7 +28,7 @@ export class SubscriptionsService {
     private readonly transactionRepository: Repository<Transaction>,
   ) {}
 
-  async getPlans() {
+  getPlans() {
     return Object.entries(PLAN_FEATURES).map(([key, value]) => ({
       id: key,
       ...value,

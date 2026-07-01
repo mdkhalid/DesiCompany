@@ -1,13 +1,14 @@
 import { Column, Entity } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
+import { PromoCodeType } from '../enums/platform-fee.enum';
 
 @Entity('promo_codes')
 export class PromoCode extends BaseEntity {
   @Column({ unique: true })
   code: string;
 
-  @Column()
-  type: string;
+  @Column({ type: 'varchar' })
+  type: PromoCodeType;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   value: number;
@@ -28,5 +29,5 @@ export class PromoCode extends BaseEntity {
   isActive: boolean;
 
   @Column({ type: 'jsonb', nullable: true })
-  restrictions: Record<string, any>;
+  restrictions: Record<string, unknown>;
 }

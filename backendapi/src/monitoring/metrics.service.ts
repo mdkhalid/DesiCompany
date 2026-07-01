@@ -104,7 +104,7 @@ export class MetricsService implements OnModuleInit {
     return this.registry.metrics();
   }
 
-  async getContentType(): Promise<string> {
+  getContentType(): string {
     return this.registry.contentType;
   }
 }

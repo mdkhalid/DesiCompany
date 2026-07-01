@@ -76,7 +76,12 @@ export class Grievance extends BaseEntity {
   @Column({ name: 'description', type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ name: 'resolution_type', type: 'enum', enum: ResolutionType, nullable: true })
+  @Column({
+    name: 'resolution_type',
+    type: 'enum',
+    enum: ResolutionType,
+    nullable: true,
+  })
   resolutionType: ResolutionType | null;
 
   @Column({ name: 'resolution_details', type: 'text', nullable: true })

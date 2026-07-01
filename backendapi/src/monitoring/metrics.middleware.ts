@@ -11,7 +11,8 @@ export class MetricsMiddleware implements NestMiddleware {
 
     res.on('finish', () => {
       const duration = (Date.now() - start) / 1000;
-      const route = req.route?.path || req.path;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const route = req.route?.path ? String(req.route.path) : req.path;
       const method = req.method;
       const statusCode = res.statusCode.toString();
 

@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import type { DashboardMetrics, AnalyticsDashboard } from '../types';
 import { CardSkeleton } from '../components/LoadingSkeleton';
 import ErrorBoundary from '../components/ErrorBoundary';
-
-const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899'];
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -34,6 +32,7 @@ export default function Dashboard() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [timeRange]);
 
   const metricCards = metrics ? [

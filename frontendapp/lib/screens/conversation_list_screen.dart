@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../l10n/strings.dart';
 import 'chat_screen.dart';
 
@@ -37,7 +39,7 @@ class Conversation {
       bookingId: json['bookingId'],
       bookingStatus: json['bookingStatus'],
       lastMessage: json['lastMessage'],
-      lastMessageTime: json['lastMessageTime'] != null 
+      lastMessageTime: json['lastMessageTime'] != null
           ? DateTime.tryParse(json['lastMessageTime'].toString())
           : (json['lastMessageAt'] != null
               ? DateTime.tryParse(json['lastMessageAt'].toString())
@@ -54,20 +56,98 @@ class ConversationListScreen extends StatefulWidget {
   State<ConversationListScreen> createState() => _ConversationListScreenState();
 }
 
-class _ConversationListScreenState extends State<ConversationListScreen> {
+class _ConversationListScreenState extends State<ConversationListScreen>
+    with WidgetsBindingObserver {
   List<Conversation> _conversations = [];
   bool _loading = true;
   String? _error;
+  io.Socket? _socket;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadConversations();
+    _connectSocket();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _disconnectSocket();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadConversations();
+      if (_socket == null || !_socket!.connected) {
+        _connectSocket();
+      }
+    }
+  }
+
+  void _connectSocket() async {
+    final token = await AuthService.getToken();
+    if (token == null) return;
+
+    final baseUrl = ApiService.baseUrl;
+    _socket = io.io(
+      '$baseUrl/chat',
+      io.OptionBuilder()
+          .setTransports(['websocket'])
+          .setAuth({'token': token})
+          .enableAutoConnect()
+          .enableReconnection()
+          .setReconnectionDelay(3000)
+          .setReconnectionAttempts(100)
+          .build(),
+    );
+
+    _socket!.onConnect((_) {
+      debugPrint('[CONV_LIST] Socket connected');
+    });
+
+    _socket!.on('new_message', (data) {
+      debugPrint('[CONV_LIST] new_message received');
+      _loadConversations();
+    });
+
+    _socket!.on('new_direct_message', (data) {
+      debugPrint('[CONV_LIST] new_direct_message received');
+      _loadConversations();
+    });
+
+    _socket!.on('messages_read', (data) {
+      debugPrint('[CONV_LIST] messages_read received');
+      _loadConversations();
+    });
+
+    _socket!.onConnectError((err) {
+      debugPrint('[CONV_LIST] Connect error: $err');
+    });
+
+    _socket!.onDisconnect((_) {
+      debugPrint('[CONV_LIST] Socket disconnected');
+    });
+  }
+
+  void _disconnectSocket() {
+    _socket?.off('new_message');
+    _socket?.off('new_direct_message');
+    _socket?.off('messages_read');
+    _socket?.disconnect();
+    _socket?.dispose();
+    _socket = null;
   }
 
   Future<void> _loadConversations() async {
     try {
-      setState(() { _loading = true; _error = null; });
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
       final data = await ApiService.get('/chat/conversations');
       if (!mounted) return;
       setState(() {
@@ -118,30 +198,42 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
   String _getStatusLabel(String? status) {
     switch (status) {
-      case 'requested': return 'Requested';
-      case 'confirmed': return 'Confirmed';
-      case 'in_progress': return 'In Progress';
-      case 'completed': return 'Completed';
-      case 'cancelled': return 'Cancelled';
-      default: return status ?? '';
+      case 'requested':
+        return 'Requested';
+      case 'confirmed':
+        return 'Confirmed';
+      case 'in_progress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status ?? '';
     }
   }
 
   Color _getStatusColor(String? status) {
     switch (status) {
-      case 'requested': return Colors.orange;
-      case 'confirmed': return Colors.blue;
-      case 'in_progress': return Colors.green;
-      case 'completed': return Colors.grey;
-      case 'cancelled': return Colors.red;
-      default: return Colors.grey;
+      case 'requested':
+        return Colors.orange;
+      case 'confirmed':
+        return Colors.blue;
+      case 'in_progress':
+        return Colors.green;
+      case 'completed':
+        return Colors.grey;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final loc = LocalizationProvider.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(loc.tr('conversations')),
@@ -173,16 +265,19 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey.shade400),
+                          Icon(Icons.chat_bubble_outline,
+                              size: 64, color: Colors.grey.shade400),
                           const SizedBox(height: 16),
                           Text(
                             'No conversations yet',
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                            style: TextStyle(
+                                color: Colors.grey.shade600, fontSize: 16),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Start a chat from a booking or provider profile',
-                            style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                            style: TextStyle(
+                                color: Colors.grey.shade500, fontSize: 14),
                           ),
                         ],
                       ),
@@ -227,10 +322,11 @@ class _ConversationTile extends StatelessWidget {
     return ListTile(
       onTap: onTap,
       leading: CircleAvatar(
-        backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+        backgroundColor:
+            Theme.of(context).primaryColor.withValues(alpha: 0.1),
         child: Text(
-          conversation.partnerName.isNotEmpty 
-              ? conversation.partnerName[0].toUpperCase() 
+          conversation.partnerName.isNotEmpty
+              ? conversation.partnerName[0].toUpperCase()
               : '?',
           style: TextStyle(
             color: Theme.of(context).primaryColor,
@@ -261,7 +357,8 @@ class _ConversationTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               margin: const EdgeInsets.only(right: 6),
               decoration: BoxDecoration(
-                color: getStatusColor(conversation.bookingStatus).withValues(alpha: 0.1),
+                color: getStatusColor(conversation.bookingStatus)
+                    .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -303,8 +400,8 @@ class _ConversationTile extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Text(
-                conversation.unreadCount > 99 
-                    ? '99+' 
+                conversation.unreadCount > 99
+                    ? '99+'
                     : conversation.unreadCount.toString(),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),

@@ -57,7 +57,7 @@ export class PlatformFeesService {
 
   async updateConfig(
     key: string,
-    configValue?: Record<string, any>,
+    configValue?: Record<string, unknown>,
     isActive?: boolean,
     adminUserId?: string,
   ): Promise<PlatformFeeConfig> {
@@ -274,6 +274,7 @@ export class PlatformFeesService {
 
     const promoCode = this.promoCodeRepository.create({
       ...dto,
+      type: dto.type as PromoCodeType,
       validFrom: dto.validFrom ? new Date(dto.validFrom) : undefined,
       validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
     });
@@ -363,13 +364,11 @@ export class PlatformFeesService {
     ) {
       discount = Number(restrictions.maxDiscount);
     }
-    if (
-      restrictions.minBookingAmount &&
-      bookingAmount < Number(restrictions.minBookingAmount)
-    ) {
+    const minBookingAmount = Number(restrictions.minBookingAmount);
+    if (restrictions.minBookingAmount && bookingAmount < minBookingAmount) {
       return {
         valid: false,
-        message: `Minimum booking amount of ₹${restrictions.minBookingAmount} required`,
+        message: `Minimum booking amount of ₹${minBookingAmount} required`,
       };
     }
 
@@ -425,22 +424,24 @@ export class PlatformFeesService {
     const end = endDate ? new Date(endDate) : new Date();
 
     // Convenience fees from bookings
-    const bookingResult = await this.feeConfigRepository.manager
-      .createQueryBuilder(Booking, 'booking')
-      .select('COALESCE(SUM(booking.convenienceFee), 0)', 'total')
-      .where('booking.createdAt BETWEEN :start AND :end', { start, end })
-      .getRawOne();
+    const bookingResult: { total: string } | undefined =
+      await this.feeConfigRepository.manager
+        .createQueryBuilder(Booking, 'booking')
+        .select('COALESCE(SUM(booking.convenienceFee), 0)', 'total')
+        .where('booking.createdAt BETWEEN :start AND :end', { start, end })
+        .getRawOne();
     const totalConvenienceFees = Number(bookingResult?.total || 0);
 
     // Subscription revenue (we don't have payment integration for subs yet)
     const totalSubscriptionRevenue = 0;
 
     // Total discounts from promo code usages
-    const discountResult = await this.promoCodeUsageRepository
-      .createQueryBuilder('usage')
-      .select('COALESCE(SUM(usage.discountAmount), 0)', 'total')
-      .where('usage.createdAt BETWEEN :start AND :end', { start, end })
-      .getRawOne();
+    const discountResult: { total: string } | undefined =
+      await this.promoCodeUsageRepository
+        .createQueryBuilder('usage')
+        .select('COALESCE(SUM(usage.discountAmount), 0)', 'total')
+        .where('usage.createdAt BETWEEN :start AND :end', { start, end })
+        .getRawOne();
     const totalDiscounts = Number(discountResult?.total || 0);
 
     return { totalConvenienceFees, totalSubscriptionRevenue, totalDiscounts };

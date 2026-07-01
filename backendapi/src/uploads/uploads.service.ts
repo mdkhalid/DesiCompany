@@ -1,21 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class UploadsService {
   private readonly logger = new Logger(UploadsService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly storage: StorageService) {}
 
-  async getFileUrl(filename: string): Promise<string> {
-    // In production, this would return a CDN/S3 URL
-    // For now, return a local URL
-    const baseUrl = this.configService.get('APP_URL', 'http://localhost:3000');
-    return `${baseUrl}/uploads/chat/${filename}`;
+  async uploadFile(file: Express.Multer.File, folder: string = 'misc') {
+    return this.storage.upload(file, { folder, isPublic: true });
   }
 
-  async deleteFile(filename: string): Promise<void> {
-    // Implement file deletion if needed
-    this.logger.log(`Deleting file: ${filename}`);
+  getFileUrl(key: string): string {
+    return this.storage.getUrl(key);
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    await this.storage.delete(key);
+    this.logger.log(`Deleted file: ${key}`);
+  }
+
+  getProviderName(): string {
+    return this.storage.getProviderName();
   }
 }

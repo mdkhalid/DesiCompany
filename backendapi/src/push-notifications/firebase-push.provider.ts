@@ -1,12 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+type FirebaseMessaging = {
+  send(message: {
+    token: string;
+    notification: { title: string; body: string };
+    data?: Record<string, string>;
+  }): Promise<string>;
+};
+
 @Injectable()
 export class FirebasePushProvider {
   private readonly logger = new Logger(FirebasePushProvider.name);
-  private messaging: any;
+  private messaging: FirebaseMessaging | null = null;
 
   constructor() {
-    this.initFirebase();
+    this.initFirebase().catch(() => {});
   }
 
   private async initFirebase() {
@@ -19,9 +27,10 @@ export class FirebasePushProvider {
         );
         return;
       }
-      const app = firebaseAdmin.default.initializeApp({
-        credential: firebaseAdmin.default.credential.applicationDefault(),
-      });
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const credential = firebaseAdmin.default.credential.applicationDefault();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const app = firebaseAdmin.default.initializeApp({ credential });
       this.messaging = firebaseAdmin.default.messaging(app);
       this.logger.log('Firebase Admin initialized successfully');
     } catch (error) {

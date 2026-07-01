@@ -7,7 +7,7 @@ export class PlatformFeeConfig extends BaseEntity {
   configKey: string;
 
   @Column({ type: 'jsonb', nullable: true, name: 'config_value' })
-  configValue: Record<string, any>;
+  configValue: Record<string, unknown>;
 
   @Column({ default: true, name: 'is_active' })
   isActive: boolean;

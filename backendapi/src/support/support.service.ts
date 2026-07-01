@@ -30,7 +30,7 @@ export class SupportService {
     subject: string,
     description: string,
     category: SupportTicketCategory,
-  ) {
+  ): Promise<SupportTicket> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
@@ -44,15 +44,15 @@ export class SupportService {
     return this.ticketRepository.save(ticket);
   }
 
-  async getUserTickets(userId: string) {
+  async getUserTickets(userId: string): Promise<SupportTicket[]> {
     return this.ticketRepository.find({
       where: { user: { id: userId } },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async getAllTickets(status?: SupportTicketStatus) {
-    const where: any = {};
+  async getAllTickets(status?: SupportTicketStatus): Promise<SupportTicket[]> {
+    const where: { status?: SupportTicketStatus } = {};
     if (status) where.status = status;
     return this.ticketRepository.find({
       where,
@@ -61,7 +61,7 @@ export class SupportService {
     });
   }
 
-  async getTicketById(id: string) {
+  async getTicketById(id: string): Promise<SupportTicket> {
     const ticket = await this.ticketRepository.findOne({
       where: { id },
       relations: { user: true },
@@ -75,7 +75,7 @@ export class SupportService {
     status: SupportTicketStatus,
     notes?: string,
     adminId?: string,
-  ) {
+  ): Promise<SupportTicket> {
     const ticket = await this.getTicketById(ticketId);
     ticket.status = status;
     if (adminId) ticket.assignedAdminId = adminId;
@@ -95,7 +95,7 @@ export class SupportService {
     message: string,
     isAdmin: boolean,
     attachmentUrl?: string,
-  ) {
+  ): Promise<SupportTicketMessage> {
     const ticket = await this.getTicketById(ticketId);
     const sender = await this.userRepository.findOne({ where: { id: userId } });
     if (!sender) throw new NotFoundException('User not found');
@@ -110,7 +110,7 @@ export class SupportService {
     return this.messageRepository.save(msg);
   }
 
-  async getMessages(ticketId: string) {
+  async getMessages(ticketId: string): Promise<SupportTicketMessage[]> {
     return this.messageRepository.find({
       where: { ticket: { id: ticketId } },
       relations: { sender: true },
@@ -118,7 +118,11 @@ export class SupportService {
     });
   }
 
-  async ensureAccess(ticketId: string, userId: string, role: UserRole) {
+  async ensureAccess(
+    ticketId: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<SupportTicket> {
     const ticket = await this.getTicketById(ticketId);
     if (role === UserRole.ADMIN) return ticket;
     if (ticket.user.id !== userId) {

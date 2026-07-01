@@ -6,9 +6,20 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { Logger } from 'nestjs-pino';
+import * as Sentry from '@sentry/nestjs';
 import { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    release: process.env.npm_package_version || undefined,
+    tracesSampleRate: parseFloat(
+      process.env.SENTRY_TRACES_SAMPLE_RATE || '0.1',
+    ),
+  });
+}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -50,8 +61,22 @@ async function bootstrap() {
             'https://fonts.gstatic.com',
             'https://cdn.jsdelivr.net',
           ],
-          imgSrc: ["'self'", 'data:', 'blob:', 'http://localhost:3000', 'http://192.168.*:*'],
-          connectSrc: ["'self'", "http://localhost:*", "https://localhost:*", "ws://localhost:*", "wss://localhost:*", "http://192.168.*:*", "ws://192.168.*:*"],
+          imgSrc: [
+            "'self'",
+            'data:',
+            'blob:',
+            'http://localhost:3000',
+            'http://192.168.*:*',
+          ],
+          connectSrc: [
+            "'self'",
+            'http://localhost:*',
+            'https://localhost:*',
+            'ws://localhost:*',
+            'wss://localhost:*',
+            'http://192.168.*:*',
+            'ws://192.168.*:*',
+          ],
         },
       },
       frameguard: { action: 'deny' },
@@ -72,8 +97,6 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-
-  app.useGlobalFilters(new AllExceptionsFilter());
 
   const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')

@@ -42,9 +42,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _loadUser() async {
     state = state.copyWith(isLoading: true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final userData = prefs.getString('user_data');
+      final token = await AuthService.getToken();
+      final userData = await AuthService.getUserData();
       
       if (token != null && userData != null) {
         final user = User.fromJson(

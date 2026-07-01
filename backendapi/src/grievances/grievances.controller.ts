@@ -21,7 +21,16 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 import { GrievancesService } from './grievances.service';
 import { ChatbotService } from './chatbot.service';
-import { GrievanceStatus, GrievancePriority, ResolutionType } from './entities/grievance.entity';
+import {
+  GrievanceStatus,
+  GrievancePriority,
+  ResolutionType,
+} from './entities/grievance.entity';
+import { Request } from 'express';
+
+interface AuthenticatedRequest extends Request {
+  user: { id: string };
+}
 
 @ApiTags('Grievances')
 @ApiBearerAuth()
@@ -45,20 +54,23 @@ export class GrievancesController {
   @Post('start/:bookingId')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Start a grievance for a booking (customer)' })
-  async startGrievance(@Req() req: any, @Param('bookingId') bookingId: string) {
+  async startGrievance(
+    @Req() req: AuthenticatedRequest,
+    @Param('bookingId') bookingId: string,
+  ) {
     return this.chatbotService.startGrievance(bookingId, req.user.id);
   }
 
   @Get('my-grievances')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Get customer grievances' })
-  async getMyGrievances(@Req() req: any) {
+  async getMyGrievances(@Req() _req: AuthenticatedRequest) {
     return this.grievancesService.getAllGrievances();
   }
 
   @Get('categories')
   @ApiOperation({ summary: 'Get grievance categories' })
-  async getCategories() {
+  getCategories() {
     return this.chatbotService.getCategories();
   }
 
@@ -70,19 +82,13 @@ export class GrievancesController {
 
   @Post(':id/message')
   @ApiOperation({ summary: 'Send message to chatbot' })
-  async sendMessage(
-    @Param('id') id: string,
-    @Body('message') message: string,
-  ) {
+  async sendMessage(@Param('id') id: string, @Body('message') message: string) {
     return this.chatbotService.processMessage(id, message);
   }
 
   @Post(':id/select-option')
   @ApiOperation({ summary: 'Select a chatbot option' })
-  async selectOption(
-    @Param('id') id: string,
-    @Body('option') option: string,
-  ) {
+  async selectOption(@Param('id') id: string, @Body('option') option: string) {
     return this.chatbotService.handleOptionSelection(id, option);
   }
 
@@ -124,7 +130,10 @@ export class GrievancesController {
   @Put('admin/:id/assign')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Assign grievance to admin' })
-  async assignToAdmin(@Req() req: any, @Param('id') id: string) {
+  async assignToAdmin(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     return this.grievancesService.assignToAdmin(id, req.user.id);
   }
 
@@ -132,7 +141,7 @@ export class GrievancesController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Resolve a grievance' })
   async resolveGrievance(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body()
     body: {
@@ -148,7 +157,7 @@ export class GrievancesController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Record admin call to customer' })
   async recordCall(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body('callNotes') callNotes: string,
   ) {

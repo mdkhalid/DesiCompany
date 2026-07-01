@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import type { Booking } from '../types';
 import SearchInput from '../components/SearchInput';
 import { TableSkeleton } from '../components/LoadingSkeleton';
-import { notify } from '../components/Toast';
+import { notify } from '../services/notify';
 
 export default function Bookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);

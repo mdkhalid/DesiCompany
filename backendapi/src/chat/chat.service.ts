@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
 import { Message, MessageType } from './entities/message.entity';
-import { DirectMessage, DirectMessageType } from './entities/direct-message.entity';
+import {
+  DirectMessage,
+  DirectMessageType,
+} from './entities/direct-message.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
@@ -45,7 +48,11 @@ export class ChatService {
     return `${firstName || ''} ${lastName || ''}`.trim();
   }
 
-  async getConversations(userId: string, page = 1, limit = 20): Promise<{ conversations: ConversationItem[]; total: number }> {
+  async getConversations(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{ conversations: ConversationItem[]; total: number }> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: { customer: true, provider: true },
@@ -59,26 +66,29 @@ export class ChatService {
     const conversations: ConversationItem[] = [];
 
     // === BOOKING CONVERSATIONS ===
-    type BookingWithRelations = Booking & { customer: Customer; provider: Provider & { user: User } };
+    type BookingWithRelations = Booking & {
+      customer: Customer;
+      provider: Provider & { user: User };
+    };
     let bookings: BookingWithRelations[];
     if (isCustomer && user.customer) {
       bookings = await this.bookingRepository.find({
         where: { customer: { id: user.customer.id } },
         relations: { customer: true, provider: { user: true } },
         order: { updatedAt: 'DESC' },
-      }) as BookingWithRelations[];
+      });
     } else if (isProvider && user.provider) {
       bookings = await this.bookingRepository.find({
         where: { provider: { id: user.provider.id } },
         relations: { customer: { user: true }, provider: true },
         order: { updatedAt: 'DESC' },
-      }) as BookingWithRelations[];
+      });
     } else {
       bookings = [];
     }
 
     if (bookings.length > 0) {
-      const bookingIds = bookings.map(b => b.id);
+      const bookingIds = bookings.map((b) => b.id);
 
       // Batch: last message per booking (single query)
       const lastMessages = await this.messageRepository
@@ -88,16 +98,23 @@ export class ChatService {
         .orderBy('msg.createdAt', 'DESC')
         .getMany();
 
-      const lastMessageMap = new Map<string, { content: string; createdAt: Date }>();
+      const lastMessageMap = new Map<
+        string,
+        { content: string; createdAt: Date }
+      >();
       for (const m of lastMessages) {
         const bid = m.booking?.id;
         if (bid && !lastMessageMap.has(bid)) {
-          lastMessageMap.set(bid, { content: m.content, createdAt: m.createdAt });
+          lastMessageMap.set(bid, {
+            content: m.content,
+            createdAt: m.createdAt,
+          });
         }
       }
 
       // Batch: unread count per booking (single query)
-      const unreadRows = await this.messageRepository
+      type UnreadRow = { bookingId: string; cnt: string; msg_booking: string };
+      const unreadRows: UnreadRow[] = await this.messageRepository
         .createQueryBuilder('msg')
         .select('msg.booking', 'bookingId')
         .addSelect('COUNT(*)', 'cnt')
@@ -117,10 +134,16 @@ export class ChatService {
 
         if (isCustomer && booking.provider) {
           partnerId = booking.provider.user?.id || '';
-          partnerName = this.getFullName(booking.provider.firstName, booking.provider.lastName);
+          partnerName = this.getFullName(
+            booking.provider.firstName,
+            booking.provider.lastName,
+          );
         } else if (isProvider && booking.customer) {
           partnerId = booking.customer.user?.id || '';
-          partnerName = this.getFullName(booking.customer.firstName, booking.customer.lastName);
+          partnerName = this.getFullName(
+            booking.customer.firstName,
+            booking.customer.lastName,
+          );
         } else {
           continue;
         }
@@ -163,8 +186,10 @@ export class ChatService {
     }
 
     // Sort by last message time descending
-    conversations.sort((a, b) =>
-      new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+    conversations.sort(
+      (a, b) =>
+        new Date(b.lastMessageAt).getTime() -
+        new Date(a.lastMessageAt).getTime(),
     );
 
     // Paginate
@@ -182,7 +207,8 @@ export class ChatService {
     userId: string,
     partnerRole: 'customer' | 'provider',
   ): Promise<void> {
-    const partnerField = userRole === 'customer' ? 'dm.provider' : 'dm.customer';
+    const partnerField =
+      userRole === 'customer' ? 'dm.provider' : 'dm.customer';
 
     const lastMessages = await this.directMessageRepository
       .createQueryBuilder('dm')
@@ -191,7 +217,10 @@ export class ChatService {
       .leftJoinAndSelect('dmc.user', 'dmcu')
       .leftJoinAndSelect('dm.provider', 'dmp')
       .leftJoinAndSelect('dmp.user', 'dmpu')
-      .where(userRole === 'customer' ? 'dm.customer = :pid' : 'dm.provider = :pid', { pid: profileId })
+      .where(
+        userRole === 'customer' ? 'dm.customer = :pid' : 'dm.provider = :pid',
+        { pid: profileId },
+      )
       .orderBy(partnerField)
       .addOrderBy('dm.createdAt', 'DESC')
       .getMany();
@@ -199,17 +228,26 @@ export class ChatService {
     if (lastMessages.length === 0) return;
 
     // Batch: get unread counts per partner
-    const partnerProfileIds = lastMessages.map(m =>
+    const partnerProfileIds = lastMessages.map((m) =>
       userRole === 'customer' ? m.provider.id : m.customer.id,
     );
 
-    const unreadWhere = userRole === 'customer'
-      ? { customer: { id: profileId }, provider: { id: In(partnerProfileIds) }, isRead: false }
-      : { provider: { id: profileId }, customer: { id: In(partnerProfileIds) }, isRead: false };
+    const unreadWhere =
+      userRole === 'customer'
+        ? {
+            customer: { id: profileId },
+            provider: { id: In(partnerProfileIds) },
+            isRead: false,
+          }
+        : {
+            provider: { id: profileId },
+            customer: { id: In(partnerProfileIds) },
+            isRead: false,
+          };
 
     // Fix: only count messages from the other person as unread
     const unreadRows = await this.directMessageRepository.find({
-      where: { ...unreadWhere, sender: { id: Not(userId) } } as any,
+      where: { ...unreadWhere, sender: { id: Not(userId) } },
       select: { id: true, sender: true, customer: true, provider: true },
     });
 
@@ -225,17 +263,24 @@ export class ChatService {
 
       if (userRole === 'customer' && dm.provider) {
         partnerId = dm.provider.user?.id || '';
-        partnerName = this.getFullName(dm.provider.firstName, dm.provider.lastName);
+        partnerName = this.getFullName(
+          dm.provider.firstName,
+          dm.provider.lastName,
+        );
       } else if (userRole === 'provider' && dm.customer) {
         partnerId = dm.customer.user?.id || '';
-        partnerName = this.getFullName(dm.customer.firstName, dm.customer.lastName);
+        partnerName = this.getFullName(
+          dm.customer.firstName,
+          dm.customer.lastName,
+        );
       } else {
         continue;
       }
 
       if (!partnerId) continue;
 
-      const partnerProfileKey = userRole === 'customer' ? dm.provider.id : dm.customer.id;
+      const partnerProfileKey =
+        userRole === 'customer' ? dm.provider.id : dm.customer.id;
       conversations.push({
         id: `direct_${partnerId}`,
         type: 'direct',
@@ -254,7 +299,7 @@ export class ChatService {
     type: 'booking' | 'direct',
     targetId: string,
     page = 1,
-    limit = 50
+    limit = 50,
   ): Promise<{ messages: Message[] | DirectMessage[]; total: number }> {
     if (type === 'booking') {
       const [messages, total] = await this.messageRepository.findAndCount({
@@ -268,7 +313,7 @@ export class ChatService {
       // Mark messages as read
       await this.messageRepository.update(
         { booking: { id: targetId }, isRead: false },
-        { isRead: true }
+        { isRead: true },
       );
 
       return { messages: messages.reverse(), total };
@@ -282,15 +327,17 @@ export class ChatService {
       const customerId = parts[1];
       const providerId = parts[2];
 
-      const [messages, total] = await this.directMessageRepository.findAndCount({
-        where: [
-          { customer: { id: customerId }, provider: { id: providerId } },
-        ],
-        relations: { sender: { customer: true, provider: true } },
-        order: { createdAt: 'DESC' },
-        skip: (page - 1) * limit,
-        take: limit,
-      });
+      const [messages, total] = await this.directMessageRepository.findAndCount(
+        {
+          where: [
+            { customer: { id: customerId }, provider: { id: providerId } },
+          ],
+          relations: { sender: { customer: true, provider: true } },
+          order: { createdAt: 'DESC' },
+          skip: (page - 1) * limit,
+          take: limit,
+        },
+      );
 
       // Mark as read
       await this.directMessageRepository.update(
@@ -299,7 +346,7 @@ export class ChatService {
           provider: { id: providerId },
           isRead: false,
         },
-        { isRead: true }
+        { isRead: true },
       );
 
       return { messages: messages.reverse(), total };
@@ -312,7 +359,7 @@ export class ChatService {
     targetId: string,
     content: string,
     messageType: string = 'text',
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>,
   ): Promise<Message | DirectMessage> {
     if (type === 'booking') {
       const message = this.messageRepository.create({
@@ -352,11 +399,15 @@ export class ChatService {
     }
   }
 
-  async markAsRead(userId: string, type: 'booking' | 'direct', targetId: string): Promise<void> {
+  async markAsRead(
+    userId: string,
+    type: 'booking' | 'direct',
+    targetId: string,
+  ): Promise<void> {
     if (type === 'booking') {
       await this.messageRepository.update(
         { booking: { id: targetId }, isRead: false },
-        { isRead: true }
+        { isRead: true },
       );
     } else {
       const parts = targetId.split('_');
@@ -366,8 +417,12 @@ export class ChatService {
       const providerId = parts[2];
 
       await this.directMessageRepository.update(
-        { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
-        { isRead: true }
+        {
+          customer: { id: customerId },
+          provider: { id: providerId },
+          isRead: false,
+        },
+        { isRead: true },
       );
     }
   }

@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
@@ -7,6 +8,7 @@ import '../l10n/strings.dart';
 import '../widgets/distance_badge.dart';
 import '../widgets/labeled_icon_button.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
   @override
@@ -108,7 +110,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     try {
       final data = await ApiService.get('/notifications/unread-count');
       if (mounted) setState(() => _unreadCount = data as int);
-    } catch (e) {}
+    } catch (e, st) { AppLogger.e('customer_home_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _initLocation() async {
@@ -273,7 +275,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 const SizedBox(width: 8),
                 _buildIconButton(
                   Icons.logout,
-                  () => Navigator.pushReplacementNamed(context, '/login'),
+                  () async {
+                  await AuthService.logout();
+                  if (mounted) Navigator.pushReplacementNamed(context, '/login');
+                },
                   tooltipKey: 'header_logout',
                 ),
               ],

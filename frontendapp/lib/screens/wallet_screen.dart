@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../l10n/strings.dart';
 import '../theme.dart';
 import '../services/api_service.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
   @override
@@ -60,7 +61,7 @@ class _WalletScreenState extends State<WalletScreen> {
       if (result is Map && result['membership'] != null) {
         if (mounted) setState(() => _hasFeeWaiver = true);
       }
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('wallet_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _requestInstantPayout() async {
@@ -122,7 +123,7 @@ class _WalletScreenState extends State<WalletScreen> {
     DateTime? dt;
     try {
       dt = DateTime.parse(raw.toString());
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('wallet_screen', 'Operation failed', e, st);
       return raw.toString();
     }
     return DateFormat('d MMM yyyy, h:mm a').format(dt);

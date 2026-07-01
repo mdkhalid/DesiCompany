@@ -33,7 +33,12 @@ export class ReferralsService {
     return result;
   }
 
-  async getOrCreateReferralCode(userId: string) {
+  async getOrCreateReferralCode(userId: string): Promise<{
+    referralCode: string;
+    referrerCreditAmount: number;
+    referredCreditAmount: number;
+    totalReferrals: number;
+  }> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
     });
@@ -64,7 +69,10 @@ export class ReferralsService {
     };
   }
 
-  async applyReferralCode(referredUserId: string, referralCode: string) {
+  async applyReferralCode(
+    referredUserId: string,
+    referralCode: string,
+  ): Promise<{ message: string; credited: number }> {
     const referredUser = await this.userRepository.findOne({
       where: { id: referredUserId },
     });
@@ -112,7 +120,11 @@ export class ReferralsService {
     };
   }
 
-  async getReferralStats(userId: string) {
+  async getReferralStats(userId: string): Promise<{
+    referralCode: string | null;
+    totalReferrals: number;
+    totalCreditsEarned: number;
+  }> {
     const referral = await this.referralRepository.findOne({
       where: { referrer: { id: userId } },
     });
@@ -125,12 +137,14 @@ export class ReferralsService {
       };
     }
 
-    const totalCredits = await this.referralRepository
-      .createQueryBuilder('referral')
-      .where('referral.referrer_id = :userId', { userId })
-      .andWhere('referral.is_used = :isUsed', { isUsed: true })
-      .select('SUM(referral.referrer_credit_amount)', 'total')
-      .getRawOne();
+    type CreditsResult = { total: string };
+    const totalCredits: CreditsResult | undefined =
+      await this.referralRepository
+        .createQueryBuilder('referral')
+        .where('referral.referrer_id = :userId', { userId })
+        .andWhere('referral.is_used = :isUsed', { isUsed: true })
+        .select('SUM(referral.referrer_credit_amount)', 'total')
+        .getRawOne();
 
     return {
       referralCode: referral.referralCode,
@@ -149,7 +163,7 @@ export class ReferralsService {
     userId: string,
     amount: number,
     description: string,
-  ) {
+  ): Promise<void> {
     let wallet = await this.walletRepository.findOne({
       where: { user: { id: userId } },
     });

@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 import '../theme.dart';
 import 'provider_job_detail_screen.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ProviderRequestsScreen extends StatefulWidget {
   const ProviderRequestsScreen({super.key});
   @override
@@ -100,7 +101,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
       if (diff.inHours > 0) return '${diff.inHours}h ago';
       if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
       return 'Just now';
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('provider_requests_screen', 'Operation failed', e, st);
       return '';
     }
   }

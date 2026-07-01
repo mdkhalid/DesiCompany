@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ProviderReviewsScreen extends StatefulWidget {
   const ProviderReviewsScreen({super.key});
 
@@ -192,7 +193,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
       try {
         final date = DateTime.parse(createdAt);
         dateStr = '${date.day}/${date.month}/${date.year}';
-      } catch (_) {}
+      } catch (e, st) { AppLogger.e('provider_reviews_screen', 'Operation failed', e, st); }
     }
 
     return Container(

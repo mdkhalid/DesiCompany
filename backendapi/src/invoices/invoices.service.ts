@@ -5,6 +5,59 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 
+interface InvoiceCharge {
+  type: string;
+  description: string;
+  amount: number;
+}
+
+interface InvoiceData {
+  invoice: {
+    invoiceNumber: string;
+    invoiceDate: string;
+    bookingId: string;
+    bookingDate: Date;
+    bookingStatus: string;
+  };
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
+  provider: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  service: {
+    category: string;
+    description: string;
+  };
+  charges: InvoiceCharge[];
+  financials: {
+    subtotal: number;
+    taxRate: number;
+    taxAmount: number;
+    totalAmount: number;
+    commissionRate: number;
+    commissionAmount: number;
+    providerEarnings: number;
+  };
+  payment: {
+    id: string;
+    method: string;
+    status: string;
+    amount: number;
+    gatewayOrderId: string;
+  } | null;
+  company: {
+    name: string;
+    address: string;
+    gstin: string;
+  };
+}
+
 @Injectable()
 export class InvoicesService {
   constructor(
@@ -16,7 +69,7 @@ export class InvoicesService {
     private readonly providerServiceRepository: Repository<ProviderService>,
   ) {}
 
-  async generateInvoice(bookingId: string) {
+  async generateInvoice(bookingId: string): Promise<InvoiceData> {
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
       relations: {
@@ -109,10 +162,10 @@ export class InvoicesService {
     return this.renderInvoiceHTML(invoice);
   }
 
-  private renderInvoiceHTML(invoice: any): string {
+  private renderInvoiceHTML(invoice: InvoiceData): string {
     const chargesHTML = invoice.charges
       .map(
-        (c: any) =>
+        (c) =>
           `<tr><td>${c.type}</td><td>${c.description || '-'}</td><td style="text-align:right">Rs. ${c.amount.toFixed(2)}</td></tr>`,
       )
       .join('');
@@ -140,7 +193,7 @@ td{padding:10px;border-bottom:1px solid #eee}
 <div class="party"><h3>Service Provider</h3><p><strong>${invoice.provider.name}</strong></p><p>${invoice.provider.phone}</p><p>${invoice.provider.email || ''}</p></div></div>
 <h3>Service Details</h3><table>
 <thead><tr><th>Type</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
-<tbody><tr><td>${invoice.service.category || 'Service'}</td><td>${invoice.service.description || '-'}</td><td style="text-align:right">Rs. ${(invoice.financials.subtotal - invoice.charges.reduce((s: number, c: any) => s + c.amount, 0)).toFixed(2)}</td></tr>
+<tbody><tr><td>${invoice.service.category || 'Service'}</td><td>${invoice.service.description || '-'}</td><td style="text-align:right">Rs. ${(invoice.financials.subtotal - invoice.charges.reduce((s: number, c) => s + c.amount, 0)).toFixed(2)}</td></tr>
 ${chargesHTML}</tbody></table>
 <div class="totals"><div class="total-row"><span>Subtotal:</span><span>Rs. ${invoice.financials.subtotal.toFixed(2)}</span></div>
 <div class="total-row"><span>GST (${invoice.financials.taxRate}%):</span><span>Rs. ${invoice.financials.taxAmount.toFixed(2)}</span></div>

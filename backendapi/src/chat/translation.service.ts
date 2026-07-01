@@ -61,10 +61,7 @@ export class TranslationService {
       : SupportedLanguage.EN;
   }
 
-  async translate(
-    text: string,
-    targetLang: SupportedLanguage,
-  ): Promise<TranslationResult> {
+  translate(text: string, targetLang: SupportedLanguage): TranslationResult {
     if (!text || text.trim().length === 0) {
       return {
         original: text,

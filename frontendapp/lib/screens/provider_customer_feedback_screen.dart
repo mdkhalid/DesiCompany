@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ProviderCustomerFeedbackScreen extends StatefulWidget {
   final String bookingId;
   final String customerName;
@@ -400,7 +401,7 @@ class _ProviderCustomerFeedbackScreenState
       try {
         final date = DateTime.parse(createdAt);
         dateStr = '${date.day}/${date.month}/${date.year}';
-      } catch (_) {}
+      } catch (e, st) { AppLogger.e('provider_customer_feedback_screen', 'Operation failed', e, st); }
     }
 
     String customerLabel = '';

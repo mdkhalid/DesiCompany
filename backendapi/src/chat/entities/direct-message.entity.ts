@@ -9,6 +9,7 @@ export enum DirectMessageType {
   IMAGE = 'image',
   QUOTE = 'quote',
   QUICK_REPLY = 'quick_reply',
+  LOCATION = 'location',
 }
 
 @Entity('direct_messages')
@@ -32,5 +33,11 @@ export class DirectMessage extends BaseEntity {
   messageType: DirectMessageType;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
+
+  @Column({ default: false })
+  edited: boolean;
+
+  @Column({ default: false })
+  deleted: boolean;
 }

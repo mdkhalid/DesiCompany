@@ -15,17 +15,20 @@ export enum SubscriptionStatus {
   PAUSED = 'paused',
 }
 
-export const PLAN_FEATURES: Record<SubscriptionPlan, {
-  name: string;
-  price: number;
-  duration: number;
-  commissionDiscount: number;
-  priorityBoost: number;
-  featuredBadge: boolean;
-  analyticsAccess: boolean;
-  supportPriority: string;
-  maxServices: number;
-}> = {
+export const PLAN_FEATURES: Record<
+  SubscriptionPlan,
+  {
+    name: string;
+    price: number;
+    duration: number;
+    commissionDiscount: number;
+    priorityBoost: number;
+    featuredBadge: boolean;
+    analyticsAccess: boolean;
+    supportPriority: string;
+    maxServices: number;
+  }
+> = {
   [SubscriptionPlan.BASIC]: {
     name: 'Basic',
     price: 499,
@@ -99,5 +102,5 @@ export class Subscription extends BaseEntity {
   cancelledAt: Date;
 
   @Column({ name: 'features_snapshot', type: 'jsonb', nullable: true })
-  featuresSnapshot: Record<string, any>;
+  featuresSnapshot: Record<string, unknown>;
 }

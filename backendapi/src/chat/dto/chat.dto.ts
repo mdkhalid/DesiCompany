@@ -6,7 +6,11 @@ export class TranslateDto {
   @IsString()
   text: string;
 
-  @ApiProperty({ description: 'Target language code', example: 'hi', enum: ['en', 'hi'] })
+  @ApiProperty({
+    description: 'Target language code',
+    example: 'hi',
+    enum: ['en', 'hi'],
+  })
   @IsString()
   targetLang: string;
 }
@@ -33,31 +37,51 @@ export class SendMessageDto {
   @IsString()
   bookingId?: string;
 
-  @ApiPropertyOptional({ description: 'Provider ID (for direct chat)', example: 'uuid' })
+  @ApiPropertyOptional({
+    description: 'Provider ID (for direct chat)',
+    example: 'uuid',
+  })
   @IsOptional()
   @IsString()
   providerId?: string;
 
-  @ApiProperty({ description: 'Message content', example: 'Hello, I need your service' })
+  @ApiProperty({
+    description: 'Message content',
+    example: 'Hello, I need your service',
+  })
   @IsString()
   content: string;
 
-  @ApiPropertyOptional({ description: 'Message type', example: 'text', enum: ['text', 'image', 'quote', 'quick_reply'] })
+  @ApiPropertyOptional({
+    description: 'Message type',
+    example: 'text',
+    enum: ['text', 'image', 'quote', 'quick_reply'],
+  })
   @IsOptional()
   @IsString()
   type?: string;
 
-  @ApiPropertyOptional({ description: 'Metadata (image URL, quote amount, etc.)', example: {} })
+  @ApiPropertyOptional({
+    description: 'Metadata (image URL, quote amount, etc.)',
+    example: {},
+  })
   @IsOptional()
   metadata?: Record<string, any>;
 }
 
 export class MessageAttachmentDto {
-  @ApiProperty({ description: 'Attachment type', example: 'image', enum: ['image', 'document'] })
+  @ApiProperty({
+    description: 'Attachment type',
+    example: 'image',
+    enum: ['image', 'document'],
+  })
   @IsString()
   type: string;
 
-  @ApiProperty({ description: 'File URL', example: 'https://storage.example.com/image.jpg' })
+  @ApiProperty({
+    description: 'File URL',
+    example: 'https://storage.example.com/image.jpg',
+  })
   @IsString()
   url: string;
 
@@ -77,7 +101,10 @@ export class TypingStatusDto {
   @IsString()
   bookingId?: string;
 
-  @ApiPropertyOptional({ description: 'Room ID for direct chat', example: 'direct_customerId_providerId' })
+  @ApiPropertyOptional({
+    description: 'Room ID for direct chat',
+    example: 'direct_customerId_providerId',
+  })
   @IsOptional()
   @IsString()
   roomId?: string;

@@ -7,7 +7,10 @@ import {
   GrievancePriority,
   ResolutionType,
 } from './entities/grievance.entity';
-import { GrievanceMessage, MessageSender } from './entities/grievance-message.entity';
+import {
+  GrievanceMessage,
+  MessageSender,
+} from './entities/grievance-message.entity';
 
 @Injectable()
 export class GrievancesService {
@@ -22,7 +25,7 @@ export class GrievancesService {
     status?: GrievanceStatus;
     priority?: GrievancePriority;
   }): Promise<Grievance[]> {
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (filters?.status) where.status = filters.status;
     if (filters?.priority) where.priority = filters.priority;
@@ -39,7 +42,9 @@ export class GrievancesService {
 
   async getEscalatedGrievances(): Promise<Grievance[]> {
     return this.grievanceRepository.find({
-      where: { status: In([GrievanceStatus.ESCALATED, GrievanceStatus.ADMIN_REVIEW]) },
+      where: {
+        status: In([GrievanceStatus.ESCALATED, GrievanceStatus.ADMIN_REVIEW]),
+      },
       relations: {
         booking: { provider: { user: true } },
         customer: true,
@@ -66,14 +71,22 @@ export class GrievancesService {
     return grievance;
   }
 
-  async assignToAdmin(grievanceId: string, adminId: string): Promise<Grievance> {
+  async assignToAdmin(
+    grievanceId: string,
+    adminId: string,
+  ): Promise<Grievance> {
     const grievance = await this.getGrievanceById(grievanceId);
     grievance.status = GrievanceStatus.ADMIN_REVIEW;
     await this.grievanceRepository.save(grievance);
 
-    await this.addMessage(grievanceId, MessageSender.SYSTEM, 'Assigned to admin for review', {
-      adminId,
-    });
+    await this.addMessage(
+      grievanceId,
+      MessageSender.SYSTEM,
+      'Assigned to admin for review',
+      {
+        adminId,
+      },
+    );
 
     return grievance;
   }
@@ -98,9 +111,11 @@ export class GrievancesService {
 
     await this.grievanceRepository.save(grievance);
 
-    await this.addMessage(grievanceId, MessageSender.ADMIN, 
+    await this.addMessage(
+      grievanceId,
+      MessageSender.ADMIN,
       `Your grievance has been resolved.\n\nResolution: ${data.resolutionDetails}`,
-      { resolutionType: data.resolutionType }
+      { resolutionType: data.resolutionType },
     );
 
     return grievance;
@@ -118,15 +133,23 @@ export class GrievancesService {
 
     await this.grievanceRepository.save(grievance);
 
-    await this.addMessage(grievanceId, MessageSender.SYSTEM, 'Admin call initiated', {
-      adminId,
-      callNotes,
-    });
+    await this.addMessage(
+      grievanceId,
+      MessageSender.SYSTEM,
+      'Admin call initiated',
+      {
+        adminId,
+        callNotes,
+      },
+    );
 
     return grievance;
   }
 
-  async addAdminMessage(grievanceId: string, content: string): Promise<GrievanceMessage> {
+  async addAdminMessage(
+    grievanceId: string,
+    content: string,
+  ): Promise<GrievanceMessage> {
     return this.addMessage(grievanceId, MessageSender.ADMIN, content);
   }
 
@@ -139,9 +162,17 @@ export class GrievancesService {
   }> {
     const [total, open, escalated, resolved] = await Promise.all([
       this.grievanceRepository.count(),
-      this.grievanceRepository.count({ where: { status: GrievanceStatus.OPEN } }),
-      this.grievanceRepository.count({ where: { status: In([GrievanceStatus.ESCALATED, GrievanceStatus.ADMIN_REVIEW]) } }),
-      this.grievanceRepository.count({ where: { status: GrievanceStatus.RESOLVED } }),
+      this.grievanceRepository.count({
+        where: { status: GrievanceStatus.OPEN },
+      }),
+      this.grievanceRepository.count({
+        where: {
+          status: In([GrievanceStatus.ESCALATED, GrievanceStatus.ADMIN_REVIEW]),
+        },
+      }),
+      this.grievanceRepository.count({
+        where: { status: GrievanceStatus.RESOLVED },
+      }),
     ]);
 
     // Calculate average resolution time
@@ -158,7 +189,9 @@ export class GrievancesService {
         const resolved = new Date(g.resolvedAt).getTime();
         return sum + (resolved - created);
       }, 0);
-      avgResolutionTime = Math.round(totalTime / resolvedGrievances.length / (1000 * 60 * 60)); // hours
+      avgResolutionTime = Math.round(
+        totalTime / resolvedGrievances.length / (1000 * 60 * 60),
+      ); // hours
     }
 
     return { total, open, escalated, resolved, avgResolutionTime };
@@ -168,7 +201,7 @@ export class GrievancesService {
     grievanceId: string,
     sender: MessageSender,
     content: string,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Promise<GrievanceMessage> {
     const message = this.messageRepository.create({
       grievance: { id: grievanceId } as Grievance,

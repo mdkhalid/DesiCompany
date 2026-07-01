@@ -26,7 +26,24 @@ export class AnalyticsService {
     private readonly transactionRepository: Repository<Transaction>,
   ) {}
 
-  async getDashboardAnalytics() {
+  async getDashboardAnalytics(): Promise<{
+    overview: {
+      totalBookings: number;
+      todayBookings: number;
+      weekBookings: number;
+      monthBookings: number;
+      totalUsers: number;
+      totalProviders: number;
+      totalCustomers: number;
+      totalRevenue: number;
+      monthRevenue: number;
+      averageRating: number;
+    };
+    recentBookings: Booking[];
+    topProviders: Provider[];
+    bookingsByStatus: Record<string, number>;
+    dailyBookingsTrend: Record<string, unknown>[];
+  }> {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thisWeek = new Date(today);
@@ -97,15 +114,16 @@ export class AnalyticsService {
       : new Date(new Date().setDate(new Date().getDate() - 30));
     const end = endDate ? new Date(endDate) : new Date();
 
-    const dailyRevenue = await this.transactionRepository
-      .createQueryBuilder('transaction')
-      .select('DATE(transaction.created_at)', 'date')
-      .addSelect('SUM(transaction.amount)', 'revenue')
-      .where('transaction.created_at BETWEEN :start AND :end', { start, end })
-      .andWhere("transaction.type = 'payment'")
-      .groupBy('DATE(transaction.created_at)')
-      .orderBy('date', 'ASC')
-      .getRawMany();
+    const dailyRevenue: { date: string; revenue: string }[] =
+      await this.transactionRepository
+        .createQueryBuilder('transaction')
+        .select('DATE(transaction.created_at)', 'date')
+        .addSelect('SUM(transaction.amount)', 'revenue')
+        .where('transaction.created_at BETWEEN :start AND :end', { start, end })
+        .andWhere("transaction.type = 'payment'")
+        .groupBy('DATE(transaction.created_at)')
+        .orderBy('date', 'ASC')
+        .getRawMany();
 
     const totalRevenue = dailyRevenue.reduce(
       (sum, row) => sum + Number(row.revenue),
@@ -174,33 +192,36 @@ export class AnalyticsService {
   }
 
   private async getTotalRevenue(): Promise<number> {
-    const result = await this.transactionRepository
-      .createQueryBuilder('transaction')
-      .select('SUM(transaction.amount)', 'total')
-      .where("transaction.type = 'payment'")
-      .getRawOne();
+    const result: Record<string, unknown> | undefined =
+      await this.transactionRepository
+        .createQueryBuilder('transaction')
+        .select('SUM(transaction.amount)', 'total')
+        .where("transaction.type = 'payment'")
+        .getRawOne();
     return Number(result?.total || 0);
   }
 
   private async getMonthRevenue(startDate: Date): Promise<number> {
-    const result = await this.transactionRepository
-      .createQueryBuilder('transaction')
-      .select('SUM(transaction.amount)', 'total')
-      .where("transaction.type = 'payment'")
-      .andWhere('transaction.created_at >= :startDate', { startDate })
-      .getRawOne();
+    const result: Record<string, unknown> | undefined =
+      await this.transactionRepository
+        .createQueryBuilder('transaction')
+        .select('SUM(transaction.amount)', 'total')
+        .where("transaction.type = 'payment'")
+        .andWhere('transaction.created_at >= :startDate', { startDate })
+        .getRawOne();
     return Number(result?.total || 0);
   }
 
   private async getAverageRating(): Promise<number> {
-    const result = await this.reviewRepository
-      .createQueryBuilder('review')
-      .select('AVG(review.rating)', 'average')
-      .getRawOne();
+    const result: Record<string, unknown> | undefined =
+      await this.reviewRepository
+        .createQueryBuilder('review')
+        .select('AVG(review.rating)', 'average')
+        .getRawOne();
     return Number(result?.average || 0);
   }
 
-  private async getRecentBookings(limit: number) {
+  private async getRecentBookings(limit: number): Promise<Booking[]> {
     return this.bookingRepository.find({
       relations: {
         customer: { user: true },
@@ -212,7 +233,7 @@ export class AnalyticsService {
     });
   }
 
-  private async getTopProviders(limit: number) {
+  private async getTopProviders(limit: number): Promise<Provider[]> {
     return this.providerRepository.find({
       where: { isVerified: true },
       order: { averageRating: 'DESC', totalReviews: 'DESC' },
@@ -221,25 +242,27 @@ export class AnalyticsService {
     });
   }
 
-  private async getBookingsByStatus() {
-    const result = await this.bookingRepository
+  private async getBookingsByStatus(): Promise<Record<string, number>> {
+    const result: Record<string, unknown>[] = await this.bookingRepository
       .createQueryBuilder('booking')
       .select('booking.status', 'status')
       .addSelect('COUNT(booking.id)', 'count')
       .groupBy('booking.status')
       .getRawMany();
 
-    return result.reduce((acc, row) => {
-      acc[row.status] = Number(row.count);
+    return result.reduce<Record<string, number>>((acc, row) => {
+      acc[String(row.status)] = Number(row.count);
       return acc;
     }, {});
   }
 
-  private async getDailyBookingsTrend(days: number) {
+  private async getDailyBookingsTrend(
+    days: number,
+  ): Promise<Record<string, unknown>[]> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const result = await this.bookingRepository
+    const result: Record<string, unknown>[] = await this.bookingRepository
       .createQueryBuilder('booking')
       .select('DATE(booking.created_at)', 'date')
       .addSelect('COUNT(booking.id)', 'count')

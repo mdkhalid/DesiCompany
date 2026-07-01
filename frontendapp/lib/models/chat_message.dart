@@ -9,6 +9,8 @@ class ChatMessage {
   final DateTime createdAt;
   final String status;
   final bool isRead;
+  final bool edited;
+  final bool deleted;
 
   ChatMessage({
     required this.id,
@@ -21,6 +23,8 @@ class ChatMessage {
     DateTime? createdAt,
     this.status = 'sent',
     this.isRead = false,
+    this.edited = false,
+    this.deleted = false,
   }) : createdAt = createdAt ?? DateTime.now();
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -35,6 +39,8 @@ class ChatMessage {
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
       status: json['status']?.toString() ?? 'sent',
       isRead: json['isRead'] == true,
+      edited: json['edited'] == true,
+      deleted: json['deleted'] == true,
     );
   }
 
@@ -49,12 +55,15 @@ class ChatMessage {
     'createdAt': createdAt.toIso8601String(),
     'status': status,
     'isRead': isRead,
+    'edited': edited,
+    'deleted': deleted,
   };
 
   bool get isText => messageType == 'text';
   bool get isImage => messageType == 'image';
   bool get isQuote => messageType == 'quote';
   bool get isQuickReply => messageType == 'quick_reply';
+  bool get isLocation => messageType == 'location';
 
   String? get imageUrl => metadata?['imageUrl'] as String?;
   double? get quoteAmount {
@@ -64,12 +73,24 @@ class ChatMessage {
   }
   bool get quoteAccepted => metadata?['accepted'] == true;
   String? get quickReplyType => metadata?['quickReplyType'] as String?;
+  double? get latitude {
+    final v = metadata?['latitude'];
+    if (v is num) return v.toDouble();
+    return double.tryParse(v?.toString() ?? '');
+  }
+  double? get longitude {
+    final v = metadata?['longitude'];
+    if (v is num) return v.toDouble();
+    return double.tryParse(v?.toString() ?? '');
+  }
 
   ChatMessage copyWith({
     String? status,
     bool? isRead,
     String? content,
     Map<String, dynamic>? metadata,
+    bool? edited,
+    bool? deleted,
   }) {
     return ChatMessage(
       id: id,
@@ -82,6 +103,8 @@ class ChatMessage {
       createdAt: createdAt,
       status: status ?? this.status,
       isRead: isRead ?? this.isRead,
+      edited: edited ?? this.edited,
+      deleted: deleted ?? this.deleted,
     );
   }
 }
@@ -97,4 +120,5 @@ class MessageType {
   static const String image = 'image';
   static const String quote = 'quote';
   static const String quickReply = 'quick_reply';
+  static const String location = 'location';
 }

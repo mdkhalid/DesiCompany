@@ -133,7 +133,11 @@ describe('QuotesService', () => {
         { provide: getRepositoryToken(Message), useValue: makeRepoMock() },
         {
           provide: ChatGateway,
-          useValue: { emitRoleSpecificSystemMessage: jest.fn().mockResolvedValue(undefined) },
+          useValue: {
+            emitRoleSpecificSystemMessage: jest
+              .fn()
+              .mockResolvedValue(undefined),
+          },
         },
         {
           provide: PlatformFeesService,

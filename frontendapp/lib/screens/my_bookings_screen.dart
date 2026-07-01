@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
@@ -6,6 +6,7 @@ import '../utils/id_helpers.dart';
 import 'write_review_screen.dart';
 import 'grievance_chat_screen.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
   @override
@@ -42,7 +43,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         try {
           await ApiService.get('/reviews/booking/${b['id']}');
           if (mounted) setState(() => _reviewedBookingIds.add(b['id'] as String));
-        } catch (_) {}
+        } catch (e, st) { AppLogger.e('my_bookings_screen', 'Operation failed', e, st); }
       }
     }
     _checkGrievanceEligibility();
@@ -59,7 +60,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               _grievanceEligibility[b['id']] = data;
             });
           }
-        } catch (_) {}
+        } catch (e, st) { AppLogger.e('my_bookings_screen', 'Operation failed', e, st); }
       }
     }
   }

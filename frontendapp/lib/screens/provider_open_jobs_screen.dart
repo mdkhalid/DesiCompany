@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import '../l10n/strings.dart';
 import '../main.dart';
@@ -9,6 +9,7 @@ import '../widgets/distance_badge.dart';
 import 'provider_submit_quote_screen.dart';
 import 'provider_job_detail_screen.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ProviderOpenJobsScreen extends StatefulWidget {
   const ProviderOpenJobsScreen({super.key});
 
@@ -63,7 +64,7 @@ class _ProviderOpenJobsScreenState extends State<ProviderOpenJobsScreen> {
     try {
       final dt = DateTime.parse(iso);
       return intl.DateFormat('d MMM yyyy').format(dt);
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('provider_open_jobs_screen', 'Operation failed', e, st);
       return '';
     }
   }
@@ -80,7 +81,7 @@ class _ProviderOpenJobsScreenState extends State<ProviderOpenJobsScreen> {
         return loc.tr('hours_ago', params: {'hours': '${diff.inHours}'});
       }
       return _formatDate(iso);
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('provider_open_jobs_screen', 'Operation failed', e, st);
       return '';
     }
   }

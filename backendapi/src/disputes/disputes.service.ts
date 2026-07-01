@@ -9,7 +9,6 @@ import { Repository } from 'typeorm';
 import { Dispute, DisputeStatus } from './entities/dispute.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
-import { UserRole } from '../common/enums/user-role.enum';
 import { CreateDisputeDto } from './dto/create-dispute.dto';
 import { ResolveDisputeDto } from './dto/resolve-dispute.dto';
 

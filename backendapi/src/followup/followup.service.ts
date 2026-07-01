@@ -20,7 +20,10 @@ export class FollowUpService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  async sendReviewFollowUps() {
+  async sendReviewFollowUps(): Promise<{
+    followUpsSent: number;
+    checkedBookings: number;
+  }> {
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
@@ -72,14 +75,15 @@ export class FollowUpService {
     return { followUpsSent, checkedBookings: completedBookings.length };
   }
 
-  async sendReengagementFollowUps() {
+  async sendReengagementFollowUps(): Promise<{ reengagementSent: number }> {
     const sixtyDaysAgo = new Date();
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const recentBookings = await this.bookingRepository
+    type RawCustomerId = { customerId: string };
+    const recentBookings: RawCustomerId[] = await this.bookingRepository
       .createQueryBuilder('booking')
       .select('DISTINCT booking.customer_id', 'customerId')
       .where('booking.created_at >= :ninetyDaysAgo', { ninetyDaysAgo })

@@ -12,8 +12,7 @@ import { BookingCharge } from './entities/booking-charge.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
-import { Message, MessageType } from '../chat/entities/message.entity';
-import { User } from '../users/entities/user.entity';
+import { Message } from '../chat/entities/message.entity';
 import { ChatGateway } from '../chat/chat.gateway';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { getStatusChatTemplate, formatTemplate } from './chat-templates';
@@ -240,7 +239,9 @@ export class BookingsService {
 
     // Send a system message to the booking chat for status updates
     await this.sendBookingStatusChatMessage(saved, dto.status).catch((err) =>
-      this.logger.warn(`Failed to save status chat message: ${(err as Error).message}`),
+      this.logger.warn(
+        `Failed to save status chat message: ${(err as Error).message}`,
+      ),
     );
 
     if (dto.status === BookingStatus.COMPLETED) {
@@ -329,8 +330,10 @@ export class BookingsService {
     const template = getStatusChatTemplate(status);
     if (!template) return; // no template defined for this status (e.g. REQUESTED)
 
-    const providerName = `${booking.provider.firstName || ''} ${booking.provider.lastName || ''}`.trim();
-    const customerName = `${booking.customer.firstName || ''} ${booking.customer.lastName || ''}`.trim();
+    const providerName =
+      `${booking.provider.firstName || ''} ${booking.provider.lastName || ''}`.trim();
+    const customerName =
+      `${booking.customer.firstName || ''} ${booking.customer.lastName || ''}`.trim();
     const customerUserId = booking.customer.user.id;
     const providerUserId = booking.provider.user.id;
 
@@ -449,7 +452,6 @@ export class BookingsService {
     const saved = await this.bookingRepository.save(booking);
 
     // Notify the proposer
-    const providerName = `${booking.provider.firstName} ${booking.provider.lastName}`;
     const notifyUserId =
       role === UserRole.PROVIDER
         ? booking.customer.user.id
@@ -576,7 +578,7 @@ export class BookingsService {
 
     if (!inAnySlot) {
       throw new BadRequestException(
-        'Booking time falls outside provider\'s available hours',
+        "Booking time falls outside provider's available hours",
       );
     }
 

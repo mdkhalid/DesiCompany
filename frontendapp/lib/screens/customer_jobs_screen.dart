@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 import '../l10n/strings.dart';
 import '../main.dart';
@@ -7,6 +7,7 @@ import '../theme.dart';
 import 'customer_post_job_screen.dart';
 import 'customer_job_detail_screen.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class CustomerJobsScreen extends StatefulWidget {
   const CustomerJobsScreen({super.key});
 
@@ -54,7 +55,7 @@ class _CustomerJobsScreenState extends State<CustomerJobsScreen> {
     try {
       final dt = DateTime.parse(iso);
       return intl.DateFormat('d MMM yyyy').format(dt);
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('customer_jobs_screen', 'Operation failed', e, st);
       return '';
     }
   }

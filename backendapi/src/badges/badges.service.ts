@@ -73,7 +73,7 @@ export class BadgesService {
     };
   }
 
-  async getBadgeMetadata() {
+  getBadgeMetadata() {
     return [
       {
         type: BadgeType.TOP_RATED,

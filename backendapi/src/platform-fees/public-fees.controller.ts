@@ -57,19 +57,15 @@ export class PublicFeesController {
     @Req() req: AuthenticatedRequest,
   ) {
     const providerId = await this.resolveProviderId(req.user.id);
-    return this.platformFeesService.assignSubscription(
-      providerId,
-      planId,
-    );
+    return this.platformFeesService.assignSubscription(providerId, planId);
   }
 
   @Delete('subscription-plans/cancel')
   @ApiOperation({ summary: 'Cancel current provider subscription' })
   async cancelSubscription(@Req() req: AuthenticatedRequest) {
     const providerId = await this.resolveProviderId(req.user.id);
-    const sub = await this.platformFeesService.getProviderSubscription(
-      providerId,
-    );
+    const sub =
+      await this.platformFeesService.getProviderSubscription(providerId);
     if (sub) {
       await this.platformFeesService.cancelSubscription(sub.id);
     }
@@ -118,7 +114,9 @@ export class PublicFeesController {
   }
 
   @Get('membership-plans/my')
-  @ApiOperation({ summary: 'Get current customer membership with fee waiver info' })
+  @ApiOperation({
+    summary: 'Get current customer membership with fee waiver info',
+  })
   async getMyMembership(@Req() req: AuthenticatedRequest) {
     const membership = await this.platformFeesService.getCustomerMembership(
       req.user.id,

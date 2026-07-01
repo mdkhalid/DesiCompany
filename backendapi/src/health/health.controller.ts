@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
@@ -32,6 +32,8 @@ export class HealthController {
       },
     };
 
+    let hasError = false;
+
     // Check database
     try {
       const dbStart = Date.now();
@@ -40,8 +42,8 @@ export class HealthController {
         status: 'connected',
         responseTime: Date.now() - dbStart,
       };
-    } catch (error) {
-      checks.status = 'error';
+    } catch {
+      hasError = true;
       checks.services.database = {
         status: 'disconnected',
         responseTime: 0,
@@ -58,12 +60,16 @@ export class HealthController {
         status: 'connected',
         responseTime: Date.now() - redisStart,
       };
-    } catch (error) {
-      checks.status = 'error';
+    } catch {
+      hasError = true;
       checks.services.redis = {
         status: 'disconnected',
         responseTime: 0,
       };
+    }
+
+    if (hasError) {
+      checks.status = 'error';
     }
 
     return checks;
@@ -77,8 +83,11 @@ export class HealthController {
       await this.redis.ping();
       await this.redis.quit();
       return { status: 'ready' };
-    } catch (error) {
-      return { status: 'not ready' };
+    } catch {
+      throw new HttpException(
+        { status: 'not ready' },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
   }
 

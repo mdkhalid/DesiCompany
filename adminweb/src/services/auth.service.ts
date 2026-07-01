@@ -32,27 +32,27 @@ export async function verifyOtp(phone: string, otp: string) {
 }
 
 export function getStoredRefreshToken(): string | null {
-  return localStorage.getItem('refreshToken');
+  return sessionStorage.getItem('refreshToken');
 }
 
 export function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('refreshToken');
+  sessionStorage.removeItem('user');
   window.location.href = '/login';
 }
 
 export function getStoredUser(): AuthUser | null {
-  const raw = localStorage.getItem('user');
+  const raw = sessionStorage.getItem('user');
   if (!raw) return null;
   try {
     return JSON.parse(raw);
   } catch {
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
     return null;
   }
 }
 
 export function isAuthenticated(): boolean {
-  return !!localStorage.getItem('token');
+  return !!sessionStorage.getItem('token');
 }

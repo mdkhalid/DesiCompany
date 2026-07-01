@@ -2,20 +2,10 @@ import { DataSource } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
-import { KycDocument } from '../kyc/entities/kyc-document.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 import { ProviderAvailability } from '../services/entities/provider-availability.entity';
-import { ProviderDateOverride } from '../services/entities/provider-date-override.entity';
-import { Booking } from '../bookings/entities/booking.entity';
-import { BookingCharge } from '../bookings/entities/booking-charge.entity';
-import { Payment } from '../payments/entities/payment.entity';
-import { Wallet } from '../payments/entities/wallet.entity';
-import { Transaction } from '../payments/entities/transaction.entity';
-import { CommissionConfig } from '../commissions/entities/commission-config.entity';
-import { Review } from '../reviews/entities/review.entity';
 import { Notification } from '../notifications/entities/notification.entity';
-import { CustomerFeedback } from '../feedbacks/entities/customer-feedback.entity';
 import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
@@ -30,7 +20,7 @@ async function seed() {
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT) || 5433,
     username: process.env.DB_USERNAME || 'desicompany',
-    password: process.env.DB_PASSWORD || 'desicompany123',
+    password: process.env.DB_PASSWORD!,
     database: process.env.DB_NAME || 'desicompany',
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize: true,
@@ -634,18 +624,70 @@ async function seed() {
   // ─── Fee Configs & Feature Toggles ───────────────────────────
   const feeConfigRepo = dataSource.getRepository(PlatformFeeConfig);
   const defaultConfigs = [
-    { configKey: 'convenience_fee', configValue: { type: 'percentage', value: 5, minAmount: 10, maxAmount: 200 }, isActive: true, description: 'Convenience fee on all bookings' },
-    { configKey: 'instant_payout_fee', configValue: { type: 'fixed', value: 10, minAmount: 0, maxAmount: 0 }, isActive: false, description: 'Fee for instant payout requests' },
-    { configKey: 'lead_quote_fee', configValue: { type: 'fixed', value: 20, minAmount: 0, maxAmount: 0 }, isActive: false, description: 'Fee for lead/quote submissions' },
-    { configKey: 'feature_convenience_fee', configValue: { enabled: true }, isActive: true, description: 'Feature toggle: convenience fee' },
-    { configKey: 'feature_provider_subscriptions', configValue: { enabled: false }, isActive: true, description: 'Feature toggle: provider subscriptions' },
-    { configKey: 'feature_promo_codes', configValue: { enabled: true }, isActive: true, description: 'Feature toggle: promo codes' },
-    { configKey: 'feature_instant_payout', configValue: { enabled: false }, isActive: true, description: 'Feature toggle: instant payout' },
-    { configKey: 'feature_lead_quote_fee', configValue: { enabled: false }, isActive: true, description: 'Feature toggle: lead/quote fee' },
-    { configKey: 'feature_customer_memberships', configValue: { enabled: false }, isActive: true, description: 'Feature toggle: customer memberships' },
+    {
+      configKey: 'convenience_fee',
+      configValue: {
+        type: 'percentage',
+        value: 5,
+        minAmount: 10,
+        maxAmount: 200,
+      },
+      isActive: true,
+      description: 'Convenience fee on all bookings',
+    },
+    {
+      configKey: 'instant_payout_fee',
+      configValue: { type: 'fixed', value: 10, minAmount: 0, maxAmount: 0 },
+      isActive: false,
+      description: 'Fee for instant payout requests',
+    },
+    {
+      configKey: 'lead_quote_fee',
+      configValue: { type: 'fixed', value: 20, minAmount: 0, maxAmount: 0 },
+      isActive: false,
+      description: 'Fee for lead/quote submissions',
+    },
+    {
+      configKey: 'feature_convenience_fee',
+      configValue: { enabled: true },
+      isActive: true,
+      description: 'Feature toggle: convenience fee',
+    },
+    {
+      configKey: 'feature_provider_subscriptions',
+      configValue: { enabled: false },
+      isActive: true,
+      description: 'Feature toggle: provider subscriptions',
+    },
+    {
+      configKey: 'feature_promo_codes',
+      configValue: { enabled: true },
+      isActive: true,
+      description: 'Feature toggle: promo codes',
+    },
+    {
+      configKey: 'feature_instant_payout',
+      configValue: { enabled: false },
+      isActive: true,
+      description: 'Feature toggle: instant payout',
+    },
+    {
+      configKey: 'feature_lead_quote_fee',
+      configValue: { enabled: false },
+      isActive: true,
+      description: 'Feature toggle: lead/quote fee',
+    },
+    {
+      configKey: 'feature_customer_memberships',
+      configValue: { enabled: false },
+      isActive: true,
+      description: 'Feature toggle: customer memberships',
+    },
   ];
   for (const cfg of defaultConfigs) {
-    const exists = await feeConfigRepo.findOne({ where: { configKey: cfg.configKey } });
+    const exists = await feeConfigRepo.findOne({
+      where: { configKey: cfg.configKey },
+    });
     if (!exists) {
       await feeConfigRepo.save(feeConfigRepo.create(cfg));
       console.log(`Fee config created: ${cfg.configKey}`);

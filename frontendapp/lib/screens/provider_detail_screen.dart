@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 import '../widgets/distance_badge.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ProviderDetailScreen extends StatefulWidget {
   final Map provider;
   const ProviderDetailScreen({super.key, required this.provider});
@@ -93,7 +94,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
       if (bookedIds.isNotEmpty) {
         setState(() => _bookedServiceIds = bookedIds);
       }
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('provider_detail_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _loadServices() async {
@@ -109,7 +110,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
     try {
       final data = await ApiService.get('/reviews/provider/${widget.provider['id']}');
       if (mounted) setState(() { _reviews = data as List; });
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('provider_detail_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _bookService(Map service) async {
@@ -187,13 +188,12 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                     child: Text('No available slots for this date', style: TextStyle(color: AppTheme.textSecondary)),
                   )
                 else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: slots.map((s) {
-                      final start = s['start'] as String? ?? '';
-                      final end = s['end'] as String? ?? '';
-                      final display = start.length >= 5
+                   Wrap(
+                     spacing: 8,
+                     runSpacing: 8,
+                     children: slots.map((s) {
+                       final start = s['start'] as String? ?? '';
+                       final display = start.length >= 5
                           ? '${int.parse(start.split(':')[0]) > 12 ? int.parse(start.split(':')[0]) - 12 : (int.parse(start.split(':')[0]) == 0 ? 12 : int.parse(start.split(':')[0]))}:${start.split(':')[1]} ${int.parse(start.split(':')[0]) >= 12 ? 'PM' : 'AM'}'
                           : start;
                       final isSelected = selectedSlot == start;
@@ -439,7 +439,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
       try {
         final date = DateTime.parse(createdAt);
         dateStr = '${date.day}/${date.month}/${date.year}';
-      } catch (_) {}
+      } catch (e, st) { AppLogger.e('provider_detail_screen', 'Operation failed', e, st); }
     }
 
     return Container(

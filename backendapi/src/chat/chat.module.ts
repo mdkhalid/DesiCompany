@@ -11,12 +11,23 @@ import { AuthModule } from '../auth/auth.module';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Customer } from '../users/entities/customer.entity';
+import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Message, DirectMessage, Booking, User, Provider, Customer]),
+    TypeOrmModule.forFeature([
+      Message,
+      DirectMessage,
+      Booking,
+      User,
+      Provider,
+      Customer,
+    ]),
     AuthModule,
     TranslationModule,
+    PushNotificationsModule,
+    NotificationsModule,
   ],
   providers: [ChatGateway, ChatService],
   controllers: [ChatController],

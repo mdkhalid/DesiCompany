@@ -11,7 +11,7 @@ import { LoggerModule } from 'nestjs-pino';
             ? { target: 'pino-pretty', options: { colorize: true } }
             : undefined,
         serializers: {
-          req(req) {
+          req(req: Record<string, unknown>) {
             return {
               method: req.method,
               url: req.url,
@@ -19,7 +19,7 @@ import { LoggerModule } from 'nestjs-pino';
               params: req.params,
             };
           },
-          res(res) {
+          res(res: Record<string, unknown>) {
             return {
               statusCode: res.statusCode,
             };
@@ -27,13 +27,24 @@ import { LoggerModule } from 'nestjs-pino';
         },
         redact: {
           remove: true,
-          paths: ['req.headers.authorization', 'req.body.password', 'req.body.token'],
+          paths: [
+            'req.headers.authorization',
+            'req.body.password',
+            'req.body.token',
+          ],
         },
-        customSuccessMessage: (req, res) => {
-          return `${req.method} ${req.url} ${res.statusCode}`;
+        customSuccessMessage: (
+          req: Record<string, unknown>,
+          res: Record<string, unknown>,
+        ) => {
+          return `${String(req.method)} ${String(req.url)} ${String(res.statusCode)}`;
         },
-        customErrorMessage: (req, res, err) => {
-          return `${req.method} ${req.url} ${res.statusCode} - ${err.message}`;
+        customErrorMessage: (
+          req: Record<string, unknown>,
+          res: Record<string, unknown>,
+          err: Error,
+        ) => {
+          return `${String(req.method)} ${String(req.url)} ${String(res.statusCode)} - ${err.message}`;
         },
       },
     }),

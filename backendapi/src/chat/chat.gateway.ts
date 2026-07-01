@@ -14,12 +14,16 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message, MessageType } from './entities/message.entity';
-import { DirectMessage, DirectMessageType } from './entities/direct-message.entity';
+import {
+  DirectMessage,
+  DirectMessageType,
+} from './entities/direct-message.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { UserRole } from '../common/enums/user-role.enum';
+import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 
 interface AuthenticatedSocket extends Socket {
   data: {
@@ -27,6 +31,16 @@ interface AuthenticatedSocket extends Socket {
     user: User;
     userName: string;
   };
+}
+
+interface HistoryMessage {
+  id: string;
+  content: string;
+  sender: User;
+  messageType: string;
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+  isRead: boolean;
 }
 
 interface TypingPayload {
@@ -64,7 +78,9 @@ interface QuickReplyPayload {
   namespace: '/chat',
 })
 @Injectable()
-export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -88,7 +104,11 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
   }
 
-  private emitToUser(userId: string, event: string, data: any) {
+  private emitToUser(
+    userId: string,
+    event: string,
+    data: Record<string, unknown>,
+  ) {
     const sockets = this.userSockets.get(userId);
     if (sockets) {
       for (const socketId of sockets) {
@@ -97,29 +117,49 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
   }
 
-  private formatHistoryMessages(messages: any[]) {
+  private isUserOnline(userId: string): boolean {
+    const sockets = this.userSockets.get(userId);
+    return !!sockets && sockets.size > 0;
+  }
+
+  private async sendPushIfOffline(
+    userId: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+  ) {
+    if (!this.isUserOnline(userId)) {
+      await this.pushNotificationsService.sendToUser(userId, title, body, data);
+    }
+  }
+
+  private formatHistoryMessages(messages: HistoryMessage[]) {
     return messages.map((m) => {
       const sender = m.sender;
       let senderName = '';
       if (sender) {
         if (sender.customer) {
-          senderName = `${sender.customer.firstName || ''} ${sender.customer.lastName || ''}`.trim();
+          senderName =
+            `${sender.customer.firstName || ''} ${sender.customer.lastName || ''}`.trim();
         } else if (sender.provider) {
-          senderName = `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
+          senderName =
+            `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
         }
         if (!senderName) senderName = sender.phone;
       }
       return {
         id: m.id,
-        content: m.content,
+        content: (m as Record<string, unknown>)['deleted'] ? 'This message was deleted' : m.content,
         senderId: sender?.id,
         senderName,
         senderRole: sender?.role || '',
-        messageType: m.messageType,
+        messageType: (m as Record<string, unknown>)['deleted'] ? 'text' : m.messageType,
         metadata: m.metadata,
         createdAt: m.createdAt,
         status: m.isRead ? 'read' : 'delivered',
         isRead: m.isRead,
+        edited: (m as Record<string, unknown>)['edited'] || false,
+        deleted: (m as Record<string, unknown>)['deleted'] || false,
       };
     });
   }
@@ -138,6 +178,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
     private readonly jwtService: JwtService,
+    private readonly pushNotificationsService: PushNotificationsService,
   ) {}
 
   /**
@@ -146,58 +187,66 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
    * client events (like `join`) could arrive before auth completes.
    */
   afterInit(server: Server) {
-    server.use(async (socket, next) => {
-      try {
-        const auth = socket.handshake.auth as Record<string, unknown>;
-        const token =
-          (auth?.token as string) ||
-          socket.handshake.headers?.authorization?.replace('Bearer ', '');
+    server.use((socket, next) => {
+      const auth = socket.handshake.auth as Record<string, unknown>;
+      const token =
+        (auth?.token as string) ||
+        socket.handshake.headers?.authorization?.replace('Bearer ', '');
 
-        if (!token) {
-          return next(new Error('No token provided'));
-        }
+      if (!token) {
+        return next(new Error('No token provided'));
+      }
 
-        const payload = this.jwtService.verify<{
-          sub: string;
-          phone: string;
-          role: string;
-        }>(token);
+      const payload = this.jwtService.verify<{
+        sub: string;
+        phone: string;
+        role: string;
+      }>(token);
 
-        const user = await this.userRepository.findOne({
+      this.userRepository
+        .findOne({
           where: { id: payload.sub },
           relations: { customer: true, provider: true },
+        })
+        .then((user) => {
+          if (!user) {
+            return next(new Error('User not found'));
+          }
+
+          // Set auth data BEFORE connection event — handlers can rely on it immediately
+          (socket as AuthenticatedSocket).data.userId = user.id;
+          (socket as AuthenticatedSocket).data.user = user;
+
+          let displayName = user.phone;
+          if (user.customer) {
+            displayName =
+              `${user.customer.firstName || ''} ${user.customer.lastName || ''}`.trim();
+          } else if (user.provider) {
+            displayName =
+              `${user.provider.firstName || ''} ${user.provider.lastName || ''}`.trim();
+          }
+          (socket as AuthenticatedSocket).data.userName =
+            displayName || user.phone;
+
+          next();
+        })
+        .catch((err) => {
+          next(new Error(`Invalid token: ${(err as Error)?.message || err}`));
         });
-
-        if (!user) {
-          return next(new Error('User not found'));
-        }
-
-        // Set auth data BEFORE connection event — handlers can rely on it immediately
-        (socket as AuthenticatedSocket).data.userId = user.id;
-        (socket as AuthenticatedSocket).data.user = user;
-
-        let displayName = user.phone;
-        if (user.customer) {
-          displayName = `${user.customer.firstName || ''} ${user.customer.lastName || ''}`.trim();
-        } else if (user.provider) {
-          displayName = `${user.provider.firstName || ''} ${user.provider.lastName || ''}`.trim();
-        }
-        (socket as AuthenticatedSocket).data.userName = displayName || user.phone;
-
-        next();
-      } catch (err) {
-        next(new Error(`Invalid token: ${(err as Error)?.message || err}`));
-      }
     });
   }
 
-  async handleConnection(client: AuthenticatedSocket) {
+  handleConnection(client: AuthenticatedSocket) {
     // Auth already verified by middleware in afterInit — just register and log
     if (client.data.userId) {
       this.registerSocket(client.data.userId, client.id);
-      this.logger.log(`Client connected: ${client.id} (user: ${client.data.userId})`);
+      this.logger.log(
+        `Client connected: ${client.id} (user: ${client.data.userId})`,
+      );
     } else {
-      this.logger.warn(`Client ${client.id} rejected: auth middleware did not set userId`);
+      this.logger.warn(
+        `Client ${client.id} rejected: auth middleware did not set userId`,
+      );
       client.disconnect();
     }
   }
@@ -251,12 +300,12 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         where: { booking: { id: payload.bookingId }, isRead: false },
         select: { id: true },
       });
-      const unreadIds = unreadMessages.map(m => m.id);
+      const unreadIds = unreadMessages.map((m) => m.id);
 
       if (unreadIds.length > 0) {
         await this.messageRepository.update(
           { booking: { id: payload.bookingId }, isRead: false },
-          { isRead: true }
+          { isRead: true },
         );
       }
 
@@ -271,16 +320,22 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       const userRole = client.data.user?.role;
       const filteredMessages = userRole
         ? messages.filter((m) => {
-            const targetRole = (m.metadata as Record<string, any>)?.targetRole;
+            const targetRole = m.metadata?.targetRole;
             if (!targetRole) return true;
             return targetRole === userRole.toLowerCase();
           })
         : messages;
 
       client.emit('history', this.formatHistoryMessages(filteredMessages));
-      client.emit('messages_read', { bookingId: payload.bookingId, messageIds: unreadIds });
+      client.emit('messages_read', {
+        bookingId: payload.bookingId,
+        messageIds: unreadIds,
+      });
     } catch (err) {
-      this.logger.error(`[JOIN] Error in handleJoin: ${(err as Error)?.message}`, (err as Error)?.stack);
+      this.logger.error(
+        `[JOIN] Error in handleJoin: ${(err as Error)?.message}`,
+        (err as Error)?.stack,
+      );
       client.emit('error', { message: 'Join failed: internal server error' });
     }
   }
@@ -288,14 +343,25 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   @SubscribeMessage('send_message')
   async handleMessage(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: { bookingId: string; content: string; messageType?: string; metadata?: Record<string, any> },
+    @MessageBody()
+    payload: {
+      bookingId: string;
+      content: string;
+      messageType?: string;
+      metadata?: Record<string, unknown>;
+    },
   ) {
     if (!client.data.userId) {
       client.emit('error', { message: 'Unauthorized' });
       return;
     }
 
-    const { bookingId, content, messageType = MessageType.TEXT, metadata } = payload;
+    const {
+      bookingId,
+      content,
+      messageType = MessageType.TEXT,
+      metadata,
+    } = payload;
     if (!bookingId || !content?.trim()) return;
 
     const booking = await this.bookingRepository.findOne({
@@ -349,12 +415,22 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         : booking.customer?.user?.id;
     if (otherUserId) {
       this.emitToUser(otherUserId, 'new_message', messageData);
-      this.logger.log(`[MSG] Sent to room=${room} + direct to user=${otherUserId}`);
+      await this.sendPushIfOffline(
+        otherUserId,
+        'New message',
+        content,
+        { bookingId, type: 'chat_message' },
+      );
+      this.logger.log(
+        `[MSG] Sent to room=${room} + direct to user=${otherUserId}`,
+      );
     } else {
       this.logger.log(`[MSG] Sent to room=${room} (no other user found)`);
     }
 
-    this.logger.log(`Message saved in booking ${bookingId} by user ${client.data.userId}`);
+    this.logger.log(
+      `Message saved in booking ${bookingId} by user ${client.data.userId}`,
+    );
   }
 
   @SubscribeMessage('send_image')
@@ -412,6 +488,19 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       createdAt: saved.createdAt,
       status: 'delivered',
     });
+
+    const otherUserId =
+      booking.customer?.user?.id === client.data.userId
+        ? booking.provider?.user?.id
+        : booking.customer?.user?.id;
+    if (otherUserId) {
+      await this.sendPushIfOffline(
+        otherUserId,
+        'New image',
+        'Sent an image',
+        { bookingId: payload.bookingId, type: 'chat_image' },
+      );
+    }
   }
 
   @SubscribeMessage('send_quote_message')
@@ -467,6 +556,21 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         createdAt: saved.createdAt,
         status: 'delivered',
       });
+
+      const directOtherUserId =
+        customerUserId === client.data.userId ? providerId : customerUserId;
+      const directOtherUser = await this.providerRepository.findOne({
+        where: { id: directOtherUserId },
+        relations: { user: true },
+      });
+      if (directOtherUser?.user) {
+        await this.sendPushIfOffline(
+          directOtherUser.user.id,
+          'New quote',
+          content,
+          { roomId: targetId, type: 'chat_quote' },
+        );
+      }
     } else {
       const message = this.messageRepository.create({
         booking: { id: targetId } as Booking,
@@ -489,6 +593,25 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         createdAt: saved.createdAt,
         status: 'delivered',
       });
+
+      const quoteBooking = await this.bookingRepository.findOne({
+        where: { id: targetId },
+        relations: { customer: { user: true }, provider: { user: true } },
+      });
+      if (quoteBooking) {
+        const quoteOtherUserId =
+          quoteBooking.customer?.user?.id === client.data.userId
+            ? quoteBooking.provider?.user?.id
+            : quoteBooking.customer?.user?.id;
+        if (quoteOtherUserId) {
+          await this.sendPushIfOffline(
+            quoteOtherUserId,
+            'New quote',
+            content,
+            { bookingId: targetId, type: 'chat_quote' },
+          );
+        }
+      }
     }
   }
 
@@ -509,13 +632,13 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     const quickReplyMessages: Record<string, string> = {
-      'accept_quote': 'I accept this quote',
-      'decline_quote': 'I decline this quote',
-      'need_discount': 'Can you give a discount?',
-      'confirm_booking': 'Please confirm the booking',
-      'need_more_info': 'I need more information',
-      'price_negotiate': 'Can we negotiate on price?',
-      'reschedule': 'Can we reschedule?',
+      accept_quote: 'I accept this quote',
+      decline_quote: 'I decline this quote',
+      need_discount: 'Can you give a discount?',
+      confirm_booking: 'Please confirm the booking',
+      need_more_info: 'I need more information',
+      price_negotiate: 'Can we negotiate on price?',
+      reschedule: 'Can we reschedule?',
     };
 
     const content = quickReplyMessages[payload.quickReplyType] || payload.value;
@@ -540,7 +663,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         sender: { id: client.data.userId } as User,
         content,
         messageType: DirectMessageType.QUICK_REPLY,
-        metadata: { quickReplyType: payload.quickReplyType, value: payload.value },
+        metadata: {
+          quickReplyType: payload.quickReplyType,
+          value: payload.value,
+        },
       });
       const saved = await this.directMessageRepository.save(message);
 
@@ -555,13 +681,31 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         createdAt: saved.createdAt,
         status: 'delivered',
       });
+
+      const qrDirectOtherUserId =
+        customerUserId === client.data.userId ? providerId : customerUserId;
+      const qrDirectOtherUser = await this.providerRepository.findOne({
+        where: { id: qrDirectOtherUserId },
+        relations: { user: true },
+      });
+      if (qrDirectOtherUser?.user) {
+        await this.sendPushIfOffline(
+          qrDirectOtherUser.user.id,
+          'Quick reply',
+          content,
+          { roomId: targetId, type: 'chat_quick_reply' },
+        );
+      }
     } else {
       const message = this.messageRepository.create({
         booking: { id: targetId } as Booking,
         sender: { id: client.data.userId } as User,
         content,
         messageType: MessageType.QUICK_REPLY,
-        metadata: { quickReplyType: payload.quickReplyType, value: payload.value },
+        metadata: {
+          quickReplyType: payload.quickReplyType,
+          value: payload.value,
+        },
       });
       const saved = await this.messageRepository.save(message);
 
@@ -577,6 +721,25 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         createdAt: saved.createdAt,
         status: 'delivered',
       });
+
+      const qrBooking = await this.bookingRepository.findOne({
+        where: { id: targetId },
+        relations: { customer: { user: true }, provider: { user: true } },
+      });
+      if (qrBooking) {
+        const qrOtherUserId =
+          qrBooking.customer?.user?.id === client.data.userId
+            ? qrBooking.provider?.user?.id
+            : qrBooking.customer?.user?.id;
+        if (qrOtherUserId) {
+          await this.sendPushIfOffline(
+            qrOtherUserId,
+            'Quick reply',
+            content,
+            { bookingId: targetId, type: 'chat_quick_reply' },
+          );
+        }
+      }
     }
   }
 
@@ -597,17 +760,28 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         const customerId = parts[1];
         const providerId = parts[2];
         const unreadDms = await this.directMessageRepository.find({
-          where: { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
+          where: {
+            customer: { id: customerId },
+            provider: { id: providerId },
+            isRead: false,
+          },
           select: { id: true },
         });
-        const unreadIds = unreadDms.map(m => m.id);
+        const unreadIds = unreadDms.map((m) => m.id);
         if (unreadIds.length > 0) {
           await this.directMessageRepository.update(
-            { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
-            { isRead: true }
+            {
+              customer: { id: customerId },
+              provider: { id: providerId },
+              isRead: false,
+            },
+            { isRead: true },
           );
         }
-        this.server.to(payload.roomId).emit('messages_read', { roomId: payload.roomId, messageIds: unreadIds });
+        this.server.to(payload.roomId).emit('messages_read', {
+          roomId: payload.roomId,
+          messageIds: unreadIds,
+        });
       }
       return;
     }
@@ -618,15 +792,18 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         where: { booking: { id: payload.bookingId }, isRead: false },
         select: { id: true },
       });
-      const unreadIds = unreadBookingMessages.map(m => m.id);
+      const unreadIds = unreadBookingMessages.map((m) => m.id);
       if (unreadIds.length > 0) {
         await this.messageRepository.update(
           { booking: { id: payload.bookingId }, isRead: false },
-          { isRead: true }
+          { isRead: true },
         );
       }
       const room = `booking_${payload.bookingId}`;
-      this.server.to(room).emit('messages_read', { bookingId: payload.bookingId, messageIds: unreadIds });
+      this.server.to(room).emit('messages_read', {
+        bookingId: payload.bookingId,
+        messageIds: unreadIds,
+      });
     }
   }
 
@@ -643,7 +820,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     providerUserId: string,
     customerContent: string,
     providerContent: string,
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown> = {},
   ) {
     const baseMeta = { system: true, ...metadata };
 
@@ -695,7 +872,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       status: 'delivered',
     });
 
-    this.logger.log(`[SYSTEM_MSG] Role-specific messages for booking ${bookingId}: customer="${customerContent.substring(0, 50)}" provider="${providerContent.substring(0, 50)}"`);
+    this.logger.log(
+      `[SYSTEM_MSG] Role-specific messages for booking ${bookingId}: customer="${customerContent.substring(0, 50)}" provider="${providerContent.substring(0, 50)}"`,
+    );
   }
 
   // ==================== TYPING INDICATORS ====================
@@ -721,7 +900,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       roomId: payload.roomId,
     });
 
-    this.logger.debug(`User ${client.data.userId} typing: ${payload.isTyping} in room ${room}`);
+    this.logger.debug(
+      `User ${client.data.userId} typing: ${payload.isTyping} in room ${room}`,
+    );
   }
 
   // ==================== DIRECT CHAT ====================
@@ -782,9 +963,12 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       partnerUserId = client.data.userId;
     }
 
-    const customerUserId = isCallerProvider ? partnerUserId : client.data.userId;
+    const customerUserId = isCallerProvider
+      ? partnerUserId
+      : client.data.userId;
     const providerEntityId = provider.id;
-    const providerName = `${provider.firstName || ''} ${provider.lastName || ''}`.trim();
+    const providerName =
+      `${provider.firstName || ''} ${provider.lastName || ''}`.trim();
 
     const room = `direct_${customerUserId}_${providerEntityId}`;
     void client.join(room);
@@ -803,14 +987,25 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   @SubscribeMessage('send_direct_message')
   async handleSendDirectMessage(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: { roomId: string; content: string; messageType?: string; metadata?: Record<string, any> },
+    @MessageBody()
+    payload: {
+      roomId: string;
+      content: string;
+      messageType?: string;
+      metadata?: Record<string, unknown>;
+    },
   ) {
     if (!client.data.userId) {
       client.emit('error', { message: 'Unauthorized' });
       return;
     }
 
-    const { roomId, content, messageType = DirectMessageType.TEXT, metadata } = payload;
+    const {
+      roomId,
+      content,
+      messageType = DirectMessageType.TEXT,
+      metadata,
+    } = payload;
     if (!content?.trim()) return;
 
     const parts = roomId.split('_');
@@ -850,13 +1045,32 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       createdAt: saved.createdAt,
       status: 'delivered',
     });
-    this.logger.log(`[DIRECT_MSG] Sent to room=${roomId} by user ${client.data.userId}`);
+
+    const dmOtherUserId =
+      customerUserId === client.data.userId ? providerId : customerUserId;
+    const dmOtherUser = await this.providerRepository.findOne({
+      where: { id: dmOtherUserId },
+      relations: { user: true },
+    });
+    if (dmOtherUser?.user) {
+      await this.sendPushIfOffline(
+        dmOtherUser.user.id,
+        'New message',
+        content,
+        { roomId, type: 'direct_message' },
+      );
+    }
+
+    this.logger.log(
+      `[DIRECT_MSG] Sent to room=${roomId} by user ${client.data.userId}`,
+    );
   }
 
   @SubscribeMessage('send_direct_image')
   async handleSendDirectImage(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: { roomId: string; imageUrl: string; caption?: string },
+    @MessageBody()
+    payload: { roomId: string; imageUrl: string; caption?: string },
   ) {
     if (!client.data.userId) {
       client.emit('error', { message: 'Unauthorized' });
@@ -900,12 +1114,28 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       createdAt: saved.createdAt,
       status: 'delivered',
     });
+
+    const imgOtherUserId =
+      customerUserId === client.data.userId ? providerId : customerUserId;
+    const imgOtherUser = await this.providerRepository.findOne({
+      where: { id: imgOtherUserId },
+      relations: { user: true },
+    });
+    if (imgOtherUser?.user) {
+      await this.sendPushIfOffline(
+        imgOtherUser.user.id,
+        'New image',
+        'Sent an image',
+        { roomId: payload.roomId, type: 'direct_image' },
+      );
+    }
   }
 
   @SubscribeMessage('send_direct_quote')
   async handleSendDirectQuote(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: { roomId: string; amount: number; message?: string },
+    @MessageBody()
+    payload: { roomId: string; amount: number; message?: string },
   ) {
     if (!client.data.userId) {
       client.emit('error', { message: 'Unauthorized' });
@@ -949,6 +1179,21 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       createdAt: saved.createdAt,
       status: 'delivered',
     });
+
+    const quoteOtherUserId =
+      customerUserId === client.data.userId ? providerId : customerUserId;
+    const quoteOtherUser = await this.providerRepository.findOne({
+      where: { id: quoteOtherUserId },
+      relations: { user: true },
+    });
+    if (quoteOtherUser?.user) {
+      await this.sendPushIfOffline(
+        quoteOtherUser.user.id,
+        'New quote',
+        payload.message || `Quote: ₹${payload.amount}`,
+        { roomId: payload.roomId, type: 'direct_quote' },
+      );
+    }
   }
 
   @SubscribeMessage('join_direct_chat')
@@ -974,15 +1219,23 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
     // Get unread IDs before marking as read
     const unreadDirectMessages = await this.directMessageRepository.find({
-      where: { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
+      where: {
+        customer: { id: customerId },
+        provider: { id: providerId },
+        isRead: false,
+      },
       select: { id: true },
     });
-    const unreadIds = unreadDirectMessages.map(m => m.id);
+    const unreadIds = unreadDirectMessages.map((m) => m.id);
 
     if (unreadIds.length > 0) {
       await this.directMessageRepository.update(
-        { customer: { id: customerId }, provider: { id: providerId }, isRead: false },
-        { isRead: true }
+        {
+          customer: { id: customerId },
+          provider: { id: providerId },
+          isRead: false,
+        },
+        { isRead: true },
       );
     }
 
@@ -994,7 +1247,156 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     });
 
     client.emit('direct_chat_history', this.formatHistoryMessages(messages));
-    this.server.to(room).emit('messages_read', { roomId: room, messageIds: unreadIds });
+    this.server
+      .to(room)
+      .emit('messages_read', { roomId: room, messageIds: unreadIds });
+  }
+
+  // ==================== EDIT & DELETE MESSAGES ====================
+
+  @SubscribeMessage('edit_message')
+  async handleEditMessage(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody()
+    payload: {
+      messageId: string;
+      content: string;
+      bookingId?: string;
+      roomId?: string;
+    },
+  ) {
+    if (!client.data.userId) {
+      client.emit('error', { message: 'Unauthorized' });
+      return;
+    }
+
+    if (!payload.content?.trim()) return;
+
+    const isDirect = !!payload.roomId;
+
+    if (isDirect) {
+      const msg = await this.directMessageRepository.findOne({
+        where: { id: payload.messageId },
+        relations: { sender: true },
+      });
+      if (!msg) {
+        client.emit('error', { message: 'Message not found' });
+        return;
+      }
+      if (msg.sender.id !== client.data.userId) {
+        client.emit('error', { message: 'Cannot edit other users messages' });
+        return;
+      }
+      if (msg.messageType !== DirectMessageType.TEXT) {
+        client.emit('error', { message: 'Only text messages can be edited' });
+        return;
+      }
+
+      msg.content = payload.content;
+      msg.edited = true;
+      await this.directMessageRepository.save(msg);
+
+      this.server.to(payload.roomId!).emit('message_edited', {
+        id: msg.id,
+        content: msg.content,
+        edited: true,
+        roomId: payload.roomId,
+      });
+    } else if (payload.bookingId) {
+      const msg = await this.messageRepository.findOne({
+        where: { id: payload.messageId },
+        relations: { sender: true },
+      });
+      if (!msg) {
+        client.emit('error', { message: 'Message not found' });
+        return;
+      }
+      if (msg.sender.id !== client.data.userId) {
+        client.emit('error', { message: 'Cannot edit other users messages' });
+        return;
+      }
+      if (msg.messageType !== MessageType.TEXT) {
+        client.emit('error', { message: 'Only text messages can be edited' });
+        return;
+      }
+
+      msg.content = payload.content;
+      msg.edited = true;
+      await this.messageRepository.save(msg);
+
+      const room = `booking_${payload.bookingId}`;
+      this.server.to(room).emit('message_edited', {
+        id: msg.id,
+        content: msg.content,
+        edited: true,
+        bookingId: payload.bookingId,
+      });
+    }
+  }
+
+  @SubscribeMessage('delete_message')
+  async handleDeleteMessage(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody()
+    payload: {
+      messageId: string;
+      bookingId?: string;
+      roomId?: string;
+    },
+  ) {
+    if (!client.data.userId) {
+      client.emit('error', { message: 'Unauthorized' });
+      return;
+    }
+
+    const isDirect = !!payload.roomId;
+
+    if (isDirect) {
+      const msg = await this.directMessageRepository.findOne({
+        where: { id: payload.messageId },
+        relations: { sender: true },
+      });
+      if (!msg) {
+        client.emit('error', { message: 'Message not found' });
+        return;
+      }
+      if (msg.sender.id !== client.data.userId) {
+        client.emit('error', { message: 'Cannot delete other users messages' });
+        return;
+      }
+
+      msg.deleted = true;
+      msg.content = 'This message was deleted';
+      await this.directMessageRepository.save(msg);
+
+      this.server.to(payload.roomId!).emit('message_deleted', {
+        id: msg.id,
+        roomId: payload.roomId,
+      });
+    } else if (payload.bookingId) {
+      const msg = await this.messageRepository.findOne({
+        where: { id: payload.messageId },
+        relations: { sender: true },
+      });
+      if (!msg) {
+        client.emit('error', { message: 'Message not found' });
+        return;
+      }
+      if (msg.sender.id !== client.data.userId) {
+        client.emit('error', { message: 'Cannot delete other users messages' });
+        return;
+      }
+
+      msg.deleted = true;
+      msg.content = 'This message was deleted';
+      await this.messageRepository.save(msg);
+
+      const room = `booking_${payload.bookingId}`;
+      this.server.to(room).emit('message_deleted', {
+        id: msg.id,
+        bookingId: payload.bookingId,
+      });
+    }
   }
 
   // ==================== LOCATION SHARING ====================
@@ -1002,7 +1404,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   @SubscribeMessage('share_location')
   handleShareLocation(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: { bookingId: string; latitude: number; longitude: number },
+    @MessageBody()
+    payload: { bookingId: string; latitude: number; longitude: number },
   ) {
     if (!client.data.userId) {
       client.emit('error', { message: 'Unauthorized' });
@@ -1021,7 +1424,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   @SubscribeMessage('customer_share_location')
   handleCustomerShareLocation(
     @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() payload: { bookingId: string; latitude: number; longitude: number },
+    @MessageBody()
+    payload: { bookingId: string; latitude: number; longitude: number },
   ) {
     if (!client.data.userId) {
       client.emit('error', { message: 'Unauthorized' });

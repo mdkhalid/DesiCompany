@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' as intl;
 import '../l10n/strings.dart';
@@ -6,6 +6,7 @@ import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ProviderSubmitQuoteScreen extends StatefulWidget {
   final String jobRequestId;
   const ProviderSubmitQuoteScreen({super.key, required this.jobRequestId});
@@ -63,7 +64,7 @@ class _ProviderSubmitQuoteScreenState extends State<ProviderSubmitQuoteScreen> {
           if (myQuote['validUntil'] != null) {
             try {
               _validUntil = DateTime.parse(myQuote['validUntil']);
-            } catch (_) {}
+            } catch (e, st) { AppLogger.e('provider_submit_quote_screen', 'Operation failed', e, st); }
           }
         }
         _loading = false;
@@ -92,7 +93,7 @@ class _ProviderSubmitQuoteScreenState extends State<ProviderSubmitQuoteScreen> {
     try {
       final dt = DateTime.parse(iso);
       return intl.DateFormat('d MMM yyyy').format(dt);
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('provider_submit_quote_screen', 'Operation failed', e, st);
       return '';
     }
   }

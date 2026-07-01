@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LoyaltyPoint, LoyaltyTier } from './entities/loyalty-point.entity';
@@ -24,7 +20,7 @@ export class LoyaltyService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async getOrCreateLoyalty(userId: string) {
+  async getOrCreateLoyalty(userId: string): Promise<LoyaltyPoint> {
     let loyalty = await this.loyaltyRepository.findOne({
       where: { user: { id: userId } },
     });
@@ -42,7 +38,10 @@ export class LoyaltyService {
     return loyalty;
   }
 
-  async awardPointsForBooking(userId: string, bookingAmount: number) {
+  async awardPointsForBooking(
+    userId: string,
+    bookingAmount: number,
+  ): Promise<{ pointsEarned: number; tier: LoyaltyTier }> {
     const loyalty = await this.getOrCreateLoyalty(userId);
     const pointsEarned = Math.floor(bookingAmount * 0.1);
 
@@ -55,7 +54,14 @@ export class LoyaltyService {
     return { pointsEarned, tier: loyalty.tier };
   }
 
-  async redeemPoints(userId: string, points: number) {
+  async redeemPoints(
+    userId: string,
+    points: number,
+  ): Promise<{
+    redeemed: number;
+    walletCredit: number;
+    remainingPoints: number;
+  }> {
     const loyalty = await this.getOrCreateLoyalty(userId);
 
     if (points <= 0) {
@@ -104,7 +110,7 @@ export class LoyaltyService {
     return { redeemed: points, walletCredit, remainingPoints: loyalty.points };
   }
 
-  async getLeaderboard(limit = 10) {
+  async getLeaderboard(limit = 10): Promise<LoyaltyPoint[]> {
     return this.loyaltyRepository.find({
       relations: { user: true },
       order: { points: 'DESC' },
@@ -112,8 +118,8 @@ export class LoyaltyService {
     });
   }
 
-  async getAllLoyaltyUsers(role?: UserRole) {
-    const where: any = {};
+  async getAllLoyaltyUsers(role?: UserRole): Promise<LoyaltyPoint[]> {
+    const where: { user?: { role?: UserRole } } = {};
     if (role) {
       where.user = { role };
     }

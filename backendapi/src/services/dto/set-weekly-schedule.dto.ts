@@ -1,4 +1,12 @@
-import { IsArray, IsInt, IsString, Matches, Max, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsString,
+  Matches,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class WeeklySlotDto {
@@ -8,7 +16,9 @@ export class WeeklySlotDto {
   dayOfWeek: number;
 
   @IsString()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: 'startTime must be HH:MM' })
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'startTime must be HH:MM',
+  })
   startTime: string;
 
   @IsString()

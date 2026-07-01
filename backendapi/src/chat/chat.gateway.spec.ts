@@ -54,7 +54,10 @@ describe('ChatGateway', () => {
         { provide: getRepositoryToken(Booking), useValue: mockBookingRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
         { provide: getRepositoryToken(Provider), useValue: mockProviderRepo },
-        { provide: getRepositoryToken(Customer), useValue: { findOne: jest.fn() } },
+        {
+          provide: getRepositoryToken(Customer),
+          useValue: { findOne: jest.fn() },
+        },
         { provide: JwtService, useValue: mockJwtService },
       ],
     }).compile();
@@ -215,7 +218,12 @@ describe('ChatGateway', () => {
         {
           id: 'msg-1',
           content: 'hello',
-          sender: { id: 'user-1', role: 'customer', customer: { firstName: 'Test' }, phone: '123' },
+          sender: {
+            id: 'user-1',
+            role: 'customer',
+            customer: { firstName: 'Test' },
+            phone: '123',
+          },
           messageType: undefined,
           metadata: undefined,
           createdAt: undefined,
@@ -293,7 +301,11 @@ describe('ChatGateway', () => {
 
       const client = {
         id: 'socket-1',
-        data: { userId: 'user-1', userName: 'Test User', user: { role: 'customer' } },
+        data: {
+          userId: 'user-1',
+          userName: 'Test User',
+          user: { role: 'customer' },
+        },
         emit: jest.fn(),
       } as unknown as Socket;
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../common/enums/user-role.enum';
@@ -14,7 +14,11 @@ export class NotificationsService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(userId: string, title: string, message: string) {
+  async create(
+    userId: string,
+    title: string,
+    message: string,
+  ): Promise<Notification> {
     const notification = this.notificationRepository.create({
       user: { id: userId } as User,
       title,
@@ -23,7 +27,16 @@ export class NotificationsService {
     return this.notificationRepository.save(notification);
   }
 
-  async findByUser(userId: string, page = 1, limit = 20) {
+  async findByUser(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{
+    notifications: Notification[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const [notifications, total] =
       await this.notificationRepository.findAndCount({
         where: { user: { id: userId } },
@@ -34,7 +47,10 @@ export class NotificationsService {
     return { notifications, total, page, limit };
   }
 
-  async markAsRead(notificationId: string, userId: string) {
+  async markAsRead(
+    notificationId: string,
+    userId: string,
+  ): Promise<Notification | null> {
     await this.notificationRepository.update(
       { id: notificationId, user: { id: userId } },
       { isRead: true },
@@ -44,7 +60,7 @@ export class NotificationsService {
     });
   }
 
-  async markAllAsRead(userId: string) {
+  async markAllAsRead(userId: string): Promise<{ success: boolean }> {
     await this.notificationRepository.update(
       { user: { id: userId }, isRead: false },
       { isRead: true },
@@ -52,15 +68,19 @@ export class NotificationsService {
     return { success: true };
   }
 
-  async getUnreadCount(userId: string) {
+  async getUnreadCount(userId: string): Promise<number> {
     return this.notificationRepository.count({
       where: { user: { id: userId }, isRead: false },
     });
   }
 
-  async broadcast(title: string, message: string, role?: UserRole) {
+  async broadcast(
+    title: string,
+    message: string,
+    role?: UserRole,
+  ): Promise<{ message: string; count: number }> {
     // Find target users
-    const where: any = {};
+    const where: { role?: UserRole } = {};
     if (role) {
       where.role = role;
     }

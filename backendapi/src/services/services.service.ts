@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, LessThan, MoreThan } from 'typeorm';
+import { Repository, In, MoreThan } from 'typeorm';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
@@ -402,7 +402,7 @@ export class ServicesService {
       const existingBookings = await this.bookingRepository.find({
         where: {
           provider: { id: providerId },
-          scheduledDate: MoreThan(dateObj) as any,
+          scheduledDate: MoreThan(dateObj),
           status: In(activeStatuses),
         },
         select: { id: true, scheduledDate: true, estimatedHours: true },
@@ -415,16 +415,13 @@ export class ServicesService {
         })
         .map((b) => {
           const bDate = new Date(b.scheduledDate);
-          const startMinutes =
-            bDate.getHours() * 60 + bDate.getMinutes();
+          const startMinutes = bDate.getHours() * 60 + bDate.getMinutes();
           const duration = (b.estimatedHours || 1) * 60;
           return { startMin: startMinutes, endMin: startMinutes + duration };
         });
 
       const isOverlapping = (slotStart: number, slotEnd: number) =>
-        bookedRanges.some(
-          (b) => slotStart < b.endMin && slotEnd > b.startMin,
-        );
+        bookedRanges.some((b) => slotStart < b.endMin && slotEnd > b.startMin);
 
       for (const avail of availability) {
         const slots = this.generateTimeSlotRanges(
@@ -462,7 +459,12 @@ export class ServicesService {
     endTime: string,
     durationMinutes: number,
   ): { start: string; end: string; startMin: number; endMin: number }[] {
-    const slots: { start: string; end: string; startMin: number; endMin: number }[] = [];
+    const slots: {
+      start: string;
+      end: string;
+      startMin: number;
+      endMin: number;
+    }[] = [];
     const [startHour, startMin] = startTime.split(':').map(Number);
     const [endHour, endMin] = endTime.split(':').map(Number);
 

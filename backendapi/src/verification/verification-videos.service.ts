@@ -10,7 +10,6 @@ import {
   VerificationVideoStatus,
 } from './entities/verification-video.entity';
 import { Provider } from '../users/entities/provider.entity';
-import { UserRole } from '../common/enums/user-role.enum';
 
 @Injectable()
 export class VerificationVideosService {

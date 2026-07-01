@@ -1,16 +1,19 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../l10n/strings.dart';
 import '../models/chat_message.dart';
 import '../models/hive_chat_message.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/location_service.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ChatScreen extends StatefulWidget {
   final String? bookingId;
   final String? providerId;
@@ -115,7 +118,7 @@ class _ChatScreenState extends State<ChatScreen> {
           setState(() => _messages.addAll(msgs));
         }
       }
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _saveMessagesToCache() async {
@@ -124,13 +127,13 @@ class _ChatScreenState extends State<ChatScreen> {
       for (final msg in _messages) {
         await _messagesBox.add(HiveChatMessage.fromChatMessage(msg));
       }
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _addPendingMessage(ChatMessage msg) async {
     try {
       await _pendingBox.add(HiveChatMessage.fromChatMessage(msg, isPending: true));
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _removePendingMessage(String id) async {
@@ -142,7 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (key != null) {
         await _pendingBox.delete(key);
       }
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st); }
   }
 
   // ==================== BOOKING INFO ====================
@@ -158,7 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _loadingBooking = false;
         });
       }
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st);
       if (mounted) setState(() => _loadingBooking = false);
     }
   }
@@ -316,6 +319,37 @@ class _ChatScreenState extends State<ChatScreen> {
       });
       _saveMessagesToCache();
     });
+
+    _socket.on('message_edited', (data) {
+      final id = data['id'] as String?;
+      final content = data['content'] as String?;
+      if (id != null && content != null) {
+        final idx = _messages.indexWhere((m) => m.id == id);
+        if (idx != -1) {
+          setState(() {
+            _messages[idx] = _messages[idx].copyWith(content: content, edited: true);
+          });
+          _saveMessagesToCache();
+        }
+      }
+    });
+
+    _socket.on('message_deleted', (data) {
+      final id = data['id'] as String?;
+      if (id != null) {
+        final idx = _messages.indexWhere((m) => m.id == id);
+        if (idx != -1) {
+          setState(() {
+            _messages[idx] = _messages[idx].copyWith(
+              content: 'This message was deleted',
+              deleted: true,
+              messageType: MessageType.text,
+            );
+          });
+          _saveMessagesToCache();
+        }
+      }
+    });
   }
 
   void _addMessage(ChatMessage msg) {
@@ -442,7 +476,7 @@ class _ChatScreenState extends State<ChatScreen> {
           });
         }
       }
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _sendQuote(double amount) async {
@@ -476,6 +510,69 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _shareLocation() async {
+    try {
+      final position = await LocationService.getCurrentLocation();
+      if (position == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not get location. Please check permissions.')),
+          );
+        }
+        return;
+      }
+
+      final address = await LocationService.getAddressFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      final content = '📍 $address';
+      final metadata = {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'address': address,
+      };
+
+      // Send as a regular message with location metadata
+      if (_isDirect && _directRoomId != null) {
+        _socket.emit('send_direct_message', {
+          'roomId': _directRoomId,
+          'content': content,
+          'messageType': 'location',
+          'metadata': metadata,
+        });
+      } else if (widget.bookingId != null) {
+        _socket.emit('send_message', {
+          'bookingId': widget.bookingId,
+          'content': content,
+          'messageType': 'location',
+          'metadata': metadata,
+        });
+      }
+
+      // Add locally
+      final tempMsg = ChatMessage(
+        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        content: content,
+        senderId: _currentUserId ?? '',
+        senderName: 'You',
+        messageType: MessageType.location,
+        metadata: metadata,
+        createdAt: DateTime.now(),
+        status: MessageStatus.sent,
+      );
+      _addMessage(tempMsg);
+    } catch (e, st) {
+      AppLogger.e('chat_screen', 'Location share failed', e, st);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to share location')),
+        );
+      }
+    }
+  }
+
   Future<void> _translate() async {
     final visibleMessages = _messages.where((m) => m.isText && (m.senderId != _currentUserId)).toList();
     if (visibleMessages.isEmpty) return;
@@ -497,7 +594,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         );
       }
-    } catch (_) {
+    } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Translation failed')),
@@ -513,6 +610,33 @@ class _ChatScreenState extends State<ChatScreen> {
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
     return '$h:$m';
+  }
+
+  String _formatDateHeader(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(dt.year, dt.month, dt.day);
+    final diff = today.difference(messageDate).inDays;
+
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) {
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      return days[dt.weekday - 1];
+    }
+    final month = dt.month.toString().padLeft(2, '0');
+    final day = dt.day.toString().padLeft(2, '0');
+    return '$day/$month/${dt.year}';
+  }
+
+  bool _shouldShowDateHeader(int index) {
+    if (index == 0) return true;
+    final current = _messages[index].createdAt;
+    final previous = _messages[index - 1].createdAt;
+    if (current == null || previous == null) return false;
+    return current.year != previous.year ||
+        current.month != previous.month ||
+        current.day != previous.day;
   }
 
   @override
@@ -605,34 +729,46 @@ class _ChatScreenState extends State<ChatScreen> {
                     final isMe = msg.senderId == _currentUserId;
                     final isSystem = msg.metadata?['system'] == true;
 
-                    if (isSystem) {
-                      return _buildSystemMessage(msg);
-                    }
-
                     return Column(
-                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                       children: [
-                        if (!isMe)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4, bottom: 2),
-                            child: Text(
-                              msg.senderName,
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        if (_shouldShowDateHeader(i) && msg.createdAt != null)
+                          _buildDateSeparator(msg.createdAt!),
+                        if (isSystem)
+                          _buildSystemMessage(msg)
+                        else
+                          GestureDetector(
+                            onLongPress: () => _showMessageOptions(msg),
+                            child: Column(
+                              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              children: [
+                                if (!isMe)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 4, bottom: 2),
+                                    child: Text(
+                                      msg.senderName,
+                                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                    ),
+                                  ),
+                                Row(
+                                  mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                                  children: [
+                                    if (msg.deleted)
+                                      _buildDeletedMessage(msg, isMe)
+                                    else if (msg.isImage)
+                                      _buildImageMessage(msg, isMe)
+                                    else if (msg.isQuote)
+                                      _buildQuoteMessage(msg, isMe)
+                                    else if (msg.isQuickReply)
+                                      _buildQuickReplyMessage(msg, isMe)
+                                    else if (msg.isLocation)
+                                      _buildLocationMessage(msg, isMe)
+                                    else
+                                      _buildTextMessage(msg, isMe),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                        Row(
-                          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                          children: [
-                            if (msg.isImage)
-                              _buildImageMessage(msg, isMe)
-                            else if (msg.isQuote)
-                              _buildQuoteMessage(msg, isMe)
-                            else if (msg.isQuickReply)
-                              _buildQuickReplyMessage(msg, isMe)
-                            else
-                              _buildTextMessage(msg, isMe),
-                          ],
-                        ),
                       ],
                     );
                   },
@@ -722,13 +858,46 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Text(msg.content, style: const TextStyle(fontSize: 15)),
           const SizedBox(height: 2),
-          if (isMe)
-            _buildReadStatusIcon(msg)
-          else
-            Text(
-              _formatTime(msg.createdAt),
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (msg.edited)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text('edited', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontStyle: FontStyle.italic)),
+                ),
+              if (isMe)
+                _buildReadStatusIcon(msg)
+              else
+                Text(
+                  _formatTime(msg.createdAt),
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeletedMessage(ChatMessage msg, bool isMe) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.block, size: 14, color: Colors.grey.shade500),
+          const SizedBox(width: 6),
+          Text(
+            'This message was deleted',
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
+          ),
         ],
       ),
     );
@@ -748,24 +917,27 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                height: 100,
-                color: Colors.grey.shade300,
-                child: const Center(child: Icon(Icons.broken_image, size: 40)),
-              ),
-              loadingBuilder: (_, child, progress) {
-                if (progress == null) return child;
-                return Container(
+          GestureDetector(
+            onTap: () => _openImagePreview(imageUrl),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
                   height: 100,
-                  color: Colors.grey.shade200,
-                  child: const Center(child: CircularProgressIndicator()),
-                );
-              },
+                  color: Colors.grey.shade300,
+                  child: const Center(child: Icon(Icons.broken_image, size: 40)),
+                ),
+                loadingBuilder: (_, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    height: 100,
+                    color: Colors.grey.shade200,
+                    child: const Center(child: CircularProgressIndicator()),
+                  );
+                },
+              ),
             ),
           ),
           if (isMe)
@@ -778,8 +950,152 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _openImagePreview(String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _ImagePreviewScreen(imageUrl: imageUrl),
+      ),
+    );
+  }
+
+  void _editMessage(ChatMessage msg) {
+    final ctrl = TextEditingController(text: msg.content);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Message'),
+        content: TextField(
+          controller: ctrl,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              final newContent = ctrl.text.trim();
+              if (newContent.isNotEmpty && newContent != msg.content) {
+                if (_isDirect && _directRoomId != null) {
+                  _socket.emit('edit_message', {
+                    'messageId': msg.id,
+                    'content': newContent,
+                    'roomId': _directRoomId,
+                  });
+                } else if (widget.bookingId != null) {
+                  _socket.emit('edit_message', {
+                    'messageId': msg.id,
+                    'content': newContent,
+                    'bookingId': widget.bookingId,
+                  });
+                }
+                // Update locally
+                final idx = _messages.indexWhere((m) => m.id == msg.id);
+                if (idx != -1) {
+                  setState(() {
+                    _messages[idx] = _messages[idx].copyWith(content: newContent, edited: true);
+                  });
+                  _saveMessagesToCache();
+                }
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteMessage(ChatMessage msg) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Message'),
+        content: const Text('Are you sure you want to delete this message?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              if (_isDirect && _directRoomId != null) {
+                _socket.emit('delete_message', {
+                  'messageId': msg.id,
+                  'roomId': _directRoomId,
+                });
+              } else if (widget.bookingId != null) {
+                _socket.emit('delete_message', {
+                  'messageId': msg.id,
+                  'bookingId': widget.bookingId,
+                });
+              }
+              // Update locally
+              final idx = _messages.indexWhere((m) => m.id == msg.id);
+              if (idx != -1) {
+                setState(() {
+                  _messages[idx] = _messages[idx].copyWith(
+                    content: 'This message was deleted',
+                    deleted: true,
+                    messageType: MessageType.text,
+                  );
+                });
+                _saveMessagesToCache();
+              }
+              Navigator.pop(ctx);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMessageOptions(ChatMessage msg) {
+    final isMe = msg.senderId == _currentUserId;
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isMe && msg.isText && !msg.deleted)
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _editMessage(msg);
+                },
+              ),
+            if (isMe && !msg.deleted)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteMessage(msg);
+                },
+              ),
+            if (!isMe || msg.deleted || !msg.isText)
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('Message Info'),
+                subtitle: Text(
+                  'Sent by ${msg.senderName} at ${_formatTime(msg.createdAt)}',
+                ),
+                onTap: () => Navigator.pop(ctx),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuoteMessage(ChatMessage msg, bool isMe) {
     final amount = msg.quoteAmount?.toStringAsFixed(0) ?? '';
+    final isAccepted = msg.quoteAccepted;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -795,14 +1111,99 @@ class _ChatScreenState extends State<ChatScreen> {
           Text('Quote', style: TextStyle(fontSize: 11, color: isMe ? Colors.green.shade700 : Colors.orange.shade700, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text('₹$amount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          if (msg.quoteAccepted)
-            Text('Accepted', style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
+          if (isAccepted)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, size: 14, color: Colors.green.shade700),
+                  const SizedBox(width: 4),
+                  Text('Accepted', style: TextStyle(fontSize: 12, color: Colors.green.shade700, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          if (!isMe && !isAccepted)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: 32,
+                    child: ElevatedButton(
+                      onPressed: () => _acceptQuote(msg),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                      child: const Text('Accept'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 32,
+                    child: OutlinedButton(
+                      onPressed: () => _declineQuote(msg),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                      child: const Text('Decline'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 4),
           if (isMe)
             _buildReadStatusIcon(msg),
         ],
       ),
     );
+  }
+
+  void _acceptQuote(ChatMessage msg) {
+    if (_isDirect && _directRoomId != null) {
+      _socket.emit('send_quick_reply', {
+        'roomId': _directRoomId,
+        'quickReplyType': 'accept_quote',
+      });
+    } else if (widget.bookingId != null) {
+      _socket.emit('send_quick_reply', {
+        'bookingId': widget.bookingId,
+        'quickReplyType': 'accept_quote',
+      });
+    }
+
+    // Update local message state
+    final idx = _messages.indexWhere((m) => m.id == msg.id);
+    if (idx != -1) {
+      setState(() {
+        _messages[idx] = _messages[idx].copyWith(
+          metadata: {...?_messages[idx].metadata, 'accepted': true},
+        );
+      });
+      _saveMessagesToCache();
+    }
+  }
+
+  void _declineQuote(ChatMessage msg) {
+    if (_isDirect && _directRoomId != null) {
+      _socket.emit('send_quick_reply', {
+        'roomId': _directRoomId,
+        'quickReplyType': 'decline_quote',
+      });
+    } else if (widget.bookingId != null) {
+      _socket.emit('send_quick_reply', {
+        'bookingId': widget.bookingId,
+        'quickReplyType': 'decline_quote',
+      });
+    }
   }
 
   Widget _buildQuickReplyMessage(ChatMessage msg, bool isMe) {
@@ -831,6 +1232,116 @@ class _ChatScreenState extends State<ChatScreen> {
               style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLocationMessage(ChatMessage msg, bool isMe) {
+    final lat = msg.latitude;
+    final lng = msg.longitude;
+    final address = msg.metadata?['address'] as String? ?? msg.content;
+    return GestureDetector(
+      onTap: () {
+        if (lat != null && lng != null) {
+          _openMap(lat, lng);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.teal.shade50 : Colors.grey.shade100,
+          border: Border.all(color: Colors.teal.shade300),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.location_on, size: 16, color: Colors.teal.shade700),
+                const SizedBox(width: 4),
+                Text('Location', style: TextStyle(fontSize: 11, color: Colors.teal.shade700, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Container(
+              height: 120,
+              width: 200,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey.shade300,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Stack(
+                  children: [
+                    Center(
+                      child: Icon(Icons.map, size: 48, color: Colors.grey.shade500),
+                    ),
+                    Center(
+                      child: Icon(Icons.location_pin, size: 32, color: Colors.red.shade700),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              address,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.open_in_new, size: 12, color: Colors.teal.shade600),
+                const SizedBox(width: 4),
+                Text('Open in Maps', style: TextStyle(fontSize: 11, color: Colors.teal.shade600, decoration: TextDecoration.underline)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            if (isMe)
+              _buildReadStatusIcon(msg)
+            else
+              Text(
+                _formatTime(msg.createdAt),
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openMap(double lat, double lng) async {
+    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  // ==================== DATE SEPARATOR ====================
+
+  Widget _buildDateSeparator(DateTime date) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            _formatDateHeader(date),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+          ),
+        ),
       ),
     );
   }
@@ -1012,6 +1523,15 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             const Divider(height: 1),
             ListTile(
+              leading: const Icon(Icons.location_on, color: Colors.teal),
+              title: const Text('Share Location'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _shareLocation();
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: const Icon(Icons.currency_rupee),
               title: const Text('Send Quote'),
               onTap: () {
@@ -1064,6 +1584,43 @@ class _ChatScreenState extends State<ChatScreen> {
             child: const Text('Send'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ImagePreviewScreen extends StatelessWidget {
+  final String imageUrl;
+  const _ImagePreviewScreen({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Center(
+              child: Icon(Icons.broken_image, size: 64, color: Colors.white54),
+            ),
+            loadingBuilder: (_, child, progress) {
+              if (progress == null) return child;
+              return const Center(child: CircularProgressIndicator(color: Colors.white));
+            },
+          ),
+        ),
       ),
     );
   }

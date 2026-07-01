@@ -8,6 +8,7 @@ export enum MessageType {
   IMAGE = 'image',
   QUOTE = 'quote',
   QUICK_REPLY = 'quick_reply',
+  LOCATION = 'location',
 }
 
 @Entity('messages')
@@ -30,5 +31,11 @@ export class Message extends BaseEntity {
   messageType: MessageType;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
+
+  @Column({ default: false })
+  edited: boolean;
+
+  @Column({ default: false })
+  deleted: boolean;
 }

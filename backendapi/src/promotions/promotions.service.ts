@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   PromotedListing,
   PromotedListingStatus,
@@ -13,7 +13,6 @@ import { Provider } from '../users/entities/provider.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
 import { Wallet } from '../payments/entities/wallet.entity';
 import { Transaction } from '../payments/entities/transaction.entity';
-import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class PromotionsService {

@@ -411,7 +411,7 @@ class _GrievanceChatScreenState extends State<GrievanceChatScreen> {
             ),
             const SizedBox(width: 12),
             Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.primary,
                 shape: BoxShape.circle,
               ),

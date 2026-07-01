@@ -76,7 +76,6 @@ function NumberInput({ value, onChange, ...props }: {
 // ─── Fee Config Section Helper ────────────────────────────────
 
 function FeeConfigSection({
-  label,
   config,
   savingKey,
   onUpdate,
@@ -84,7 +83,7 @@ function FeeConfigSection({
   label: string;
   config?: PlatformFeeConfig;
   savingKey: string | null;
-  onUpdate: (config: PlatformFeeConfig, field: string, value: any) => void;
+  onUpdate: (config: PlatformFeeConfig, field: string, value: unknown) => void;
 }) {
   if (!config) return null;
 
@@ -156,8 +155,8 @@ function ConfigTab() {
     try {
       const data = await api.get<PlatformFeeConfig[]>('/admin/fee-configs');
       setConfigs(data);
-    } catch (e: any) {
-      setError(e.message || 'Failed to load fee configs');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load fee configs');
     } finally {
       setLoading(false);
     }
@@ -165,13 +164,13 @@ function ConfigTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function updateConfig(config: PlatformFeeConfig, field: string, value: any) {
+  async function updateConfig(config: PlatformFeeConfig, field: string, value: unknown) {
     setSavingKey(config.configKey);
     setActionError('');
     try {
-      const update: Record<string, any> = {};
+      const update: Record<string, unknown> = {};
       if (field === 'configValue') {
-        update.configValue = { ...config.configValue, ...value };
+        update.configValue = { ...config.configValue, ...(value as Record<string, unknown>) };
       } else if (field === 'isActive') {
         update.isActive = value;
       } else if (field === 'featureEnabled') {
@@ -179,8 +178,8 @@ function ConfigTab() {
       }
       const saved = await api.patch<PlatformFeeConfig>(`/admin/fee-configs/${config.configKey}`, update);
       setConfigs((prev) => prev.map((c) => (c.configKey === config.configKey ? saved : c)));
-    } catch (e: any) {
-      setActionError(e.message || 'Failed to update config');
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Failed to update config');
     } finally {
       setSavingKey(null);
     }
@@ -347,8 +346,8 @@ function usePlanCrud<T extends { id: string }>(endpoint: string) {
     try {
       const data = await api.get<T[]>(endpoint);
       setItems(data);
-    } catch (e: any) {
-      setError(e.message || `Failed to load from ${endpoint}`);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : `Failed to load from ${endpoint}`);
     } finally {
       setLoading(false);
     }
@@ -396,7 +395,7 @@ function PlansTab() {
     }
     setActionError('');
     try {
-      const body: Record<string, any> = {
+      const body: Record<string, unknown> = {
         name,
         description: description || undefined,
         monthlyPrice,
@@ -409,8 +408,8 @@ function PlansTab() {
       }
       resetForm();
       await load();
-    } catch (e: any) {
-      setActionError(e.message || 'Failed to save plan');
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Failed to save plan');
     }
   }
 
@@ -419,8 +418,8 @@ function PlansTab() {
     try {
       await api.delete(`/admin/subscription-plans/${id}`);
       await load();
-    } catch (e: any) {
-      setActionError(e.message || 'Failed to delete plan');
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Failed to delete plan');
     }
   }
 
@@ -579,7 +578,7 @@ function MembershipTab() {
     }
     setActionError('');
     try {
-      const body: Record<string, any> = {
+      const body: Record<string, unknown> = {
         name,
         description: description || undefined,
         monthlyPrice,
@@ -593,8 +592,8 @@ function MembershipTab() {
       }
       resetForm();
       await load();
-    } catch (e: any) {
-      setActionError(e.message || 'Failed to save plan');
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Failed to save plan');
     }
   }
 
@@ -603,8 +602,8 @@ function MembershipTab() {
     try {
       await api.delete(`/admin/membership-plans/${id}`);
       await load();
-    } catch (e: any) {
-      setActionError(e.message || 'Failed to delete plan');
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Failed to delete plan');
     }
   }
 
@@ -620,8 +619,8 @@ function MembershipTab() {
       setAssignCustomerId('');
       setAssignError('Plan assigned successfully!');
       setTimeout(() => setAssignError(''), 3000);
-    } catch (e: any) {
-      setAssignError(e.message || 'Failed to assign plan');
+    } catch (e: unknown) {
+      setAssignError(e instanceof Error ? e.message : 'Failed to assign plan');
     }
   }
 
@@ -649,8 +648,8 @@ function MembershipTab() {
       setMembershipData(null);
       setAssignError('Membership cancelled successfully!');
       setTimeout(() => setAssignError(''), 3000);
-    } catch (e: any) {
-      setAssignError(e.message || 'Failed to cancel membership');
+    } catch (e: unknown) {
+      setAssignError(e instanceof Error ? e.message : 'Failed to cancel membership');
     }
   }
 
@@ -898,8 +897,8 @@ function PromoTab() {
     try {
       const data = await api.get<PromoCode[]>('/admin/promo-codes');
       setPromoCodes(data);
-    } catch (e: any) {
-      setError(e.message || 'Failed to load promo codes');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load promo codes');
     } finally {
       setLoading(false);
     }
@@ -937,7 +936,7 @@ function PromoTab() {
     }
     setActionError('');
     try {
-      const body: Record<string, any> = {
+      const body: Record<string, unknown> = {
         code: code.toUpperCase(),
         type,
         value,
@@ -952,8 +951,8 @@ function PromoTab() {
       }
       resetForm();
       await load();
-    } catch (e: any) {
-      setActionError(e.message || 'Failed to save promo code');
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Failed to save promo code');
     }
   }
 
@@ -962,8 +961,8 @@ function PromoTab() {
     try {
       await api.delete(`/admin/promo-codes/${id}`);
       await load();
-    } catch (e: any) {
-      setActionError(e.message || 'Failed to delete promo code');
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : 'Failed to delete promo code');
     }
   }
 
@@ -1154,8 +1153,8 @@ function RevenueTab() {
     try {
       const data = await api.get<RevenueStats>('/admin/revenue-stats');
       setStats(data);
-    } catch (e: any) {
-      setError(e.message || 'Failed to load revenue stats');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load revenue stats');
     } finally {
       setLoading(false);
     }

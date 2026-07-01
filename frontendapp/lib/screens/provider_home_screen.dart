@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 import '../utils/id_helpers.dart';
 
+import 'package:desicompany/services/app_logger.dart';
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
   @override
@@ -31,7 +33,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           setState(() => _providerName = name);
         }
       }
-    } catch (_) {}
+    } catch (e, st) { AppLogger.e('provider_home_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _loadBookings() async {
@@ -122,7 +124,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                         _buildHeaderButton(Icons.feedback, loc.tr('my_quotes'),
                           () => Navigator.pushNamed(context, '/provider-my-quotes')),
                         _buildHeaderButton(Icons.logout, loc.tr('header_logout'),
-                          () => Navigator.pushReplacementNamed(context, '/login')),
+                          () async {
+                            await AuthService.logout();
+                            if (mounted) Navigator.pushReplacementNamed(context, '/login');
+                          }),
                       ],
                     ),
                   ),

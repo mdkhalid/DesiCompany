@@ -42,7 +42,9 @@ export class PaymentGatewayFactory {
       // Check env vars for gateway configuration
       const envGateway = process.env.PAYMENT_GATEWAY;
       if (envGateway && envGateway !== 'cash') {
-        const envCreds = this.getEnvCredentials(envGateway);
+        const envCreds = this.getEnvCredentials(
+          envGateway as PaymentGatewayType,
+        );
         if (envCreds) {
           this.logger.log(
             `No DB config — using env-configured gateway: ${envGateway}`,
@@ -110,7 +112,7 @@ export class PaymentGatewayFactory {
   }
 
   private getEnvCredentials(
-    gatewayType: string,
+    gatewayType: PaymentGatewayType,
   ): Record<string, string> | null {
     switch (gatewayType) {
       case PaymentGatewayType.RAZORPAY: {

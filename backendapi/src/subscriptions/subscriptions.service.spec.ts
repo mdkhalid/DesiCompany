@@ -218,7 +218,8 @@ describe('SubscriptionsService', () => {
         featuresSnapshot: PLAN_FEATURES[SubscriptionPlan.PRO],
       } as Subscription);
 
-      const result = await service.getProviderSubscriptionBenefits('provider-1');
+      const result =
+        await service.getProviderSubscriptionBenefits('provider-1');
       expect(result.hasSubscription).toBe(true);
       expect(result.plan).toBe(SubscriptionPlan.PRO);
     });
@@ -226,7 +227,8 @@ describe('SubscriptionsService', () => {
     it('returns no subscription when none active', async () => {
       subscriptionRepo.findOne.mockResolvedValue(null);
 
-      const result = await service.getProviderSubscriptionBenefits('provider-1');
+      const result =
+        await service.getProviderSubscriptionBenefits('provider-1');
       expect(result.hasSubscription).toBe(false);
       expect(result.plan).toBeNull();
     });

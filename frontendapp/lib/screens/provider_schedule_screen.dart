@@ -254,7 +254,7 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
 
   Widget _buildWeeklySection(LocalizationProvider loc) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Weekly Hours', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+      const Text('Weekly Hours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
       const SizedBox(height: 12),
       ...List.generate(7, (i) {
         final apiDay = i == 6 ? 0 : i + 1;
@@ -272,10 +272,11 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
               SizedBox(
                 width: 48,
                 child: Text(_dayNames[i], style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary, fontSize: 14)),
+
               ),
               Expanded(
                 child: slots.isEmpty
-                    ? Text('Off', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13))
+                    ? const Text('Off', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13))
                     : Wrap(
                         spacing: 6,
                         runSpacing: 4,
@@ -305,7 +306,7 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
   Widget _buildOverridesSection(LocalizationProvider loc) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Text('Date Overrides', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+        const Text('Date Overrides', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
         const Spacer(),
         TextButton.icon(
           onPressed: _addOverride,
@@ -322,7 +323,7 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
           ),
-          child: Text('No date overrides', style: const TextStyle(color: AppTheme.textSecondary)),
+          child: const Text('No date overrides', style: TextStyle(color: AppTheme.textSecondary)),
         )
       else
         ..._overrides.map((o) => Container(
@@ -382,8 +383,8 @@ class _TimeSlotDialogState extends State<_TimeSlotDialog> {
   Widget build(BuildContext context) {
     final loc = DesiCompanyApp.localeProvider!;
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Text('Add Time Slot'),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
+      title: const Text('Add Time Slot'),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         _buildTimeRow('Start', _start, true),
         const SizedBox(height: 12),

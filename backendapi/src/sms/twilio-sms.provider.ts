@@ -1,12 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+type TwilioClient = {
+  messages: {
+    create(params: {
+      body: string;
+      from: string;
+      to: string;
+    }): Promise<unknown>;
+  };
+};
+
 @Injectable()
 export class TwilioSmsProvider {
   private readonly logger = new Logger(TwilioSmsProvider.name);
-  private client: any;
+  private client: TwilioClient | null = null;
 
   constructor() {
-    this.initTwilio();
+    this.initTwilio().catch(() => {});
   }
 
   private async initTwilio() {

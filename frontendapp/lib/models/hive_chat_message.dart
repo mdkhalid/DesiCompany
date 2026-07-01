@@ -38,6 +38,12 @@ class HiveChatMessage {
   @HiveField(10)
   final bool isPending;
 
+  @HiveField(11)
+  final bool edited;
+
+  @HiveField(12)
+  final bool deleted;
+
   HiveChatMessage({
     required this.id,
     required this.content,
@@ -50,6 +56,8 @@ class HiveChatMessage {
     this.status = 'sent',
     this.isRead = false,
     this.isPending = false,
+    this.edited = false,
+    this.deleted = false,
   }) : createdAt = createdAt ?? DateTime.now();
 
   factory HiveChatMessage.fromChatMessage(ChatMessage message, {bool isPending = false}) {
@@ -65,6 +73,8 @@ class HiveChatMessage {
       status: message.status,
       isRead: message.isRead,
       isPending: isPending,
+      edited: message.edited,
+      deleted: message.deleted,
     );
   }
 
@@ -80,6 +90,8 @@ class HiveChatMessage {
       createdAt: createdAt,
       status: status,
       isRead: isRead,
+      edited: edited,
+      deleted: deleted,
     );
   }
 }
