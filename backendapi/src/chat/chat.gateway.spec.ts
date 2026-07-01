@@ -9,6 +9,7 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Customer } from '../users/entities/customer.entity';
+import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
@@ -42,6 +43,11 @@ describe('ChatGateway', () => {
     verify: jest.fn(),
   };
 
+  const mockPushNotificationsService = {
+    sendPushNotification: jest.fn(),
+    sendToUser: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -59,6 +65,7 @@ describe('ChatGateway', () => {
           useValue: { findOne: jest.fn() },
         },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: PushNotificationsService, useValue: mockPushNotificationsService },
       ],
     }).compile();
 
@@ -261,6 +268,8 @@ describe('ChatGateway', () => {
           createdAt: undefined,
           status: 'delivered',
           isRead: undefined,
+          edited: false,
+          deleted: false,
         },
       ]);
     });

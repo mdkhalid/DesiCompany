@@ -41,6 +41,8 @@ interface HistoryMessage {
   metadata?: Record<string, unknown>;
   createdAt: Date;
   isRead: boolean;
+  edited?: boolean;
+  deleted?: boolean;
 }
 
 interface TypingPayload {
@@ -149,17 +151,17 @@ export class ChatGateway
       }
       return {
         id: m.id,
-        content: (m as Record<string, unknown>)['deleted'] ? 'This message was deleted' : m.content,
+        content: (m as unknown as Record<string, unknown>)['deleted'] ? 'This message was deleted' : m.content,
         senderId: sender?.id,
         senderName,
         senderRole: sender?.role || '',
-        messageType: (m as Record<string, unknown>)['deleted'] ? 'text' : m.messageType,
+        messageType: (m as unknown as Record<string, unknown>)['deleted'] ? 'text' : m.messageType,
         metadata: m.metadata,
         createdAt: m.createdAt,
         status: m.isRead ? 'read' : 'delivered',
         isRead: m.isRead,
-        edited: (m as Record<string, unknown>)['edited'] || false,
-        deleted: (m as Record<string, unknown>)['deleted'] || false,
+        edited: (m as unknown as Record<string, unknown>)['edited'] || false,
+        deleted: (m as unknown as Record<string, unknown>)['deleted'] || false,
       };
     });
   }
