@@ -399,6 +399,62 @@ export class ChatService {
     }
   }
 
+  async searchConversations(
+    userId: string,
+    query: string,
+  ): Promise<ConversationItem[]> {
+    const { conversations } = await this.getConversations(userId, 1, 10000);
+    const lowerQuery = query.toLowerCase();
+    return conversations.filter(
+      (c) =>
+        c.partnerName.toLowerCase().includes(lowerQuery) ||
+        c.lastMessage.toLowerCase().includes(lowerQuery),
+    );
+  }
+
+  async searchMessages(
+    userId: string,
+    roomId: string,
+    query: string,
+    page = 1,
+    limit = 50,
+  ): Promise<{ messages: (Message | DirectMessage)[]; total: number }> {
+    const lowerQuery = query.toLowerCase();
+
+    if (roomId.startsWith('booking_')) {
+      const bookingId = roomId.replace('booking_', '');
+      const [messages, total] = await this.messageRepository.findAndCount({
+        where: { booking: { id: bookingId } },
+        relations: { sender: { customer: true, provider: true } },
+        order: { createdAt: 'DESC' },
+      });
+      const filtered = messages.filter((m) =>
+        m.content.toLowerCase().includes(lowerQuery),
+      );
+      const start = (page - 1) * limit;
+      return { messages: filtered.slice(start, start + limit), total: filtered.length };
+    }
+
+    if (roomId.startsWith('direct_')) {
+      const parts = roomId.split('_');
+      if (parts.length !== 3) return { messages: [], total: 0 };
+      const customerId = parts[1];
+      const providerId = parts[2];
+      const [messages, total] = await this.directMessageRepository.findAndCount({
+        where: { customer: { id: customerId }, provider: { id: providerId } },
+        relations: { sender: { customer: true, provider: true } },
+        order: { createdAt: 'DESC' },
+      });
+      const filtered = messages.filter((m) =>
+        m.content.toLowerCase().includes(lowerQuery),
+      );
+      const start = (page - 1) * limit;
+      return { messages: filtered.slice(start, start + limit), total: filtered.length };
+    }
+
+    return { messages: [], total: 0 };
+  }
+
   async markAsRead(
     userId: string,
     type: 'booking' | 'direct',
@@ -425,5 +481,51 @@ export class ChatService {
         { isRead: true },
       );
     }
+  }
+
+  /**
+   * Migrate direct messages to a booking room when a booking is created
+   * between two users who already had a direct conversation.
+   */
+  async migrateDirectToBooking(
+    customerId: string,
+    providerId: string,
+    bookingId: string,
+  ): Promise<number> {
+    const directMessages = await this.directMessageRepository.find({
+      where: {
+        customer: { id: customerId },
+        provider: { id: providerId },
+      },
+      relations: { sender: true, customer: true, provider: true },
+      order: { createdAt: 'ASC' },
+    });
+
+    if (directMessages.length === 0) return 0;
+
+    const booking = await this.bookingRepository.findOne({
+      where: { id: bookingId },
+    });
+    if (!booking) return 0;
+
+    let migrated = 0;
+    for (const dm of directMessages) {
+      const message = this.messageRepository.create({
+        booking,
+        sender: dm.sender,
+        content: dm.content,
+        messageType: dm.messageType as any,
+        metadata: dm.metadata,
+        isRead: dm.isRead,
+        createdAt: dm.createdAt,
+      });
+      await this.messageRepository.save(message);
+      migrated++;
+    }
+
+    this.logger.log(
+      `Migrated ${migrated} direct messages to booking ${bookingId}`,
+    );
+    return migrated;
   }
 }

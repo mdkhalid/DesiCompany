@@ -49,6 +49,35 @@ export class ChatController {
     return this.chatService.getConversations(req.user.id, page, limit);
   }
 
+  @Get('conversations/search')
+  @ApiOperation({ summary: 'Search conversations by partner name or last message' })
+  @ApiResponse({ status: 200, description: 'Matching conversations' })
+  async searchConversations(
+    @Req() req: AuthRequest,
+    @Query('q') query: string,
+  ) {
+    return this.chatService.searchConversations(req.user.id, query || '');
+  }
+
+  @Get('messages/search')
+  @ApiOperation({ summary: 'Search messages by content in a room' })
+  @ApiResponse({ status: 200, description: 'Matching messages' })
+  async searchMessages(
+    @Req() req: AuthRequest,
+    @Query('roomId') roomId: string,
+    @Query('q') query: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+  ) {
+    return this.chatService.searchMessages(
+      req.user.id,
+      roomId,
+      query || '',
+      page,
+      limit,
+    );
+  }
+
   @Get('messages/:type/:targetId')
   @ApiOperation({ summary: 'Get message history for a conversation' })
   @ApiResponse({ status: 200, description: 'Message history' })
@@ -153,5 +182,21 @@ export class ChatController {
   @ApiOperation({ summary: 'Detect language of text' })
   detectLanguage(@Body('text') text: string) {
     return { language: this.translationService.detectLanguage(text) };
+  }
+
+  @Post('migrate-direct-to-booking')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Migrate direct messages to a booking room' })
+  @ApiResponse({ status: 200, description: 'Messages migrated' })
+  async migrateDirectToBooking(
+    @Req() req: AuthRequest,
+    @Body() body: { customerId: string; providerId: string; bookingId: string },
+  ) {
+    const migrated = await this.chatService.migrateDirectToBooking(
+      body.customerId,
+      body.providerId,
+      body.bookingId,
+    );
+    return { migrated, success: true };
   }
 }

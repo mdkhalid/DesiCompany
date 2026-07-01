@@ -24,6 +24,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
+import { sanitizeText } from '../common/utils/input-sanitizer';
 
 interface AuthenticatedSocket extends Socket {
   data: {
@@ -88,6 +89,19 @@ export class ChatGateway
 
   private readonly logger = new Logger(ChatGateway.name);
   private readonly userSockets = new Map<string, Set<string>>();
+  private readonly messageCounts = new Map<string, number[]>();
+
+  private isRateLimited(userId: string): boolean {
+    const now = Date.now();
+    const windowMs = 60000;
+    const maxMessages = 30;
+    const timestamps = this.messageCounts.get(userId) || [];
+    const recent = timestamps.filter(t => now - t < windowMs);
+    if (recent.length >= maxMessages) return true;
+    recent.push(now);
+    this.messageCounts.set(userId, recent);
+    return false;
+  }
 
   private registerSocket(userId: string, socketId: string) {
     if (!this.userSockets.has(userId)) {
@@ -358,13 +372,19 @@ export class ChatGateway
       return;
     }
 
+    if (this.isRateLimited(client.data.userId)) {
+      client.emit('error', { message: 'Rate limit exceeded. Please slow down.' });
+      return;
+    }
+
     const {
       bookingId,
-      content,
+      content: rawContent,
       messageType = MessageType.TEXT,
       metadata,
     } = payload;
-    if (!bookingId || !content?.trim()) return;
+    const content = sanitizeText(rawContent);
+    if (!bookingId || !content) return;
 
     const booking = await this.bookingRepository.findOne({
       where: { id: bookingId },
@@ -501,6 +521,89 @@ export class ChatGateway
         'New image',
         'Sent an image',
         { bookingId: payload.bookingId, type: 'chat_image' },
+      );
+    }
+  }
+
+  @SubscribeMessage('send_file')
+  async handleSendFile(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody()
+    payload: {
+      bookingId: string;
+      fileUrl: string;
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+    },
+  ) {
+    if (!client.data.userId) {
+      client.emit('error', { message: 'Unauthorized' });
+      return;
+    }
+
+    if (!payload.bookingId || !payload.fileUrl) {
+      client.emit('error', { message: 'bookingId and fileUrl are required' });
+      return;
+    }
+
+    const booking = await this.bookingRepository.findOne({
+      where: { id: payload.bookingId },
+      relations: { customer: { user: true }, provider: { user: true } },
+    });
+
+    if (!booking) {
+      client.emit('error', { message: 'Booking not found' });
+      return;
+    }
+
+    const isParticipant =
+      booking.customer?.user?.id === client.data.userId ||
+      booking.provider?.user?.id === client.data.userId;
+
+    if (!isParticipant) {
+      client.emit('error', { message: 'Not a participant of this booking' });
+      return;
+    }
+
+    const content = `Sent a ${payload.fileType}`;
+    const message = this.messageRepository.create({
+      booking: { id: payload.bookingId } as Booking,
+      sender: { id: client.data.userId } as User,
+      content,
+      messageType: MessageType.DOCUMENT,
+      metadata: {
+        fileUrl: payload.fileUrl,
+        fileName: payload.fileName,
+        fileType: payload.fileType,
+        fileSize: payload.fileSize,
+      },
+    });
+    const saved = await this.messageRepository.save(message);
+
+    const room = `booking_${payload.bookingId}`;
+    this.server.to(room).emit('new_message', {
+      id: saved.id,
+      content: saved.content,
+      senderId: client.data.userId,
+      senderName: client.data.userName,
+      senderRole: client.data.user.role,
+      messageType: MessageType.DOCUMENT,
+      metadata: saved.metadata,
+      createdAt: saved.createdAt,
+      status: 'delivered',
+    });
+
+    const otherUserId =
+      booking.customer?.user?.id === client.data.userId
+        ? booking.provider?.user?.id
+        : booking.customer?.user?.id;
+    if (otherUserId) {
+      await this.sendPushIfOffline(
+        otherUserId,
+        'New file',
+        content,
+        { bookingId: payload.bookingId, type: 'chat_file' },
       );
     }
   }
@@ -1002,13 +1105,19 @@ export class ChatGateway
       return;
     }
 
+    if (this.isRateLimited(client.data.userId)) {
+      client.emit('error', { message: 'Rate limit exceeded. Please slow down.' });
+      return;
+    }
+
     const {
       roomId,
-      content,
+      content: rawContent,
       messageType = DirectMessageType.TEXT,
       metadata,
     } = payload;
-    if (!content?.trim()) return;
+    const content = sanitizeText(rawContent);
+    if (!content) return;
 
     const parts = roomId.split('_');
     if (parts.length !== 3 || parts[0] !== 'direct') {
@@ -1129,6 +1238,83 @@ export class ChatGateway
         'New image',
         'Sent an image',
         { roomId: payload.roomId, type: 'direct_image' },
+      );
+    }
+  }
+
+  @SubscribeMessage('send_direct_file')
+  async handleSendDirectFile(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody()
+    payload: {
+      roomId: string;
+      fileUrl: string;
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+    },
+  ) {
+    if (!client.data.userId) {
+      client.emit('error', { message: 'Unauthorized' });
+      return;
+    }
+
+    const parts = payload.roomId.split('_');
+    if (parts.length !== 3 || parts[0] !== 'direct') {
+      client.emit('error', { message: 'Invalid room ID format' });
+      return;
+    }
+    const customerUserId = parts[1];
+    const providerId = parts[2];
+
+    const customerEntity = await this.customerRepository.findOne({
+      where: { user: { id: customerUserId } },
+    });
+    if (!customerEntity) {
+      client.emit('error', { message: 'Customer not found' });
+      return;
+    }
+
+    const content = `Sent a ${payload.fileType}`;
+    const message = this.directMessageRepository.create({
+      customer: { id: customerEntity.id } as Customer,
+      provider: { id: providerId } as Provider,
+      sender: { id: client.data.userId } as User,
+      content,
+      messageType: DirectMessageType.DOCUMENT,
+      metadata: {
+        fileUrl: payload.fileUrl,
+        fileName: payload.fileName,
+        fileType: payload.fileType,
+        fileSize: payload.fileSize,
+      },
+    });
+    const saved = await this.directMessageRepository.save(message);
+
+    this.server.to(payload.roomId).emit('new_direct_message', {
+      id: saved.id,
+      content: saved.content,
+      senderId: client.data.userId,
+      senderName: client.data.userName,
+      senderRole: client.data.user.role,
+      messageType: DirectMessageType.DOCUMENT,
+      metadata: saved.metadata,
+      createdAt: saved.createdAt,
+      status: 'delivered',
+    });
+
+    const fileOtherUserId =
+      customerUserId === client.data.userId ? providerId : customerUserId;
+    const fileOtherUser = await this.providerRepository.findOne({
+      where: { id: fileOtherUserId },
+      relations: { user: true },
+    });
+    if (fileOtherUser?.user) {
+      await this.sendPushIfOffline(
+        fileOtherUser.user.id,
+        'New file',
+        content,
+        { roomId: payload.roomId, type: 'direct_file' },
       );
     }
   }
@@ -1272,7 +1458,15 @@ export class ChatGateway
       return;
     }
 
+    if (this.isRateLimited(client.data.userId)) {
+      client.emit('error', { message: 'Rate limit exceeded. Please slow down.' });
+      return;
+    }
+
     if (!payload.content?.trim()) return;
+
+    const content = sanitizeText(payload.content);
+    if (!content) return;
 
     const isDirect = !!payload.roomId;
 
@@ -1294,7 +1488,7 @@ export class ChatGateway
         return;
       }
 
-      msg.content = payload.content;
+      msg.content = content;
       msg.edited = true;
       await this.directMessageRepository.save(msg);
 
@@ -1322,7 +1516,7 @@ export class ChatGateway
         return;
       }
 
-      msg.content = payload.content;
+      msg.content = content;
       msg.edited = true;
       await this.messageRepository.save(msg);
 
@@ -1348,6 +1542,11 @@ export class ChatGateway
   ) {
     if (!client.data.userId) {
       client.emit('error', { message: 'Unauthorized' });
+      return;
+    }
+
+    if (this.isRateLimited(client.data.userId)) {
+      client.emit('error', { message: 'Rate limit exceeded. Please slow down.' });
       return;
     }
 

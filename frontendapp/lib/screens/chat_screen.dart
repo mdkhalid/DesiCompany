@@ -1,9 +1,13 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/strings.dart';
@@ -41,6 +45,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _currentUserId;
   String _targetLang = 'en';
   bool _translating = false;
+  bool _showEmojiPicker = false;
 
   // Booking info for header card
   Map<String, dynamic>? _bookingInfo;
@@ -449,13 +454,21 @@ class _ChatScreenState extends State<ChatScreen> {
     if (picked == null) return;
 
     try {
+      // Compress image before upload
+      final compressedBytes = await FlutterImageCompress.compressWithFile(
+        picked.path,
+        quality: 75,
+        minWidth: 1024,
+        minHeight: 1024,
+      );
+      final bytes = compressedBytes ?? await picked.readAsBytes();
+
       final token = await _getToken();
       final request = http.MultipartRequest(
         'POST',
         Uri.parse('${ApiService.baseUrl}/uploads/chat-image'),
       );
       request.headers['Authorization'] = 'Bearer $token';
-      final bytes = await picked.readAsBytes();
       request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: picked.name, contentType: http.MediaType.parse(picked.mimeType ?? 'image/jpeg')));
       final response = await request.send();
       if (response.statusCode == 201) {
@@ -477,6 +490,76 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
     } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st); }
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles();
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      final filePath = file.path;
+      if (filePath == null) return;
+
+      final token = await _getToken();
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiService.baseUrl}/uploads/chat-image'),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(
+        await http.MultipartFile.fromPath('file', filePath, filename: file.name),
+      );
+
+      final response = await request.send();
+      if (response.statusCode == 201) {
+        final body = await response.stream.bytesToString();
+        final json = jsonDecode(body);
+        final fileUrl = json['url'] as String;
+
+        if (_isDirect && _directRoomId != null) {
+          _socket.emit('send_direct_file', {
+            'roomId': _directRoomId,
+            'fileUrl': fileUrl,
+            'fileName': file.name,
+            'fileSize': file.size,
+            'fileType': file.extension ?? '',
+          });
+        } else if (widget.bookingId != null) {
+          _socket.emit('send_file', {
+            'bookingId': widget.bookingId,
+            'fileUrl': fileUrl,
+            'fileName': file.name,
+            'fileSize': file.size,
+            'fileType': file.extension ?? '',
+          });
+        }
+
+        final tempMsg = ChatMessage(
+          id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+          content: file.name,
+          senderId: _currentUserId ?? '',
+          senderName: 'You',
+          messageType: MessageType.document,
+          metadata: {
+            'fileUrl': fileUrl,
+            'fileName': file.name,
+            'fileSize': file.size,
+            'fileType': file.extension ?? '',
+          },
+          createdAt: DateTime.now(),
+          status: MessageStatus.sent,
+        );
+        _addMessage(tempMsg);
+      }
+    } catch (e, st) {
+      AppLogger.e('chat_screen', 'File pick failed', e, st);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send file')),
+        );
+      }
+    }
   }
 
   Future<void> _sendQuote(double amount) async {
@@ -756,6 +839,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                       _buildDeletedMessage(msg, isMe)
                                     else if (msg.isImage)
                                       _buildImageMessage(msg, isMe)
+                                    else if (msg.isDocument)
+                                      _buildDocumentMessage(msg, isMe)
                                     else if (msg.isQuote)
                                       _buildQuoteMessage(msg, isMe)
                                     else if (msg.isQuickReply)
@@ -781,36 +866,89 @@ class _ChatScreenState extends State<ChatScreen> {
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, -2))],
           ),
           child: SafeArea(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () => _showMoreOptions(loc),
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    textInputAction: TextInputAction.send,
-                    minLines: 1,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      hintText: loc.tr('type_message'),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                if (_showEmojiPicker)
+                  SizedBox(
+                    height: 280,
+                    child: EmojiPicker(
+                      onEmojiSelected: (category, emoji) {
+                        _controller
+                          ..text += emoji.emoji
+                          ..selection = TextSelection.fromPosition(
+                            TextPosition(offset: _controller.text.length),
+                          );
+                      },
+                      onCategoryChanged: (category) {},
+                      onBackspacePressed: () {
+                        final text = _controller.text;
+                        if (text.isNotEmpty) {
+                          _controller.text = text.substring(0, text.length - 1);
+                          _controller.selection = TextSelection.fromPosition(
+                            TextPosition(offset: _controller.text.length),
+                          );
+                        }
+                      },
+                      config: Config(
+                        height: 280,
+                        checkPlatformCompatibility: true,
+                        emojiViewConfig: EmojiViewConfig(
+                          columns: 7,
+                          emojiSizeMax: 32,
+                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                        ),
+                        categoryViewConfig: const CategoryViewConfig(
+                          initCategory: Category.RECENT,
+                        ),
+                        bottomActionBarConfig: const BottomActionBarConfig(enabled: false),
+                        searchViewConfig: const SearchViewConfig(
+                          hintText: 'Search emoji...',
+                        ),
+                      ),
                     ),
-                    onChanged: (v) {
-                      if (v.isNotEmpty != _isTyping) {
-                        _isTyping = v.isNotEmpty;
-                        _sendTyping(v.isNotEmpty);
-                      }
-                    },
-                    onSubmitted: (_) => _sendMessage(),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
-                  onPressed: _sendMessage,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
+                        color: _showEmojiPicker ? Colors.blue : null,
+                      ),
+                      onPressed: () {
+                        setState(() => _showEmojiPicker = !_showEmojiPicker);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: () => _showMoreOptions(loc),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        textInputAction: TextInputAction.send,
+                        minLines: 1,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: loc.tr('type_message'),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        onChanged: (v) {
+                          if (v.isNotEmpty != _isTyping) {
+                            _isTyping = v.isNotEmpty;
+                            _sendTyping(v.isNotEmpty);
+                          }
+                        },
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.send, color: Colors.blue),
+                      onPressed: _sendMessage,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -957,6 +1095,119 @@ class _ChatScreenState extends State<ChatScreen> {
         builder: (_) => _ImagePreviewScreen(imageUrl: imageUrl),
       ),
     );
+  }
+
+  Widget _buildDocumentMessage(ChatMessage msg, bool isMe) {
+    final fileName = msg.documentName ?? 'Document';
+    final fileSizeBytes = msg.fileSize;
+    final fileType = msg.documentType ?? '';
+    final fileUrl = msg.documentUrl ?? '';
+
+    String sizeText = '';
+    if (fileSizeBytes != null) {
+      if (fileSizeBytes > 1048576) {
+        sizeText = '${(fileSizeBytes / 1048576).toStringAsFixed(1)} MB';
+      } else if (fileSizeBytes > 1024) {
+        sizeText = '${(fileSizeBytes / 1024).toStringAsFixed(1)} KB';
+      } else {
+        sizeText = '$fileSizeBytes B';
+      }
+    }
+
+    IconData icon;
+    Color iconColor;
+    switch (fileType.toLowerCase()) {
+      case 'pdf':
+        icon = Icons.picture_as_pdf;
+        iconColor = Colors.red.shade600;
+        break;
+      case 'doc':
+      case 'docx':
+        icon = Icons.description;
+        iconColor = Colors.blue.shade600;
+        break;
+      case 'xls':
+      case 'xlsx':
+        icon = Icons.table_chart;
+        iconColor = Colors.green.shade600;
+        break;
+      case 'ppt':
+      case 'pptx':
+        icon = Icons.slideshow;
+        iconColor = Colors.orange.shade600;
+        break;
+      case 'zip':
+      case 'rar':
+        icon = Icons.folder_zip;
+        iconColor = Colors.amber.shade700;
+        break;
+      default:
+        icon = Icons.insert_drive_file;
+        iconColor = Colors.grey.shade600;
+    }
+
+    return GestureDetector(
+      onTap: fileUrl.isNotEmpty ? () => _openFile(fileUrl) : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.blue.shade50 : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isMe ? Colors.blue.shade200 : Colors.grey.shade300),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 28, color: iconColor),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fileName,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (sizeText.isNotEmpty || fileType.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            [if (fileType.isNotEmpty) fileType.toUpperCase(), sizeText]
+                                .where((s) => s.isNotEmpty)
+                                .join(' - '),
+                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isMe) _buildReadStatusIcon(msg),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openFile(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   void _editMessage(ChatMessage msg) {
@@ -1519,6 +1770,15 @@ class _ChatScreenState extends State<ChatScreen> {
               onTap: () {
                 Navigator.pop(ctx);
                 _pickImage();
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.attach_file),
+              title: const Text('Document'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickFile();
               },
             ),
             const Divider(height: 1),

@@ -10,6 +10,7 @@ export enum DirectMessageType {
   QUOTE = 'quote',
   QUICK_REPLY = 'quick_reply',
   LOCATION = 'location',
+  DOCUMENT = 'document',
 }
 
 @Entity('direct_messages')

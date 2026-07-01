@@ -59,9 +59,13 @@ class ConversationListScreen extends StatefulWidget {
 class _ConversationListScreenState extends State<ConversationListScreen>
     with WidgetsBindingObserver {
   List<Conversation> _conversations = [];
+  List<Conversation> _searchResults = [];
   bool _loading = true;
+  bool _searching = false;
   String? _error;
+  String _searchQuery = '';
   io.Socket? _socket;
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -74,6 +78,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _searchController.dispose();
     _disconnectSocket();
     super.dispose();
   }
@@ -162,6 +167,45 @@ class _ConversationListScreenState extends State<ConversationListScreen>
         _loading = false;
       });
     }
+  }
+
+  Future<void> _searchConversations(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _searching = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _searching = true;
+      _searchQuery = query;
+    });
+
+    try {
+      final data = await ApiService.get('/chat/conversations/search?q=${Uri.encodeComponent(query.trim())}');
+      if (!mounted) return;
+      setState(() {
+        final list = data is List ? data : (data['conversations'] as List? ?? []);
+        _searchResults = list.map((c) => Conversation.fromJson(c)).toList();
+        _searching = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _searchResults = [];
+        _searching = false;
+      });
+    }
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _searchResults = [];
+    });
   }
 
   void _openChat(Conversation conv) {
@@ -260,44 +304,112 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                     ],
                   ),
                 )
-              : _conversations.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.chat_bubble_outline,
-                              size: 64, color: Colors.grey.shade400),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No conversations yet',
-                            style: TextStyle(
-                                color: Colors.grey.shade600, fontSize: 16),
+              : Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search conversations...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: _clearSearch,
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Start a chat from a booking or provider profile',
-                            style: TextStyle(
-                                color: Colors.grey.shade500, fontSize: 14),
-                          ),
-                        ],
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _loadConversations,
-                      child: ListView.builder(
-                        itemCount: _conversations.length,
-                        itemBuilder: (ctx, i) {
-                          final conv = _conversations[i];
-                          return _ConversationTile(
-                            conversation: conv,
-                            onTap: () => _openChat(conv),
-                            formatTime: _formatTime,
-                            getStatusLabel: _getStatusLabel,
-                            getStatusColor: _getStatusColor,
-                          );
-                        },
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          isDense: true,
+                        ),
+                        onChanged: _searchConversations,
                       ),
                     ),
+                    Expanded(
+                      child: _searchQuery.isNotEmpty
+                          ? _searching
+                              ? const Center(child: CircularProgressIndicator())
+                              : _searchResults.isEmpty
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.search_off,
+                                              size: 48,
+                                              color: Colors.grey.shade400),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'No results for "$_searchQuery"',
+                                            style: TextStyle(
+                                                color: Colors.grey.shade600),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : RefreshIndicator(
+                                      onRefresh: _loadConversations,
+                                      child: ListView.builder(
+                                        itemCount: _searchResults.length,
+                                        itemBuilder: (ctx, i) {
+                                          final conv = _searchResults[i];
+                                          return _ConversationTile(
+                                            conversation: conv,
+                                            onTap: () => _openChat(conv),
+                                            formatTime: _formatTime,
+                                            getStatusLabel: _getStatusLabel,
+                                            getStatusColor: _getStatusColor,
+                                          );
+                                        },
+                                      ),
+                                    )
+                          : _conversations.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.chat_bubble_outline,
+                                          size: 64,
+                                          color: Colors.grey.shade400),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'No conversations yet',
+                                        style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 16),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Start a chat from a booking or provider profile',
+                                        style: TextStyle(
+                                            color: Colors.grey.shade500,
+                                            fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : RefreshIndicator(
+                                  onRefresh: _loadConversations,
+                                  child: ListView.builder(
+                                    itemCount: _conversations.length,
+                                    itemBuilder: (ctx, i) {
+                                      final conv = _conversations[i];
+                                      return _ConversationTile(
+                                        conversation: conv,
+                                        onTap: () => _openChat(conv),
+                                        formatTime: _formatTime,
+                                        getStatusLabel: _getStatusLabel,
+                                        getStatusColor: _getStatusColor,
+                                      );
+                                    },
+                                  ),
+                                ),
+                    ),
+                  ],
+                ),
     );
   }
 }

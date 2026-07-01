@@ -9,6 +9,7 @@ export enum MessageType {
   QUOTE = 'quote',
   QUICK_REPLY = 'quick_reply',
   LOCATION = 'location',
+  DOCUMENT = 'document',
 }
 
 @Entity('messages')

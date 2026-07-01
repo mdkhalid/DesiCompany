@@ -64,6 +64,16 @@ class ChatMessage {
   bool get isQuote => messageType == 'quote';
   bool get isQuickReply => messageType == 'quick_reply';
   bool get isLocation => messageType == 'location';
+  bool get isDocument => messageType == 'document';
+
+  String? get documentUrl => metadata?['fileUrl'] as String?;
+  String? get documentName => metadata?['fileName'] as String?;
+  String? get documentType => metadata?['fileType'] as String?;
+  int? get fileSize {
+    final v = metadata?['fileSize'];
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '');
+  }
 
   String? get imageUrl => metadata?['imageUrl'] as String?;
   double? get quoteAmount {
@@ -121,4 +131,5 @@ class MessageType {
   static const String quote = 'quote';
   static const String quickReply = 'quick_reply';
   static const String location = 'location';
+  static const String document = 'document';
 }
