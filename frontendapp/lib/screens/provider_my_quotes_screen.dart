@@ -79,20 +79,20 @@ class _ProviderMyQuotesScreenState extends State<ProviderMyQuotesScreen> {
 
   Color _statusColor(String status) {
     return switch (status) {
-      'PENDING' => const Color(0xFFFF6F00),
-      'ACCEPTED' => const Color(0xFF43A047),
-      'REJECTED' => const Color(0xFFE53935),
-      'WITHDRAWN' => Colors.grey,
+      'pending' => const Color(0xFFFF6F00),
+      'accepted' => const Color(0xFF43A047),
+      'rejected' => const Color(0xFFE53935),
+      'withdrawn' => Colors.grey,
       _ => Colors.grey,
     };
   }
 
   String _statusLabel(String status, LocalizationProvider loc) {
     return switch (status) {
-      'PENDING' => loc.tr('quote_status_pending'),
-      'ACCEPTED' => loc.tr('quote_status_accepted'),
-      'REJECTED' => loc.tr('quote_status_rejected'),
-      'WITHDRAWN' => loc.tr('quote_status_withdrawn'),
+      'pending' => loc.tr('quote_status_pending'),
+      'accepted' => loc.tr('quote_status_accepted'),
+      'rejected' => loc.tr('quote_status_rejected'),
+      'withdrawn' => loc.tr('quote_status_withdrawn'),
       _ => status,
     };
   }
@@ -200,7 +200,7 @@ class _ProviderMyQuotesScreenState extends State<ProviderMyQuotesScreen> {
   }
 
   Widget _buildQuoteCard(Map<String, dynamic> quote, LocalizationProvider loc) {
-    final status = (quote['status'] ?? 'PENDING') as String;
+    final status = (quote['status'] ?? 'pending') as String;
     final statusColor = _statusColor(status);
     final amount = quote['amount'];
     final job = quote['jobRequest'] as Map<String, dynamic>?;
@@ -329,7 +329,7 @@ class _ProviderMyQuotesScreenState extends State<ProviderMyQuotesScreen> {
                     style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                   ),
                 ]),
-                if (status == 'PENDING') ...[
+                if (status == 'pending') ...[
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,

@@ -662,15 +662,19 @@ export class ChatGateway
         status: 'delivered',
       });
 
-      const directOtherUserId =
-        customerUserId === client.data.userId ? providerId : customerUserId;
-      const directOtherUser = await this.providerRepository.findOne({
-        where: { id: directOtherUserId },
-        relations: { user: true },
-      });
-      if (directOtherUser?.user) {
+      let directNotifyUserId: string | null = null;
+      if (customerUserId === client.data.userId) {
+        const provider = await this.providerRepository.findOne({
+          where: { id: providerId },
+          relations: { user: true },
+        });
+        directNotifyUserId = provider?.user?.id ?? null;
+      } else {
+        directNotifyUserId = customerUserId;
+      }
+      if (directNotifyUserId) {
         await this.sendPushIfOffline(
-          directOtherUser.user.id,
+          directNotifyUserId,
           'New quote',
           content,
           { roomId: targetId, type: 'chat_quote' },
@@ -787,15 +791,19 @@ export class ChatGateway
         status: 'delivered',
       });
 
-      const qrDirectOtherUserId =
-        customerUserId === client.data.userId ? providerId : customerUserId;
-      const qrDirectOtherUser = await this.providerRepository.findOne({
-        where: { id: qrDirectOtherUserId },
-        relations: { user: true },
-      });
-      if (qrDirectOtherUser?.user) {
+      let qrNotifyUserId: string | null = null;
+      if (customerUserId === client.data.userId) {
+        const provider = await this.providerRepository.findOne({
+          where: { id: providerId },
+          relations: { user: true },
+        });
+        qrNotifyUserId = provider?.user?.id ?? null;
+      } else {
+        qrNotifyUserId = customerUserId;
+      }
+      if (qrNotifyUserId) {
         await this.sendPushIfOffline(
-          qrDirectOtherUser.user.id,
+          qrNotifyUserId,
           'Quick reply',
           content,
           { roomId: targetId, type: 'chat_quick_reply' },
@@ -1157,15 +1165,19 @@ export class ChatGateway
       status: 'delivered',
     });
 
-    const dmOtherUserId =
-      customerUserId === client.data.userId ? providerId : customerUserId;
-    const dmOtherUser = await this.providerRepository.findOne({
-      where: { id: dmOtherUserId },
-      relations: { user: true },
-    });
-    if (dmOtherUser?.user) {
+    let dmNotifyUserId: string | null = null;
+    if (customerUserId === client.data.userId) {
+      const provider = await this.providerRepository.findOne({
+        where: { id: providerId },
+        relations: { user: true },
+      });
+      dmNotifyUserId = provider?.user?.id ?? null;
+    } else {
+      dmNotifyUserId = customerUserId;
+    }
+    if (dmNotifyUserId) {
       await this.sendPushIfOffline(
-        dmOtherUser.user.id,
+        dmNotifyUserId,
         'New message',
         content,
         { roomId, type: 'direct_message' },
@@ -1226,15 +1238,19 @@ export class ChatGateway
       status: 'delivered',
     });
 
-    const imgOtherUserId =
-      customerUserId === client.data.userId ? providerId : customerUserId;
-    const imgOtherUser = await this.providerRepository.findOne({
-      where: { id: imgOtherUserId },
-      relations: { user: true },
-    });
-    if (imgOtherUser?.user) {
+    let imgNotifyUserId: string | null = null;
+    if (customerUserId === client.data.userId) {
+      const provider = await this.providerRepository.findOne({
+        where: { id: providerId },
+        relations: { user: true },
+      });
+      imgNotifyUserId = provider?.user?.id ?? null;
+    } else {
+      imgNotifyUserId = customerUserId;
+    }
+    if (imgNotifyUserId) {
       await this.sendPushIfOffline(
-        imgOtherUser.user.id,
+        imgNotifyUserId,
         'New image',
         'Sent an image',
         { roomId: payload.roomId, type: 'direct_image' },
@@ -1303,15 +1319,19 @@ export class ChatGateway
       status: 'delivered',
     });
 
-    const fileOtherUserId =
-      customerUserId === client.data.userId ? providerId : customerUserId;
-    const fileOtherUser = await this.providerRepository.findOne({
-      where: { id: fileOtherUserId },
-      relations: { user: true },
-    });
-    if (fileOtherUser?.user) {
+    let fileNotifyUserId: string | null = null;
+    if (customerUserId === client.data.userId) {
+      const provider = await this.providerRepository.findOne({
+        where: { id: providerId },
+        relations: { user: true },
+      });
+      fileNotifyUserId = provider?.user?.id ?? null;
+    } else {
+      fileNotifyUserId = customerUserId;
+    }
+    if (fileNotifyUserId) {
       await this.sendPushIfOffline(
-        fileOtherUser.user.id,
+        fileNotifyUserId,
         'New file',
         content,
         { roomId: payload.roomId, type: 'direct_file' },
@@ -1368,15 +1388,19 @@ export class ChatGateway
       status: 'delivered',
     });
 
-    const quoteOtherUserId =
-      customerUserId === client.data.userId ? providerId : customerUserId;
-    const quoteOtherUser = await this.providerRepository.findOne({
-      where: { id: quoteOtherUserId },
-      relations: { user: true },
-    });
-    if (quoteOtherUser?.user) {
+    let quoteNotifyUserId: string | null = null;
+    if (customerUserId === client.data.userId) {
+      const provider = await this.providerRepository.findOne({
+        where: { id: providerId },
+        relations: { user: true },
+      });
+      quoteNotifyUserId = provider?.user?.id ?? null;
+    } else {
+      quoteNotifyUserId = customerUserId;
+    }
+    if (quoteNotifyUserId) {
       await this.sendPushIfOffline(
-        quoteOtherUser.user.id,
+        quoteNotifyUserId,
         'New quote',
         payload.message || `Quote: ₹${payload.amount}`,
         { roomId: payload.roomId, type: 'direct_quote' },

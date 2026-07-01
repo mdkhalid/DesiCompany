@@ -3,6 +3,7 @@ import 'package:intl/intl.dart' as intl;
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 import 'provider_submit_quote_screen.dart';
 
@@ -32,9 +33,10 @@ class _ProviderJobDetailScreenState extends State<ProviderJobDetailScreen> {
       final data = await ApiService.get('/job-requests/${widget.jobRequestId}');
       final job = data as Map<String, dynamic>;
       Map<String, dynamic>? myQuote;
+      final providerId = await AuthService.getProviderId();
       final quotes = (job['quotes'] as List?) ?? [];
       for (final q in quotes) {
-        if (q is Map && q['provider'] is Map) {
+        if (q is Map && q['provider'] is Map && q['provider']['id'] == providerId) {
           myQuote = q as Map<String, dynamic>;
           break;
         }
@@ -91,31 +93,31 @@ class _ProviderJobDetailScreenState extends State<ProviderJobDetailScreen> {
 
   Color _statusColor(String status) {
     return switch (status) {
-      'OPEN' => const Color(0xFF1E88E5),
-      'QUOTED' => const Color(0xFFFF6F00),
-      'ACCEPTED' => const Color(0xFF43A047),
-      'CANCELLED' => const Color(0xFFE53935),
-      'CLOSED' => Colors.grey,
+      'open' => const Color(0xFF1E88E5),
+      'quoted' => const Color(0xFFFF6F00),
+      'accepted' => const Color(0xFF43A047),
+      'cancelled' => const Color(0xFFE53935),
+      'closed' => Colors.grey,
       _ => Colors.grey,
     };
   }
 
   Color _quoteStatusColor(String status) {
     return switch (status) {
-      'PENDING' => const Color(0xFFFF6F00),
-      'ACCEPTED' => const Color(0xFF43A047),
-      'REJECTED' => const Color(0xFFE53935),
-      'WITHDRAWN' => Colors.grey,
+      'pending' => const Color(0xFFFF6F00),
+      'accepted' => const Color(0xFF43A047),
+      'rejected' => const Color(0xFFE53935),
+      'withdrawn' => Colors.grey,
       _ => Colors.grey,
     };
   }
 
   String _quoteStatusLabel(String status, LocalizationProvider loc) {
     return switch (status) {
-      'PENDING' => loc.tr('quote_status_pending'),
-      'ACCEPTED' => loc.tr('quote_status_accepted'),
-      'REJECTED' => loc.tr('quote_status_rejected'),
-      'WITHDRAWN' => loc.tr('quote_status_withdrawn'),
+      'pending' => loc.tr('quote_status_pending'),
+      'accepted' => loc.tr('quote_status_accepted'),
+      'rejected' => loc.tr('quote_status_rejected'),
+      'withdrawn' => loc.tr('quote_status_withdrawn'),
       _ => status,
     };
   }
@@ -193,7 +195,7 @@ class _ProviderJobDetailScreenState extends State<ProviderJobDetailScreen> {
 
   Widget _buildContent(LocalizationProvider loc) {
     final job = _job!;
-    final status = (job['status'] ?? 'OPEN') as String;
+    final status = (job['status'] ?? 'open') as String;
     final statusColor = _statusColor(status);
     final category = job['category'] as Map<String, dynamic>?;
     final customer = job['customer'] as Map<String, dynamic>?;
@@ -207,7 +209,7 @@ class _ProviderJobDetailScreenState extends State<ProviderJobDetailScreen> {
         if (_myQuote != null) ...[
           _buildMyQuoteCard(loc),
           const SizedBox(height: 20),
-        ] else if (status == 'OPEN' || status == 'QUOTED') ...[
+        ] else if (status == 'open' || status == 'quoted') ...[
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -347,13 +349,13 @@ class _ProviderJobDetailScreenState extends State<ProviderJobDetailScreen> {
 
   Widget _buildMyQuoteCard(LocalizationProvider loc) {
     final quote = _myQuote!;
-    final status = (quote['status'] ?? 'PENDING') as String;
+    final status = (quote['status'] ?? 'pending') as String;
     final statusColor = _quoteStatusColor(status);
     final amount = quote['amount'];
     final message = quote['message'] as String?;
     final estimatedHours = quote['estimatedHours'];
     final validUntil = quote['validUntil'] as String?;
-    final canWithdraw = status == 'PENDING';
+    final canWithdraw = status == 'pending';
 
     return Container(
       padding: const EdgeInsets.all(20),

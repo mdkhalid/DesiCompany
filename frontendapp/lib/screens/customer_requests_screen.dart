@@ -36,7 +36,7 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
           'type': 'job',
           'title': j['title'] ?? j['categoryName'] ?? 'Job',
           'subtitle': j['description'] ?? '',
-          'status': j['status'] ?? 'OPEN',
+          'status': j['status'] ?? 'open',
           'price': j['budgetMax']?.toString(),
           'date': j['createdAt'],
           'partnerName': null,
@@ -72,11 +72,11 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
   Color _statusColor(String type, String status) {
     if (type == 'job') {
       return switch (status) {
-        'OPEN' => const Color(0xFF1E88E5),
-        'QUOTED' => const Color(0xFFFF6F00),
-        'ACCEPTED' => const Color(0xFF43A047),
-        'CANCELLED' => const Color(0xFFE53935),
-        'CLOSED' => Colors.grey,
+        'open' => const Color(0xFF1E88E5),
+        'quoted' => const Color(0xFFFF6F00),
+        'accepted' => const Color(0xFF43A047),
+        'cancelled' => const Color(0xFFE53935),
+        'closed' => Colors.grey,
         _ => Colors.grey,
       };
     }

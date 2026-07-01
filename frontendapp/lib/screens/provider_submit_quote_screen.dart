@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' as intl;
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 
 import 'package:desicompany/services/app_logger.dart';
@@ -46,9 +47,10 @@ class _ProviderSubmitQuoteScreenState extends State<ProviderSubmitQuoteScreen> {
       final data = await ApiService.get('/job-requests/${widget.jobRequestId}');
       final job = data as Map<String, dynamic>;
       Map<String, dynamic>? myQuote;
+      final providerId = await AuthService.getProviderId();
       final quotes = (job['quotes'] as List?) ?? [];
       for (final q in quotes) {
-        if (q is Map && q['provider'] is Map) {
+        if (q is Map && q['provider'] is Map && q['provider']['id'] == providerId) {
           myQuote = q as Map<String, dynamic>;
           break;
         }

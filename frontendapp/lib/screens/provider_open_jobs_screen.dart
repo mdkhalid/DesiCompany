@@ -3,6 +3,7 @@ import 'package:intl/intl.dart' as intl;
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../theme.dart';
 import '../widgets/distance_badge.dart';
@@ -22,6 +23,7 @@ class _ProviderOpenJobsScreenState extends State<ProviderOpenJobsScreen> {
   bool _loading = true;
   double? _latitude;
   double? _longitude;
+  String? _providerId;
   static const double _radiusKm = 10;
 
   @override
@@ -46,11 +48,13 @@ class _ProviderOpenJobsScreenState extends State<ProviderOpenJobsScreen> {
       if (lng != null) params['lng'] = '$lng';
       final query = params.entries.map((e) => '${e.key}=${e.value}').join('&');
       final data = await ApiService.get('/job-requests/open?$query');
+      final providerId = await AuthService.getProviderId();
       if (!mounted) return;
       setState(() {
         _jobs = data as List;
         _latitude = lat;
         _longitude = lng;
+        _providerId = providerId;
         _loading = false;
       });
     } catch (e) {
@@ -196,7 +200,7 @@ class _ProviderOpenJobsScreenState extends State<ProviderOpenJobsScreen> {
       );
     }
     final myQuote = quotes.firstWhere(
-      (q) => q is Map && q['provider'] is Map,
+      (q) => q is Map && q['provider'] is Map && q['provider']['id'] == _providerId,
       orElse: () => null,
     );
 

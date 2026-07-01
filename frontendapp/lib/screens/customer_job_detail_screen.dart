@@ -159,31 +159,31 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
 
   Color _statusColor(String status) {
     return switch (status) {
-      'OPEN' => const Color(0xFF1E88E5),
-      'QUOTED' => const Color(0xFFFF6F00),
-      'ACCEPTED' => const Color(0xFF43A047),
-      'CANCELLED' => const Color(0xFFE53935),
-      'CLOSED' => Colors.grey,
+      'open' => const Color(0xFF1E88E5),
+      'quoted' => const Color(0xFFFF6F00),
+      'accepted' => const Color(0xFF43A047),
+      'cancelled' => const Color(0xFFE53935),
+      'closed' => Colors.grey,
       _ => Colors.grey,
     };
   }
 
   Color _quoteStatusColor(String status) {
     return switch (status) {
-      'PENDING' => const Color(0xFFFF6F00),
-      'ACCEPTED' => const Color(0xFF43A047),
-      'REJECTED' => const Color(0xFFE53935),
-      'WITHDRAWN' => Colors.grey,
+      'pending' => const Color(0xFFFF6F00),
+      'accepted' => const Color(0xFF43A047),
+      'rejected' => const Color(0xFFE53935),
+      'withdrawn' => Colors.grey,
       _ => Colors.grey,
     };
   }
 
   String _quoteStatusLabel(String status, LocalizationProvider loc) {
     return switch (status) {
-      'PENDING' => loc.tr('quote_status_pending'),
-      'ACCEPTED' => loc.tr('quote_status_accepted'),
-      'REJECTED' => loc.tr('quote_status_rejected'),
-      'WITHDRAWN' => loc.tr('quote_status_withdrawn'),
+      'pending' => loc.tr('quote_status_pending'),
+      'accepted' => loc.tr('quote_status_accepted'),
+      'rejected' => loc.tr('quote_status_rejected'),
+      'withdrawn' => loc.tr('quote_status_withdrawn'),
       _ => status,
     };
   }
@@ -274,7 +274,7 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
 
   Widget _buildContent(LocalizationProvider loc) {
     final job = _job!;
-    final status = (job['status'] ?? 'OPEN') as String;
+    final status = (job['status'] ?? 'open') as String;
     final statusColor = _statusColor(status);
     final category = job['category'] as Map<String, dynamic>?;
     final quotes = (job['quotes'] as List?) ?? [];
@@ -285,7 +285,7 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
         _buildJobInfo(job, category, status, statusColor, loc),
         const SizedBox(height: 24),
         _buildQuotesSection(quotes, status, loc),
-        if (status == 'OPEN' || status == 'QUOTED') ...[
+        if (status == 'open' || status == 'quoted') ...[
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -551,7 +551,7 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
   }
 
   Widget _buildQuoteCard(Map<String, dynamic> quote, String jobStatus, LocalizationProvider loc) {
-    final status = (quote['status'] ?? 'PENDING') as String;
+    final status = (quote['status'] ?? 'pending') as String;
     final statusColor = _quoteStatusColor(status);
     final provider = (quote['provider'] as Map<String, dynamic>?) ?? {};
     final providerName = _providerName(provider);
@@ -560,7 +560,7 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
     final message = quote['message'] as String?;
     final estimatedHours = quote['estimatedHours'];
     final validUntil = quote['validUntil'] as String?;
-    final canAccept = status == 'PENDING' && (jobStatus == 'OPEN' || jobStatus == 'QUOTED');
+    final canAccept = status == 'pending' && (jobStatus == 'open' || jobStatus == 'quoted');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

@@ -167,6 +167,12 @@ class AuthService {
     if (userData == null) return null;
     return (jsonDecode(userData) as Map)['id'] as String?;
   }
+
+  static Future<String?> getProviderId() async {
+    final userData = await _secureStorage.read(key: _keyUserData);
+    if (userData == null) return null;
+    return (jsonDecode(userData) as Map)['providerId'] as String?;
+  }
 }
 
 class VerifyOtpResponse {

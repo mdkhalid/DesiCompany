@@ -41,11 +41,11 @@ class _CustomerJobsScreenState extends State<CustomerJobsScreen> {
 
   Color _statusColor(String status) {
     return switch (status) {
-      'OPEN' => const Color(0xFF1E88E5),
-      'QUOTED' => const Color(0xFFFF6F00),
-      'ACCEPTED' => const Color(0xFF43A047),
-      'CANCELLED' => const Color(0xFFE53935),
-      'CLOSED' => Colors.grey,
+      'open' => const Color(0xFF1E88E5),
+      'quoted' => const Color(0xFFFF6F00),
+      'accepted' => const Color(0xFF43A047),
+      'cancelled' => const Color(0xFFE53935),
+      'closed' => Colors.grey,
       _ => Colors.grey,
     };
   }
@@ -153,7 +153,7 @@ class _CustomerJobsScreenState extends State<CustomerJobsScreen> {
   }
 
   Widget _buildJobCard(Map<String, dynamic> job, LocalizationProvider loc) {
-    final status = (job['status'] ?? 'OPEN') as String;
+    final status = (job['status'] ?? 'open') as String;
     final statusColor = _statusColor(status);
     final category = job['category'] as Map<String, dynamic>?;
     final categoryName = category?['nameEn'] ?? '';
