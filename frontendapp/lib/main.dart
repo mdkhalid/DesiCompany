@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'l10n/strings.dart';
 import 'theme.dart';
 import 'services/cache_service.dart';
@@ -45,6 +43,8 @@ import 'screens/provider_schedule_screen.dart';
 import 'screens/customer_membership_screen.dart';
 import 'screens/admin_revenue_screen.dart';
 import 'screens/grievance_chat_screen.dart';
+import 'screens/support_tickets_screen.dart';
+import 'screens/disputes_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -154,6 +154,8 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
           '/customer-requests': (_) => const CustomerRequestsScreen(),
           '/provider-requests': (_) => const ProviderRequestsScreen(),
           '/provider-schedule': (_) => const ProviderScheduleScreen(),
+          '/support-tickets': (_) => const SupportTicketsScreen(),
+          '/disputes': (_) => const DisputesScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name == '/provider-detail') {

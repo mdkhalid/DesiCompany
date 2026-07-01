@@ -7,7 +7,6 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/strings.dart';
@@ -716,7 +715,6 @@ class _ChatScreenState extends State<ChatScreen> {
     if (index == 0) return true;
     final current = _messages[index].createdAt;
     final previous = _messages[index - 1].createdAt;
-    if (current == null || previous == null) return false;
     return current.year != previous.year ||
         current.month != previous.month ||
         current.day != previous.day;
@@ -814,8 +812,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
                     return Column(
                       children: [
-                        if (_shouldShowDateHeader(i) && msg.createdAt != null)
-                          _buildDateSeparator(msg.createdAt!),
+                        if (_shouldShowDateHeader(i))
+                          _buildDateSeparator(msg.createdAt),
                         if (isSystem)
                           _buildSystemMessage(msg)
                         else

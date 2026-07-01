@@ -7,6 +7,8 @@ import '../theme.dart';
 import '../l10n/strings.dart';
 import '../widgets/distance_badge.dart';
 import '../widgets/labeled_icon_button.dart';
+import 'support_tickets_screen.dart';
+import 'disputes_screen.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class CustomerHomeScreen extends StatefulWidget {
@@ -269,6 +271,22 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   iconColor: Colors.white,
                   backgroundColor: Colors.white.withValues(alpha: 0.15),
                   onTap: () => Navigator.pushNamed(context, '/customer-memberships'),
+                ),
+                const SizedBox(width: 6),
+                LabeledIconButton(
+                  icon: Icons.support_agent,
+                  label: loc.tr('support'),
+                  iconColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportTicketsScreen())),
+                ),
+                const SizedBox(width: 6),
+                LabeledIconButton(
+                  icon: Icons.gavel,
+                  label: loc.tr('disputes'),
+                  iconColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DisputesScreen())),
                 ),
                 const SizedBox(width: 6),
                 _buildNotificationButton(),

@@ -4,6 +4,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
 import '../utils/id_helpers.dart';
+import 'support_tickets_screen.dart';
+import 'disputes_screen.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class ProviderHomeScreen extends StatefulWidget {
@@ -123,6 +125,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                           () => Navigator.pushNamed(context, '/wallet')),
                         _buildHeaderButton(Icons.feedback, loc.tr('my_quotes'),
                           () => Navigator.pushNamed(context, '/provider-my-quotes')),
+                        _buildHeaderButton(Icons.support_agent, loc.tr('support'),
+                          () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportTicketsScreen()))),
+                        _buildHeaderButton(Icons.gavel, loc.tr('disputes'),
+                          () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DisputesScreen()))),
                         _buildHeaderButton(Icons.logout, loc.tr('header_logout'),
                           () async {
                             await AuthService.logout();

@@ -387,6 +387,34 @@ class AppStrings {
       'discounts_given': 'Discounts Given',
       'revenue_auto_billing': '(Auto-billing coming)',
       'last_30_days': 'Last 30 days',
+
+      // Support Tickets
+      'support_tickets': 'Support Tickets',
+      'create_ticket': 'Create Ticket',
+      'subject': 'Subject',
+      'submit_ticket': 'Submit Ticket',
+      'ticket_created': 'Ticket created successfully',
+      'no_tickets': 'No tickets yet',
+      'booking_issue': 'Booking Issue',
+      'payment_issue': 'Payment Issue',
+      'technical_issue': 'Technical Issue',
+      'account_issue': 'Account Issue',
+      'open': 'Open',
+      'in_progress': 'In Progress',
+      'resolved': 'Resolved',
+      'closed': 'Closed',
+      'reply': 'Reply',
+      'min_10_chars': 'Minimum 10 characters required',
+
+      // Disputes
+      'disputes': 'Disputes',
+      'raise_dispute': 'Raise Dispute',
+      'reason_for_dispute': 'Reason for Dispute',
+      'dispute_created': 'Dispute created successfully',
+      'in_review': 'In Review',
+      'dismissed': 'Dismissed',
+      'booking': 'Booking',
+      'amount': 'Amount',
     },
     'hi': {
       // General
@@ -773,6 +801,34 @@ class AppStrings {
       'discounts_given': 'दी गई छूट',
       'revenue_auto_billing': '(ऑटो-बिलिंग जल्द)',
       'last_30_days': 'पिछले 30 दिन',
+
+      // Support Tickets
+      'support_tickets': 'सहायता टिकट',
+      'create_ticket': 'टिकट बनाएं',
+      'subject': 'विषय',
+      'submit_ticket': 'टिकट जमा करें',
+      'ticket_created': 'टिकट सफलतापूर्वक बनाया गया',
+      'no_tickets': 'अभी तक कोई टिकट नहीं',
+      'booking_issue': 'बुकिंग समस्या',
+      'payment_issue': 'भुगतान समस्या',
+      'technical_issue': 'तकनीकी समस्या',
+      'account_issue': 'खाता समस्या',
+      'open': 'खुला',
+      'in_progress': 'प्रगति में',
+      'resolved': 'हल',
+      'closed': 'बंद',
+      'reply': 'जवाब दें',
+      'min_10_chars': 'कम से कम 10 अक्षर आवश्यक',
+
+      // Disputes
+      'disputes': 'विवाद',
+      'raise_dispute': 'विवाद उठाएं',
+      'reason_for_dispute': 'विवाद का कारण',
+      'dispute_created': 'विवाद सफलतापूर्वक बनाया गया',
+      'in_review': 'समीक्षा में',
+      'dismissed': 'खारिज',
+      'booking': 'बुकिंग',
+      'amount': 'राशि',
     },
   };
 
