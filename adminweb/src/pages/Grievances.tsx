@@ -352,11 +352,11 @@ export default function Grievances() {
                       >
                         <p className="text-xs font-medium mb-1 capitalize">{msg.sender}</p>
                         <p>{msg.content}</p>
-                        {msg.metadata?.options && (
+                        {Array.isArray(msg.metadata?.options) && (
                           <div className="mt-2 space-y-1">
-                            {msg.metadata.options.map((opt: { label?: string } & Record<string, unknown>, i: number) => (
+                            {(msg.metadata.options as Array<Record<string, unknown>>).map((opt, i) => (
                               <div key={i} className="bg-white bg-opacity-20 rounded px-2 py-1 text-xs">
-                                {opt.label || opt}
+                                {String(opt.label ?? JSON.stringify(opt))}
                               </div>
                             ))}
                           </div>

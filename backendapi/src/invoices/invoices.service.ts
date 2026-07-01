@@ -11,7 +11,7 @@ interface InvoiceCharge {
   amount: number;
 }
 
-interface InvoiceData {
+export interface InvoiceData {
   invoice: {
     invoiceNumber: string;
     invoiceDate: string;

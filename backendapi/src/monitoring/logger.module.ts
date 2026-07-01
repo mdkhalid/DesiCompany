@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import type { IncomingMessage, ServerResponse } from 'http';
 
 @Module({
   imports: [
@@ -11,15 +12,15 @@ import { LoggerModule } from 'nestjs-pino';
             ? { target: 'pino-pretty', options: { colorize: true } }
             : undefined,
         serializers: {
-          req(req: Record<string, unknown>) {
+          req(req: IncomingMessage) {
             return {
               method: req.method,
               url: req.url,
-              query: req.query,
-              params: req.params,
+              query: (req as any).query,
+              params: (req as any).params,
             };
           },
-          res(res: Record<string, unknown>) {
+          res(res: ServerResponse) {
             return {
               statusCode: res.statusCode,
             };
@@ -34,17 +35,17 @@ import { LoggerModule } from 'nestjs-pino';
           ],
         },
         customSuccessMessage: (
-          req: Record<string, unknown>,
-          res: Record<string, unknown>,
+          req: IncomingMessage,
+          res: ServerResponse,
         ) => {
-          return `${String(req.method)} ${String(req.url)} ${String(res.statusCode)}`;
+          return `${req.method ?? 'UNKNOWN'} ${req.url ?? '/'} ${res.statusCode}`;
         },
         customErrorMessage: (
-          req: Record<string, unknown>,
-          res: Record<string, unknown>,
+          req: IncomingMessage,
+          res: ServerResponse,
           err: Error,
         ) => {
-          return `${String(req.method)} ${String(req.url)} ${String(res.statusCode)} - ${err.message}`;
+          return `${req.method ?? 'UNKNOWN'} ${req.url ?? '/'} ${res.statusCode} - ${err.message}`;
         },
       },
     }),

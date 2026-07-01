@@ -27,6 +27,7 @@ import {
   AdPlacement,
   AdStatus,
   AdTargetAudience,
+  Advertisement,
 } from './entities/advertisement.entity';
 
 interface AuthenticatedRequest extends Request {
@@ -181,13 +182,14 @@ export class AdvertisementsController {
       isActive: boolean;
     }>,
   ) {
+    const { startDate, endDate, ...restBody } = body;
     const updateData = {
-      ...body,
-      ...(body.startDate ? { startDate: new Date(body.startDate) } : {}),
-      ...(body.endDate ? { endDate: new Date(body.endDate) } : {}),
+      ...restBody,
+      ...(startDate ? { startDate: new Date(startDate) } : {}),
+      ...(endDate ? { endDate: new Date(endDate) } : {}),
     };
 
-    return this.adsService.updateAd(adId, updateData);
+    return this.adsService.updateAd(adId, updateData as Partial<Advertisement>);
   }
 
   @Delete('admin/:id')

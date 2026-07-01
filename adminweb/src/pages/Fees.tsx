@@ -65,7 +65,7 @@ function NumberInput({ value, onChange, ...props }: {
   return (
     <input
       type="number"
-      value={value || ''}
+      value={value}
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
       className="border rounded-lg px-3 py-2 text-sm"
       {...props}
@@ -88,13 +88,14 @@ function FeeConfigSection({
   if (!config) return null;
 
   const isSaving = savingKey === config.configKey;
+  const cv = config.configValue ?? {};
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium w-32">Fee Type</label>
         <select
-          value={config.configValue?.type || 'percentage'}
+          value={(cv.type as string) || 'percentage'}
           onChange={(e) => onUpdate(config, 'configValue', { type: e.target.value })}
           disabled={isSaving}
           className="border rounded-lg px-3 py-2 text-sm"
@@ -108,19 +109,19 @@ function FeeConfigSection({
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium w-32">Value</label>
         <NumberInput
-          value={config.configValue?.value || 0}
+          value={(cv.value as number) || 0}
           onChange={(v) => onUpdate(config, 'configValue', { value: v })}
           disabled={isSaving}
         />
         <span className="text-xs text-gray-500">
-          {config.configValue?.type === 'percentage' ? '% of amount' : '₹ per transaction'}
+          {(cv.type as string) === 'percentage' ? '% of amount' : '₹ per transaction'}
         </span>
       </div>
 
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium w-32">Min Amount</label>
         <NumberInput
-          value={config.configValue?.minAmount || 0}
+          value={(cv.minAmount as number) || 0}
           onChange={(v) => onUpdate(config, 'configValue', { minAmount: v })}
           disabled={isSaving}
         />
@@ -130,7 +131,7 @@ function FeeConfigSection({
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium w-32">Max Amount</label>
         <NumberInput
-          value={config.configValue?.maxAmount || 0}
+          value={(cv.maxAmount as number) || 0}
           onChange={(v) => onUpdate(config, 'configValue', { maxAmount: v })}
           disabled={isSaving}
         />
