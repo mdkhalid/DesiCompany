@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/auth_service.dart';
+import '../services/push_notification_service.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   final String phone;
@@ -47,6 +48,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         lastName: _lastNameController.text.trim(),
       );
       if (!mounted) return;
+      PushNotificationService.reconnect();
       Navigator.pushReplacementNamed(
         context,
         user.isProvider ? '/provider-home' : '/customer-home',

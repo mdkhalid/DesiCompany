@@ -18,11 +18,15 @@ export class NotificationsService {
     userId: string,
     title: string,
     message: string,
+    type?: string,
+    metadata?: Record<string, unknown>,
   ): Promise<Notification> {
     const notification = this.notificationRepository.create({
       user: { id: userId } as User,
       title,
       message,
+      type,
+      metadata,
     });
     return this.notificationRepository.save(notification);
   }
@@ -78,8 +82,9 @@ export class NotificationsService {
     title: string,
     message: string,
     role?: UserRole,
+    type?: string,
+    metadata?: Record<string, unknown>,
   ): Promise<{ message: string; count: number }> {
-    // Find target users
     const where: { role?: UserRole } = {};
     if (role) {
       where.role = role;
@@ -90,12 +95,13 @@ export class NotificationsService {
       select: { id: true },
     });
 
-    // Batch create notifications
     const notifications = users.map((user) =>
       this.notificationRepository.create({
         user: { id: user.id } as User,
         title,
         message,
+        type,
+        metadata,
       }),
     );
 

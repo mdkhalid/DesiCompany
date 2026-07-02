@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/push_notification_service.dart';
 import '../theme.dart';
 import 'profile_picker_screen.dart';
 import 'role_selection_screen.dart';
@@ -55,6 +56,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final response = await AuthService.verifyOtpAndSelectRole(phone, otp);
       if (!mounted) return;
+
+      PushNotificationService.reconnect();
 
       if (response.user['role'] == 'admin') {
         await AuthService.verifyOtp(phone, otp);

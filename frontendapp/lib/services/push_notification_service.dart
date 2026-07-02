@@ -1,64 +1,24 @@
-import 'dart:convert';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'api_service.dart';
 import 'app_logger.dart';
+import 'notification_websocket_service.dart';
 
 class PushNotificationService {
-  static FirebaseMessaging? _messaging;
   static FlutterLocalNotificationsPlugin? _localNotifications;
-  static String? _fcmToken;
+  static StreamSubscription<Map<String, dynamic>>? _notificationSub;
+  static StreamSubscription<int>? _unreadCountSub;
+  static bool _initialized = false;
 
   static Future<void> initialize() async {
+    if (_initialized) return;
+    _initialized = true;
+
     try {
-      // Initialize Firebase
-      await Firebase.initializeApp();
-      
-      _messaging = FirebaseMessaging.instance;
       _localNotifications = FlutterLocalNotificationsPlugin();
-
-      // Request permission
-      final settings = await _messaging!.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-        criticalAlert: false,
-        carPlay: false,
-      );
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        // Initialize local notifications
-        await _initializeLocalNotifications();
-
-        // Get FCM token
-        _fcmToken = await _messaging!.getToken();
-        if (_fcmToken != null) {
-          await _registerToken(_fcmToken!);
-        }
-
-        // Listen for token refresh
-        _messaging!.onTokenRefresh.listen((token) {
-          _fcmToken = token;
-          _registerToken(token);
-        });
-
-        // Handle foreground messages
-        FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-        // Handle background messages when app is opened
-        FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
-
-        // Check if app was opened from a notification
-        final initialMessage = await _messaging!.getInitialMessage();
-        if (initialMessage != null) {
-          _handleMessageOpenedApp(initialMessage);
-        }
-      }
+      await _initializeLocalNotifications();
+      _startWebSocketListener();
     } catch (e, st) {
-      // Firebase not configured — skip silently in production
-      AppLogger.e('FCM', 'Push notifications not available', e, st);
+      AppLogger.e('PushNotification', 'Failed to initialize', e, st);
     }
   }
 
@@ -69,7 +29,7 @@ class PushNotificationService {
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
-    
+
     const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
@@ -78,12 +38,10 @@ class PushNotificationService {
     await _localNotifications!.initialize(
       settings: initSettings,
       onDidReceiveNotificationResponse: (details) {
-        // Handle notification tap
         _handleNotificationTap(details.payload);
       },
     );
 
-    // Create notification channel for Android
     const channel = AndroidNotificationChannel(
       'desicompany_channel',
       'DesiCompany Notifications',
@@ -98,37 +56,22 @@ class PushNotificationService {
         ?.createNotificationChannel(channel);
   }
 
-  static Future<void> _registerToken(String token) async {
-    try {
-      await ApiService.post('/notifications/register-token', body: {
-        'token': token,
-        'platform': 'mobile',
-      });
-    } catch (e) {
-      // Silently fail
-    }
-  }
+  static void _startWebSocketListener() {
+    _notificationSub = NotificationWebSocketService.notificationStream.listen(
+      (notification) {
+        _showLocalNotification(
+          title: notification['title'] as String? ?? 'New Notification',
+          body: notification['message'] as String? ?? '',
+          payload: notification['id'] as String?,
+        );
+      },
+    );
 
-  static void _handleForegroundMessage(RemoteMessage message) {
-    final notification = message.notification;
-    if (notification != null) {
-      _showLocalNotification(
-        title: notification.title ?? 'New Notification',
-        body: notification.body ?? '',
-        payload: jsonEncode(message.data),
-      );
-    }
-  }
-
-  static void _handleMessageOpenedApp(RemoteMessage message) {
-    // Navigate to appropriate screen based on notification type
-    // Navigation will be handled by the UI layer
+    NotificationWebSocketService.connect();
   }
 
   static void _handleNotificationTap(String? payload) {
-    if (payload != null) {
-      // Navigate to appropriate screen based on notification type
-    }
+    if (payload != null) {}
   }
 
   static Future<void> _showLocalNotification({
@@ -136,6 +79,8 @@ class PushNotificationService {
     required String body,
     String? payload,
   }) async {
+    if (_localNotifications == null) return;
+
     const androidDetails = AndroidNotificationDetails(
       'desicompany_channel',
       'DesiCompany Notifications',
@@ -167,13 +112,13 @@ class PushNotificationService {
     );
   }
 
-  static String? get fcmToken => _fcmToken;
-
-  static Future<void> unsubscribeFromTopic(String topic) async {
-    await _messaging?.unsubscribeFromTopic(topic);
+  static void reconnect() {
+    NotificationWebSocketService.connect();
   }
 
-  static Future<void> subscribeToTopic(String topic) async {
-    await _messaging?.subscribeToTopic(topic);
+  static void dispose() {
+    _notificationSub?.cancel();
+    _unreadCountSub?.cancel();
+    NotificationWebSocketService.dispose();
   }
 }

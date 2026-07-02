@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/push_notification_service.dart';
 
 class ProfilePickerScreen extends StatefulWidget {
   final User user;
@@ -41,6 +42,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
         user = await AuthService.addRole(role: role);
       }
       if (!mounted) return;
+      PushNotificationService.reconnect();
       Navigator.pushReplacementNamed(
         context,
         user.isProvider ? '/provider-home' : '/customer-home',

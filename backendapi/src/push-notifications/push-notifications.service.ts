@@ -1,8 +1,8 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
-import { PUSH_NOTIFICATION_PROVIDER } from './push-notifications.constants';
+import { NotificationGateway } from '../notifications/notification.gateway';
 
 @Injectable()
 export class PushNotificationsService {
@@ -11,15 +11,7 @@ export class PushNotificationsService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @Inject(PUSH_NOTIFICATION_PROVIDER)
-    private readonly pushProvider: {
-      send(payload: {
-        token: string;
-        title: string;
-        body: string;
-        data?: Record<string, string>;
-      }): Promise<void>;
-    },
+    private readonly notificationGateway: NotificationGateway,
   ) {}
 
   async sendToUser(
@@ -28,25 +20,18 @@ export class PushNotificationsService {
     body: string,
     data?: Record<string, string>,
   ) {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
+    const type = data?.type || 'general';
+    this.logger.debug(
+      `Sending notification to user ${userId}: ${title} - ${body}`,
+    );
 
-    if (!user?.fcmToken) {
-      this.logger.debug(`No FCM token for user ${userId}, skipping push`);
-      return;
-    }
-
-    try {
-      await this.pushProvider.send({
-        token: user.fcmToken,
-        title,
-        body,
-        data,
-      });
-    } catch (error) {
-      this.logger.error(`Failed to send push to user ${userId}: ${error}`);
-    }
+    await this.notificationGateway.sendNotification(
+      userId,
+      title,
+      body,
+      type,
+      data as Record<string, unknown>,
+    );
   }
 
   async sendToMultipleUsers(
@@ -55,28 +40,15 @@ export class PushNotificationsService {
     body: string,
     data?: Record<string, string>,
   ) {
-    const users = await this.userRepository
-      .createQueryBuilder('user')
-      .where('user.id IN (:...userIds)', { userIds })
-      .andWhere('user.fcmToken IS NOT NULL')
-      .getMany();
-
-    for (const user of users) {
-      try {
-        await this.pushProvider.send({
-          token: user.fcmToken!,
-          title,
-          body,
-          data,
-        });
-      } catch (error) {
-        this.logger.error(`Failed to send push to user ${user.id}: ${error}`);
-      }
+    for (const userId of userIds) {
+      await this.sendToUser(userId, title, body, data);
     }
   }
 
-  async registerToken(userId: string, fcmToken: string) {
-    await this.userRepository.update(userId, { fcmToken });
-    return { message: 'FCM token registered' };
+  async registerToken(userId: string, _fcmToken: string) {
+    this.logger.debug(
+      `FCM token registration ignored (using WebSocket notifications) for user ${userId}`,
+    );
+    return { message: 'Using WebSocket notifications' };
   }
 }
