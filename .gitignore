@@ -39,6 +39,8 @@ frontendapp/windows/
 frontendapp/linux/
 frontendapp/macos/
 frontendapp/ios/
+frontendapp/android/key.properties
+frontendapp/android/upload-keystore.jks
 adminweb/node_modules/
 adminweb/dist/
 adminweb/tsconfig.tsbuildinfo

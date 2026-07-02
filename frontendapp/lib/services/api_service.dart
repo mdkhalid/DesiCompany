@@ -1,5 +1,6 @@
 ﻿import 'dart:convert';
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
@@ -10,13 +11,14 @@ class ApiService {
   /// Set via:
   ///   flutter run --dart-define=API_BASE_URL=http://192.168.1.10:3000/api/v1
   ///
-  /// Defaults:
+  /// Defaults (dev only):
   ///   - Android emulator: http://10.0.2.2:3000/api/v1
   ///   - iOS simulator:   http://localhost:3000/api/v1
   ///   - Web/Chrome:      http://localhost:3000/api/v1
   ///   - Other (physical device): http://localhost:3000/api/v1
   ///
   /// For physical Android device, override with your computer's LAN IP.
+  /// In release builds, API_BASE_URL must be provided via --dart-define.
   static const String _defaultBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '',
@@ -25,6 +27,11 @@ class ApiService {
   static String get baseUrl {
     if (_defaultBaseUrl.isNotEmpty) {
       return _defaultBaseUrl;
+    }
+    if (kReleaseMode) {
+      throw StateError(
+        'API_BASE_URL not set. Pass --dart-define=API_BASE_URL=https://your-api.com/api/v1 when building release.',
+      );
     }
     try {
       if (Platform.isAndroid) {
