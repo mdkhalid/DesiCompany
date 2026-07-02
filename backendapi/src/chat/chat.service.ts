@@ -423,7 +423,7 @@ export class ChatService {
 
     if (roomId.startsWith('booking_')) {
       const bookingId = roomId.replace('booking_', '');
-      const [messages, total] = await this.messageRepository.findAndCount({
+      const [messages] = await this.messageRepository.findAndCount({
         where: { booking: { id: bookingId } },
         relations: { sender: { customer: true, provider: true } },
         order: { createdAt: 'DESC' },
@@ -432,7 +432,10 @@ export class ChatService {
         m.content.toLowerCase().includes(lowerQuery),
       );
       const start = (page - 1) * limit;
-      return { messages: filtered.slice(start, start + limit), total: filtered.length };
+      return {
+        messages: filtered.slice(start, start + limit),
+        total: filtered.length,
+      };
     }
 
     if (roomId.startsWith('direct_')) {
@@ -440,7 +443,7 @@ export class ChatService {
       if (parts.length !== 3) return { messages: [], total: 0 };
       const customerId = parts[1];
       const providerId = parts[2];
-      const [messages, total] = await this.directMessageRepository.findAndCount({
+      const [messages] = await this.directMessageRepository.findAndCount({
         where: { customer: { id: customerId }, provider: { id: providerId } },
         relations: { sender: { customer: true, provider: true } },
         order: { createdAt: 'DESC' },
@@ -449,7 +452,10 @@ export class ChatService {
         m.content.toLowerCase().includes(lowerQuery),
       );
       const start = (page - 1) * limit;
-      return { messages: filtered.slice(start, start + limit), total: filtered.length };
+      return {
+        messages: filtered.slice(start, start + limit),
+        total: filtered.length,
+      };
     }
 
     return { messages: [], total: 0 };
@@ -514,7 +520,7 @@ export class ChatService {
         booking,
         sender: dm.sender,
         content: dm.content,
-        messageType: dm.messageType as any,
+        messageType: dm.messageType as unknown as MessageType,
         metadata: dm.metadata,
         isRead: dm.isRead,
         createdAt: dm.createdAt,

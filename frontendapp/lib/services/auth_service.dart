@@ -6,7 +6,7 @@ import 'api_service.dart';
 import 'package:desicompany/services/app_logger.dart';
 class AuthService {
   static const _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),

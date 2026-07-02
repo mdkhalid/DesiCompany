@@ -30,7 +30,7 @@ export class PushNotificationsService {
       title,
       body,
       type,
-      data as Record<string, unknown>,
+      data,
     );
   }
 
@@ -45,7 +45,7 @@ export class PushNotificationsService {
     }
   }
 
-  async registerToken(userId: string, _fcmToken: string) {
+  registerToken(userId: string, _fcmToken: string) {
     this.logger.debug(
       `FCM token registration ignored (using WebSocket notifications) for user ${userId}`,
     );

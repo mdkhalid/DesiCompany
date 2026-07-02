@@ -50,7 +50,9 @@ export class ChatController {
   }
 
   @Get('conversations/search')
-  @ApiOperation({ summary: 'Search conversations by partner name or last message' })
+  @ApiOperation({
+    summary: 'Search conversations by partner name or last message',
+  })
   @ApiResponse({ status: 200, description: 'Matching conversations' })
   async searchConversations(
     @Req() req: AuthRequest,

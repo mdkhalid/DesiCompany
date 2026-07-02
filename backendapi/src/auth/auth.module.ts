@@ -14,7 +14,7 @@ import { SmsModule } from '../sms/sms.module';
   imports: [
     TypeOrmModule.forFeature([User, Customer, Provider, RevokedToken]),
     JwtModule.register({
-            secret: process.env.JWT_SECRET!,
+      secret: process.env.JWT_SECRET!,
       signOptions: {
         expiresIn: `${Number(process.env.JWT_EXPIRATION_MINUTES) || 15}m`,
       },

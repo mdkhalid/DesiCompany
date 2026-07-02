@@ -1,9 +1,6 @@
 export function sanitizeText(text: string): string {
   if (!text) return '';
-  return text
-    .replace(/\0/g, '')
-    .trim()
-    .slice(0, 5000);
+  return text.replace(/\0/g, '').trim().slice(0, 5000);
 }
 
 export function sanitizeHtml(text: string): string {

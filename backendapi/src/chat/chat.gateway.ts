@@ -96,7 +96,7 @@ export class ChatGateway
     const windowMs = 60000;
     const maxMessages = 30;
     const timestamps = this.messageCounts.get(userId) || [];
-    const recent = timestamps.filter(t => now - t < windowMs);
+    const recent = timestamps.filter((t) => now - t < windowMs);
     if (recent.length >= maxMessages) return true;
     recent.push(now);
     this.messageCounts.set(userId, recent);
@@ -165,11 +165,15 @@ export class ChatGateway
       }
       return {
         id: m.id,
-        content: (m as unknown as Record<string, unknown>)['deleted'] ? 'This message was deleted' : m.content,
+        content: (m as unknown as Record<string, unknown>)['deleted']
+          ? 'This message was deleted'
+          : m.content,
         senderId: sender?.id,
         senderName,
         senderRole: sender?.role || '',
-        messageType: (m as unknown as Record<string, unknown>)['deleted'] ? 'text' : m.messageType,
+        messageType: (m as unknown as Record<string, unknown>)['deleted']
+          ? 'text'
+          : m.messageType,
         metadata: m.metadata,
         createdAt: m.createdAt,
         status: m.isRead ? 'read' : 'delivered',
@@ -373,7 +377,9 @@ export class ChatGateway
     }
 
     if (this.isRateLimited(client.data.userId)) {
-      client.emit('error', { message: 'Rate limit exceeded. Please slow down.' });
+      client.emit('error', {
+        message: 'Rate limit exceeded. Please slow down.',
+      });
       return;
     }
 
@@ -437,12 +443,10 @@ export class ChatGateway
         : booking.customer?.user?.id;
     if (otherUserId) {
       this.emitToUser(otherUserId, 'new_message', messageData);
-      await this.sendPushIfOffline(
-        otherUserId,
-        'New message',
-        content,
-        { bookingId, type: 'chat_message' },
-      );
+      await this.sendPushIfOffline(otherUserId, 'New message', content, {
+        bookingId,
+        type: 'chat_message',
+      });
       this.logger.log(
         `[MSG] Sent to room=${room} + direct to user=${otherUserId}`,
       );
@@ -516,12 +520,10 @@ export class ChatGateway
         ? booking.provider?.user?.id
         : booking.customer?.user?.id;
     if (otherUserId) {
-      await this.sendPushIfOffline(
-        otherUserId,
-        'New image',
-        'Sent an image',
-        { bookingId: payload.bookingId, type: 'chat_image' },
-      );
+      await this.sendPushIfOffline(otherUserId, 'New image', 'Sent an image', {
+        bookingId: payload.bookingId,
+        type: 'chat_image',
+      });
     }
   }
 
@@ -599,12 +601,10 @@ export class ChatGateway
         ? booking.provider?.user?.id
         : booking.customer?.user?.id;
     if (otherUserId) {
-      await this.sendPushIfOffline(
-        otherUserId,
-        'New file',
-        content,
-        { bookingId: payload.bookingId, type: 'chat_file' },
-      );
+      await this.sendPushIfOffline(otherUserId, 'New file', content, {
+        bookingId: payload.bookingId,
+        type: 'chat_file',
+      });
     }
   }
 
@@ -673,12 +673,10 @@ export class ChatGateway
         directNotifyUserId = customerUserId;
       }
       if (directNotifyUserId) {
-        await this.sendPushIfOffline(
-          directNotifyUserId,
-          'New quote',
-          content,
-          { roomId: targetId, type: 'chat_quote' },
-        );
+        await this.sendPushIfOffline(directNotifyUserId, 'New quote', content, {
+          roomId: targetId,
+          type: 'chat_quote',
+        });
       }
     } else {
       const message = this.messageRepository.create({
@@ -713,12 +711,10 @@ export class ChatGateway
             ? quoteBooking.provider?.user?.id
             : quoteBooking.customer?.user?.id;
         if (quoteOtherUserId) {
-          await this.sendPushIfOffline(
-            quoteOtherUserId,
-            'New quote',
-            content,
-            { bookingId: targetId, type: 'chat_quote' },
-          );
+          await this.sendPushIfOffline(quoteOtherUserId, 'New quote', content, {
+            bookingId: targetId,
+            type: 'chat_quote',
+          });
         }
       }
     }
@@ -802,12 +798,10 @@ export class ChatGateway
         qrNotifyUserId = customerUserId;
       }
       if (qrNotifyUserId) {
-        await this.sendPushIfOffline(
-          qrNotifyUserId,
-          'Quick reply',
-          content,
-          { roomId: targetId, type: 'chat_quick_reply' },
-        );
+        await this.sendPushIfOffline(qrNotifyUserId, 'Quick reply', content, {
+          roomId: targetId,
+          type: 'chat_quick_reply',
+        });
       }
     } else {
       const message = this.messageRepository.create({
@@ -845,12 +839,10 @@ export class ChatGateway
             ? qrBooking.provider?.user?.id
             : qrBooking.customer?.user?.id;
         if (qrOtherUserId) {
-          await this.sendPushIfOffline(
-            qrOtherUserId,
-            'Quick reply',
-            content,
-            { bookingId: targetId, type: 'chat_quick_reply' },
-          );
+          await this.sendPushIfOffline(qrOtherUserId, 'Quick reply', content, {
+            bookingId: targetId,
+            type: 'chat_quick_reply',
+          });
         }
       }
     }
@@ -1114,7 +1106,9 @@ export class ChatGateway
     }
 
     if (this.isRateLimited(client.data.userId)) {
-      client.emit('error', { message: 'Rate limit exceeded. Please slow down.' });
+      client.emit('error', {
+        message: 'Rate limit exceeded. Please slow down.',
+      });
       return;
     }
 
@@ -1176,12 +1170,10 @@ export class ChatGateway
       dmNotifyUserId = customerUserId;
     }
     if (dmNotifyUserId) {
-      await this.sendPushIfOffline(
-        dmNotifyUserId,
-        'New message',
-        content,
-        { roomId, type: 'direct_message' },
-      );
+      await this.sendPushIfOffline(dmNotifyUserId, 'New message', content, {
+        roomId,
+        type: 'direct_message',
+      });
     }
 
     this.logger.log(
@@ -1330,12 +1322,10 @@ export class ChatGateway
       fileNotifyUserId = customerUserId;
     }
     if (fileNotifyUserId) {
-      await this.sendPushIfOffline(
-        fileNotifyUserId,
-        'New file',
-        content,
-        { roomId: payload.roomId, type: 'direct_file' },
-      );
+      await this.sendPushIfOffline(fileNotifyUserId, 'New file', content, {
+        roomId: payload.roomId,
+        type: 'direct_file',
+      });
     }
   }
 
@@ -1483,7 +1473,9 @@ export class ChatGateway
     }
 
     if (this.isRateLimited(client.data.userId)) {
-      client.emit('error', { message: 'Rate limit exceeded. Please slow down.' });
+      client.emit('error', {
+        message: 'Rate limit exceeded. Please slow down.',
+      });
       return;
     }
 
@@ -1570,7 +1562,9 @@ export class ChatGateway
     }
 
     if (this.isRateLimited(client.data.userId)) {
-      client.emit('error', { message: 'Rate limit exceeded. Please slow down.' });
+      client.emit('error', {
+        message: 'Rate limit exceeded. Please slow down.',
+      });
       return;
     }
 

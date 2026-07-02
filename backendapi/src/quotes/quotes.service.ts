@@ -149,7 +149,11 @@ export class QuotesService {
 
     return this.jobRequestRepository.find({
       where: { customer: { id: customer.id } },
-      relations: { category: true, customer: { user: true }, quotes: { provider: { user: true } } },
+      relations: {
+        category: true,
+        customer: { user: true },
+        quotes: { provider: { user: true } },
+      },
       order: { createdAt: 'DESC' },
     });
   }

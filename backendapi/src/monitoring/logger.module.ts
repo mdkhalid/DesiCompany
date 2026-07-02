@@ -2,6 +2,11 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import type { IncomingMessage, ServerResponse } from 'http';
 
+interface RequestWithQuery extends IncomingMessage {
+  query?: Record<string, unknown>;
+  params?: Record<string, unknown>;
+}
+
 @Module({
   imports: [
     LoggerModule.forRoot({
@@ -13,11 +18,12 @@ import type { IncomingMessage, ServerResponse } from 'http';
             : undefined,
         serializers: {
           req(req: IncomingMessage) {
+            const expressReq = req as RequestWithQuery;
             return {
               method: req.method,
               url: req.url,
-              query: (req as any).query,
-              params: (req as any).params,
+              query: expressReq.query,
+              params: expressReq.params,
             };
           },
           res(res: ServerResponse) {
@@ -34,10 +40,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
             'req.body.token',
           ],
         },
-        customSuccessMessage: (
-          req: IncomingMessage,
-          res: ServerResponse,
-        ) => {
+        customSuccessMessage: (req: IncomingMessage, res: ServerResponse) => {
           return `${req.method ?? 'UNKNOWN'} ${req.url ?? '/'} ${res.statusCode}`;
         },
         customErrorMessage: (

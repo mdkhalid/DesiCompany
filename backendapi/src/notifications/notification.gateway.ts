@@ -4,7 +4,6 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
-  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Injectable, Logger } from '@nestjs/common';
@@ -116,11 +115,7 @@ export class NotificationGateway
     return !!sockets && sockets.size > 0;
   }
 
-  sendToUser(
-    userId: string,
-    event: string,
-    data: Record<string, unknown>,
-  ) {
+  sendToUser(userId: string, event: string, data: Record<string, unknown>) {
     const sockets = this.userSockets.get(userId);
     if (sockets) {
       for (const socketId of sockets) {

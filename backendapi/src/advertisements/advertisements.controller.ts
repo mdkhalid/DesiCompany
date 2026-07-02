@@ -27,7 +27,6 @@ import {
   AdPlacement,
   AdStatus,
   AdTargetAudience,
-  Advertisement,
 } from './entities/advertisement.entity';
 
 interface AuthenticatedRequest extends Request {
@@ -189,7 +188,7 @@ export class AdvertisementsController {
       ...(endDate ? { endDate: new Date(endDate) } : {}),
     };
 
-    return this.adsService.updateAd(adId, updateData as Partial<Advertisement>);
+    return this.adsService.updateAd(adId, updateData);
   }
 
   @Delete('admin/:id')

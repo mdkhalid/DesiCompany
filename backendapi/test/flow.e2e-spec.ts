@@ -14,6 +14,8 @@ import { Quote } from '../src/quotes/entities/quote.entity';
 import { Booking } from '../src/bookings/entities/booking.entity';
 import { Message } from '../src/chat/entities/message.entity';
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+
 describe('Complete Flow: Job Posting → Quote → Booking → Chat → Status (e2e)', () => {
   let app: INestApplication<App>;
   let dataSource: DataSource;
@@ -58,7 +60,14 @@ describe('Complete Flow: Job Posting → Quote → Booking → Chat → Status (
 
   afterAll(async () => {
     const repos = [
-      Message, Booking, Quote, JobRequest, Provider, Customer, User, ServiceCategory,
+      Message,
+      Booking,
+      Quote,
+      JobRequest,
+      Provider,
+      Customer,
+      User,
+      ServiceCategory,
     ];
     for (const entity of repos) {
       await dataSource.getRepository(entity).delete({});
@@ -131,9 +140,7 @@ describe('Complete Flow: Job Posting → Quote → Booking → Chat → Status (
       .set('Authorization', `Bearer ${providerToken}`)
       .expect(200);
 
-    const match = (res.body as any[]).find(
-      (jr: any) => jr.id === jobRequestId,
-    );
+    const match = (res.body as any[]).find((jr: any) => jr.id === jobRequestId);
     expect(match).toBeDefined();
   });
 

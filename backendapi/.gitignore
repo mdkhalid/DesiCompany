@@ -9,3 +9,4 @@ coverage
 .DS_Store
 ERROR_LOGS_ROADMAP.md
 ISSUES.md
+scripts/update-db-password.sql
