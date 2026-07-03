@@ -349,12 +349,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _infoTile(Icons.location_city, loc.tr('city'), userData?['city'] ?? loc.tr('not_provided')),
         _infoTile(Icons.map, loc.tr('state'), userData?['state'] ?? loc.tr('not_provided')),
         _infoTile(Icons.markunread_mailbox, loc.tr('pincode'), userData?['pincode'] ?? loc.tr('not_provided')),
-        if (_latitude != null)
-          _infoTile(Icons.gps_fixed, 'Lat', _latitude!.toStringAsFixed(6)),
-        if (_longitude != null)
-          _infoTile(Icons.gps_fixed, 'Lng', _longitude!.toStringAsFixed(6)),
-        if (role == 'provider' && _serviceRadius != null)
-          _infoTile(Icons.radar, 'Service Radius', '${_serviceRadius!.toStringAsFixed(0)} km'),
+        _infoTile(Icons.gps_fixed, 'Latitude', _latitude?.toStringAsFixed(6) ?? loc.tr('not_provided')),
+        _infoTile(Icons.gps_fixed, 'Longitude', _longitude?.toStringAsFixed(6) ?? loc.tr('not_provided')),
+        if (role == 'provider')
+          _infoTile(Icons.radar, 'Service Radius', _serviceRadius != null ? '${_serviceRadius!.toStringAsFixed(0)} km' : loc.tr('not_provided')),
         const SizedBox(height: 16),
         // Switch profile button (only if user has multiple roles)
         if (_profile?['roles'] is List && (_profile!['roles'] as List).length > 1)
@@ -539,6 +537,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildTextField(_cityController, loc.tr('city'), Icons.location_city),
           _buildTextField(_stateController, loc.tr('state'), Icons.map),
           _buildTextField(_pincodeController, loc.tr('pincode'), Icons.markunread_mailbox, keyboardType: TextInputType.number),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _locating ? null : _detectLocation,
+              icon: _locating
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.my_location, size: 18),
+              label: Text(
+                _latitude != null
+                    ? 'Location: ${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)}'
+                    : 'Detect Current Location',
+                style: const TextStyle(fontSize: 13),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                side: BorderSide(color: _latitude != null ? Colors.green : AppTheme.primary),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          if (_profile?['role'] == 'provider') ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Service Area', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(
+                    child: Slider(
+                      value: _serviceRadius ?? 10,
+                      min: 1, max: 100, divisions: 99,
+                      label: '${(_serviceRadius ?? 10).toStringAsFixed(0)} km',
+                      onChanged: (v) => setState(() => _serviceRadius = v),
+                    ),
+                  ),
+                  SizedBox(width: 50, child: Text('${(_serviceRadius ?? 10).toStringAsFixed(0)} km', style: const TextStyle(fontWeight: FontWeight.w600))),
+                ]),
+              ]),
+            ),
+          ],
           const SizedBox(height: 16),
           Container(
             margin: const EdgeInsets.only(bottom: 16),

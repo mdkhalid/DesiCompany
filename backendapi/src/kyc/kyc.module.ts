@@ -6,11 +6,13 @@ import { KycDocument } from './entities/kyc-document.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { User } from '../users/entities/user.entity';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+import { UploadsModule } from '../uploads/uploads.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([KycDocument, Provider, User]),
     ActivityLogsModule,
+    UploadsModule,
   ],
   controllers: [KycController],
   providers: [KycService],

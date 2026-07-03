@@ -10,7 +10,11 @@ import {
   UploadedFiles,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { randomBytes } from 'crypto';
 import { KycService } from './kyc.service';
+import { UploadsService } from '../uploads/uploads.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -20,11 +24,23 @@ import { KycStatus } from '../common/enums/kyc-status.enum';
 @Controller('kyc')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class KycController {
-  constructor(private readonly kycService: KycService) {}
+  constructor(
+    private readonly kycService: KycService,
+    private readonly uploadsService: UploadsService,
+  ) {}
 
   @Post('upload')
   @Roles(UserRole.PROVIDER)
-  @UseInterceptors(FilesInterceptor('documents', 10))
+  @UseInterceptors(FilesInterceptor('documents', 10, {
+    storage: diskStorage({
+      destination: './uploads/kyc',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = randomBytes(16).toString('hex');
+        const ext = extname(file.originalname);
+        cb(null, `${uniqueSuffix}${ext}`);
+      },
+    }),
+  }))
   async uploadDocuments(
     @Body('providerId') providerId: string,
     @Body('documentType') documentType: string,
@@ -35,10 +51,11 @@ export class KycController {
     }
     const results = [];
     for (const file of files) {
+      const url = this.uploadsService.getFileUrl(`kyc/${file.filename}`);
       const doc = await this.kycService.uploadDocument(
         providerId,
         documentType,
-        file.path,
+        url,
       );
       results.push(doc);
     }
