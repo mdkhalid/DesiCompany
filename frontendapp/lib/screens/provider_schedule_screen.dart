@@ -3,6 +3,7 @@ import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import 'provider_busy_slots_screen.dart';
 
 class ProviderScheduleScreen extends StatefulWidget {
   const ProviderScheduleScreen({super.key});
@@ -15,6 +16,7 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
   String? _providerId;
   List<Map> _availabilities = [];
   List<Map> _overrides = [];
+  List<Map> _busySlots = [];
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -46,11 +48,19 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
         ApiService.get('/services/date-overrides?providerId=$pid'),
       ]);
       if (!mounted) return;
+      // Load busy slots
+      List busyData = [];
+      try {
+        final bd = await ApiService.get('/services/busy-slots?providerId=$pid');
+        busyData = (bd is List) ? bd : [];
+      } catch (_) {}
+      if (!mounted) return;
       setState(() {
-        _availabilities = (results[0] is List ? results[0] : results[0] is Map ? (results[0]['availabilities'] ?? results[0]['data'] ?? []) : [])
-            .cast<Map>();
-        _overrides = (results[1] is List ? results[1] : results[1] is Map ? (results[1]['overrides'] ?? results[1]['data'] ?? []) : [])
-            .cast<Map>();
+        final r0 = results[0];
+        final r1 = results[1];
+        _availabilities = (r0 is List ? r0 : []).cast<Map>();
+        _overrides = (r1 is List ? r1 : []).cast<Map>();
+        _busySlots = busyData.cast<Map>();
         _loading = false;
       });
     } catch (e) {
@@ -114,8 +124,7 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
     );
     if (result == null) return;
     try {
-      await ApiService.post('/services/date-overrides', body: {
-        'providerId': _providerId,
+      await ApiService.post('/services/date-overrides?providerId=$_providerId', body: {
         ...result,
       });
       if (mounted) _load();
@@ -220,6 +229,8 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
                                 _buildWeeklySection(loc),
                                 const SizedBox(height: 24),
                                 _buildOverridesSection(loc),
+                                const SizedBox(height: 24),
+                                _buildBusySlotsSection(loc),
                               ],
                             ),
                           ),
@@ -229,6 +240,59 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
         ),
       ),
     );
+  }
+
+
+  Widget _buildBusySlotsSection(LocalizationProvider loc) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        const Text('Busy Slots', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+        TextButton.icon(
+          icon: const Icon(Icons.event_busy, size: 18, color: Colors.red),
+          label: const Text('Manage', style: TextStyle(color: Colors.red)),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProviderBusySlotsScreen()),
+          ).then((_) => _load()),
+        ),
+      ]),
+      const SizedBox(height: 8),
+      if (_busySlots.isEmpty)
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          ),
+          child: const Row(children: [
+            Icon(Icons.event_busy, color: Colors.grey, size: 20),
+            SizedBox(width: 12),
+            Text('No busy slots set. Tap Manage to add.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          ]),
+        )
+      else
+        ...List.generate(_busySlots.length, (i) {
+          final slot = _busySlots[i];
+          final date = slot['busyDate'] ?? '';
+          final start = slot['startTime'] ?? '';
+          final end = slot['endTime'] ?? '';
+          final reason = slot['reason'] as String?;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ListTile(
+              dense: true,
+              leading: const Icon(Icons.block, color: Colors.red, size: 20),
+              title: Text('$date  $start - $end', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              subtitle: reason != null && reason.isNotEmpty ? Text(reason, style: const TextStyle(fontSize: 12)) : null,
+            ),
+          );
+        }),
+    ]);
   }
 
   Widget _buildError(LocalizationProvider loc) {

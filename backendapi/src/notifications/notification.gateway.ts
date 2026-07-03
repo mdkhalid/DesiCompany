@@ -57,7 +57,7 @@ export class NotificationGateway
           sub: string;
           phone: string;
           role: string;
-        }>(token);
+        }>(token, { secret: process.env.JWT_SECRET });
 
         this.userRepository
           .findOne({ where: { id: payload.sub } })

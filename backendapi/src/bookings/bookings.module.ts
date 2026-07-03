@@ -15,6 +15,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { ProviderService } from '../services/entities/provider-service.entity';
 import { ProviderAvailability } from '../services/entities/provider-availability.entity';
 import { ProviderDateOverride } from '../services/entities/provider-date-override.entity';
+import { ProviderBusySlot } from '../services/entities/provider-busy-slot.entity';
 import { Message } from '../chat/entities/message.entity';
 import { User } from '../users/entities/user.entity';
 import { ChatModule } from '../chat/chat.module';
@@ -36,6 +37,7 @@ import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
       ProviderService,
       ProviderAvailability,
       ProviderDateOverride,
+      ProviderBusySlot,
       Message,
       User,
     ]),

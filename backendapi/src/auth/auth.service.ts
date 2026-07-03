@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   UnauthorizedException,
   ConflictException,
   BadRequestException,
@@ -15,6 +16,7 @@ import { RevokedToken } from './entities/revoked-token.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
 import { SmsService } from '../sms/sms.service';
+import { OtpStoreService } from '../common/redis-otp.service';
 
 interface RegisterDto {
   phone: string;
@@ -63,10 +65,7 @@ interface JwtPayload {
 
 @Injectable()
 export class AuthService {
-  private readonly otpStore = new Map<
-    string,
-    { code: string; expiresAt: Date }
-  >();
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     @InjectRepository(User)
@@ -79,6 +78,7 @@ export class AuthService {
     private readonly revokedTokenRepository: Repository<RevokedToken>,
     private readonly jwtService: JwtService,
     private readonly smsService: SmsService,
+    private readonly otpStore: OtpStoreService,
   ) {}
 
   async requestOtp(phone: string): Promise<{ message: string }> {
@@ -89,16 +89,17 @@ export class AuthService {
     const code = isMockMode
       ? process.env.OTP_MOCK_CODE || '123456'
       : this.generateOtp();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    this.otpStore.set(phone, { code, expiresAt });
+    await this.otpStore.set(phone, code);
 
     // Send SMS if not in mock mode
     if (!isMockMode) {
       try {
         await this.smsService.sendOtp(phone, code);
       } catch {
-        // Log but don't fail — OTP is still stored for verification
+        this.logger.warn(
+          `Failed to send OTP SMS to ${phone} — OTP still stored for verification`,
+        );
       }
     }
 
@@ -114,18 +115,14 @@ export class AuthService {
     }
 
     // Validate OTP
-    const otpRecord = this.otpStore.get(registerDto.phone);
-    if (!otpRecord) {
+    const storedCode = await this.otpStore.get(registerDto.phone);
+    if (!storedCode) {
       throw new BadRequestException('OTP not found or expired');
     }
-    if (otpRecord.expiresAt < new Date()) {
-      this.otpStore.delete(registerDto.phone);
-      throw new BadRequestException('OTP expired');
-    }
-    if (otpRecord.code !== registerDto.otp) {
+    if (storedCode !== registerDto.otp) {
       throw new UnauthorizedException('Invalid OTP');
     }
-    this.otpStore.delete(registerDto.phone);
+    await this.otpStore.delete(registerDto.phone);
 
     // Check if user already exists (first role vs adding second role)
     const existingUser = await this.userRepository.findOne({
@@ -179,21 +176,16 @@ export class AuthService {
       throw new UnauthorizedException('User is not active');
     }
 
-    const otpRecord = this.otpStore.get(loginDto.phone);
-    if (!otpRecord) {
+    const storedCode = await this.otpStore.get(loginDto.phone);
+    if (!storedCode) {
       throw new BadRequestException('OTP not found or expired');
     }
 
-    if (otpRecord.expiresAt < new Date()) {
-      this.otpStore.delete(loginDto.phone);
-      throw new BadRequestException('OTP expired');
-    }
-
-    if (otpRecord.code !== loginDto.otp) {
+    if (storedCode !== loginDto.otp) {
       throw new UnauthorizedException('Invalid OTP');
     }
 
-    this.otpStore.delete(loginDto.phone);
+    await this.otpStore.delete(loginDto.phone);
 
     if (loginDto.role && loginDto.role !== user.role) {
       // Validate that user actually has the requested role
@@ -223,17 +215,12 @@ export class AuthService {
       throw new UnauthorizedException('User is not active');
     }
 
-    const otpRecord = this.otpStore.get(verifyOtpDto.phone);
-    if (!otpRecord) {
+    const storedCode = await this.otpStore.get(verifyOtpDto.phone);
+    if (!storedCode) {
       throw new BadRequestException('OTP not found or expired');
     }
 
-    if (otpRecord.expiresAt < new Date()) {
-      this.otpStore.delete(verifyOtpDto.phone);
-      throw new BadRequestException('OTP expired');
-    }
-
-    if (otpRecord.code !== verifyOtpDto.otp) {
+    if (storedCode !== verifyOtpDto.otp) {
       throw new UnauthorizedException('Invalid OTP');
     }
 

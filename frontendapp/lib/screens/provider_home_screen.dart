@@ -1,11 +1,13 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import 'booking_detail_screen.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
 import '../utils/id_helpers.dart';
 import 'support_tickets_screen.dart';
 import 'disputes_screen.dart';
+import 'provider_busy_slots_screen.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class ProviderHomeScreen extends StatefulWidget {
@@ -16,6 +18,9 @@ class ProviderHomeScreen extends StatefulWidget {
 
 class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   List _bookings = [];
+  int _todayJobs = 0;
+  double _todayEarnings = 0.0;
+  int _pendingCount = 0;
   bool _loading = true;
   String _providerName = '';
 
@@ -111,29 +116,45 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                       children: [
                         _buildHeaderButton(Icons.work_outline, loc.tr('header_jobs'),
                           () => Navigator.pushNamed(context, '/provider-open-jobs')),
-                        _buildHeaderButton(Icons.handyman, loc.tr('header_services'),
-                          () => Navigator.pushNamed(context, '/provider-services')),
-                        _buildHeaderButton(Icons.star_rate, loc.tr('header_reviews'),
-                          () => Navigator.pushNamed(context, '/provider-reviews')),
                         _buildHeaderButton(Icons.schedule, 'Schedule',
                           () => Navigator.pushNamed(context, '/provider-schedule')),
-                        _buildHeaderButton(Icons.verified_user, loc.tr('header_kyc'),
-                          () => Navigator.pushNamed(context, '/provider-kyc-upload')),
-                        _buildHeaderButton(Icons.card_membership, loc.tr('subscription_plans'),
-                          () => Navigator.pushNamed(context, '/provider-subscriptions')),
                         _buildHeaderButton(Icons.account_balance_wallet, loc.tr('header_wallet'),
                           () => Navigator.pushNamed(context, '/wallet')),
-                        _buildHeaderButton(Icons.feedback, loc.tr('my_quotes'),
-                          () => Navigator.pushNamed(context, '/provider-my-quotes')),
-                        _buildHeaderButton(Icons.support_agent, loc.tr('support'),
-                          () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportTicketsScreen()))),
-                        _buildHeaderButton(Icons.gavel, loc.tr('disputes'),
-                          () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DisputesScreen()))),
+                        _buildHeaderButton(Icons.chat, loc.tr('nav_chat'),
+                          () => Navigator.pushNamed(context, '/conversations')),
+                        _buildHeaderButton(Icons.person, loc.tr('nav_profile'),
+                          () => Navigator.pushNamed(context, '/profile')),
                         _buildHeaderButton(Icons.logout, loc.tr('header_logout'),
                           () async {
                             await AuthService.logout();
                             if (mounted) Navigator.pushReplacementNamed(context, '/login');
                           }),
+                        // Extra items in a sub-menu
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_horiz, color: Colors.white),
+                          onSelected: (v) {
+                            switch (v) {
+                              case 'services': Navigator.pushNamed(context, '/provider-services'); break;
+                              case 'reviews': Navigator.pushNamed(context, '/provider-reviews'); break;
+                              case 'kyc': Navigator.pushNamed(context, '/provider-kyc-upload'); break;
+                              case 'subscriptions': Navigator.pushNamed(context, '/provider-subscriptions'); break;
+                              case 'quotes': Navigator.pushNamed(context, '/provider-my-quotes'); break;
+                              case 'support': Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportTicketsScreen())); break;
+                              case 'disputes': Navigator.push(context, MaterialPageRoute(builder: (_) => const DisputesScreen())); break;
+                              case 'busy': Navigator.push(context, MaterialPageRoute(builder: (_) => const ProviderBusySlotsScreen())); break;
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(value: 'services', child: ListTile(leading: Icon(Icons.handyman), title: Text('Services'), dense: true)),
+                            const PopupMenuItem(value: 'reviews', child: ListTile(leading: Icon(Icons.star_rate), title: Text('Reviews'), dense: true)),
+                            const PopupMenuItem(value: 'kyc', child: ListTile(leading: Icon(Icons.verified_user), title: Text('KYC'), dense: true)),
+                            const PopupMenuItem(value: 'subscriptions', child: ListTile(leading: Icon(Icons.card_membership), title: Text('Subscriptions'), dense: true)),
+                            const PopupMenuItem(value: 'quotes', child: ListTile(leading: Icon(Icons.feedback), title: Text('Quotes'), dense: true)),
+                            const PopupMenuItem(value: 'support', child: ListTile(leading: Icon(Icons.support_agent), title: Text('Support'), dense: true)),
+                            const PopupMenuItem(value: 'disputes', child: ListTile(leading: Icon(Icons.gavel), title: Text('Disputes'), dense: true)),
+                            const PopupMenuItem(value: 'busy', child: ListTile(leading: Icon(Icons.event_busy), title: Text('Busy Slots'), dense: true)),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -206,6 +227,13 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                               Row(children: [
                                 const Icon(Icons.currency_rupee, size: 16, color: AppTheme.textSecondary),
                                 Text('${b['totalAmount'] ?? 0}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                              ]),
+                              const SizedBox(height: 4),
+                              Row(children: [
+                                Icon(Icons.schedule, size: 14, color: Colors.grey.shade500),
+                                const SizedBox(width: 4),
+                                Text(_formatBookingDate(b['scheduledDate']?.toString()),
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                               ]),
                               const SizedBox(height: 12),
                               if (b['status'] == 'requested')
@@ -287,6 +315,20 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         ),
       ),
     );
+  }
+
+  String _formatBookingDate(String? iso) {
+    if (iso == null) return '';
+    try {
+      final dt = DateTime.parse(iso);
+      final d = dt.day.toString().padLeft(2, '0');
+      final m = dt.month.toString().padLeft(2, '0');
+      final h = dt.hour.toString().padLeft(2, '0');
+      final min = dt.minute.toString().padLeft(2, '0');
+      return '$d/$m/${dt.year} $h:$min';
+    } catch (_) {
+      return '';
+    }
   }
 
   Widget _buildHeaderButton(IconData icon, String tooltip, VoidCallback onTap) {

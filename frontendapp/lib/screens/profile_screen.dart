@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/strings.dart';
@@ -5,6 +6,8 @@ import '../main.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import '../services/location_service.dart';
 import '../theme.dart';
 import 'profile_picker_screen.dart';
@@ -21,6 +24,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true;
   bool _editing = false;
   bool _saving = false;
+  bool _locating = false;
+  double? _latitude;
+  double? _longitude;
+  double? _serviceRadius;
+  String? _profileImageUrl;
+  bool _uploadingImage = false;
   String _selectedLanguage = 'en';
 
   final _formKey = GlobalKey<FormState>();
@@ -78,6 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _lastNameController.text = userData['lastName'] ?? '';
     }
     _emailController.text = _profile!['email'] ?? '';
+    _profileImageUrl = _profile!['profileImage'] as String?;
     _selectedLanguage = _profile!['language'] ?? 'en';
     // Sync locale provider with saved language
     DesiCompanyApp.localeProvider?.setLocale(_selectedLanguage);
@@ -86,6 +96,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _cityController.text = userData['city'] ?? '';
       _stateController.text = userData['state'] ?? '';
       _pincodeController.text = userData['pincode'] ?? '';
+      _latitude = (userData['latitude'] is num ? (userData['latitude'] as num).toDouble() : double.tryParse('${userData['latitude'] ?? ''}'));
+      _longitude = (userData['longitude'] is num ? (userData['longitude'] as num).toDouble() : double.tryParse('${userData['longitude'] ?? ''}'));
+      if (role == 'provider') {
+        _serviceRadius = (userData['serviceRadiusKm'] is num ? (userData['serviceRadiusKm'] as num).toDouble() : double.tryParse('${userData['serviceRadiusKm'] ?? ''}'));
+      }
     }
   }
 
@@ -334,6 +349,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _infoTile(Icons.location_city, loc.tr('city'), userData?['city'] ?? loc.tr('not_provided')),
         _infoTile(Icons.map, loc.tr('state'), userData?['state'] ?? loc.tr('not_provided')),
         _infoTile(Icons.markunread_mailbox, loc.tr('pincode'), userData?['pincode'] ?? loc.tr('not_provided')),
+        if (_latitude != null)
+          _infoTile(Icons.gps_fixed, 'Lat', _latitude!.toStringAsFixed(6)),
+        if (_longitude != null)
+          _infoTile(Icons.gps_fixed, 'Lng', _longitude!.toStringAsFixed(6)),
+        if (role == 'provider' && _serviceRadius != null)
+          _infoTile(Icons.radar, 'Service Radius', '${_serviceRadius!.toStringAsFixed(0)} km'),
         const SizedBox(height: 16),
         // Switch profile button (only if user has multiple roles)
         if (_profile?['roles'] is List && (_profile!['roles'] as List).length > 1)
@@ -422,6 +443,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 512, maxHeight: 512);
+    if (picked == null) return;
+    setState(() => _uploadingImage = true);
+    try {
+      final token = await ApiService.getToken();
+      if (token == null) throw Exception('Not authenticated');
+      final bytes = await picked.readAsBytes();
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiService.baseUrl}/uploads/profile-image'),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(http.MultipartFile.fromBytes(
+        'file', bytes,
+        filename: picked.name,
+        contentType: http.MediaType('image', picked.mimeType?.split('/').last ?? 'jpeg'),
+      ));
+      final response = await request.send();
+      if (response.statusCode == 201) {
+        final body = await response.stream.bytesToString();
+        final result = jsonDecode(body);
+        final url = result['url'] as String;
+        // Save URL to profile
+        await ApiService.patch('/users/profile', body: {'profileImage': url});
+        if (mounted) setState(() { _profileImageUrl = url; _uploadingImage = false; });
+      } else {
+        if (mounted) setState(() => _uploadingImage = false);
+        throw Exception('Upload failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploadingImage = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image upload failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _detectLocation() async {
+    setState(() => _locating = true);
+    try {
+      final pos = await LocationService.getCurrentLocation();
+      if (pos == null) {
+        // Check if there's a useful hint about why it failed
+        final hint = await LocationService.locationHint();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(hint ?? 'Could not detect location'),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        setState(() => _locating = false);
+        return;
+      }
+      setState(() {
+        _latitude = pos.latitude;
+        _longitude = pos.longitude;
+      });
+      // Reverse geocode to fill address
+      LocationService.getAddressFromCoordinates(pos.latitude, pos.longitude).then((addr) {
+        if (mounted && addr.isNotEmpty) {
+          setState(() => _addressController.text = addr);
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Location set: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
+          duration: const Duration(seconds: 2),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
   }
 
   Widget _buildEditForm(LocalizationProvider loc) {

@@ -20,6 +20,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
 import { ProviderAvailability } from '../services/entities/provider-availability.entity';
 import { ProviderDateOverride } from '../services/entities/provider-date-override.entity';
+import { ProviderBusySlot } from '../services/entities/provider-busy-slot.entity';
 import { CommissionService } from '../commissions/commission.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
@@ -57,6 +58,8 @@ export class BookingsService {
     private readonly availabilityRepository: Repository<ProviderAvailability>,
     @InjectRepository(ProviderDateOverride)
     private readonly dateOverrideRepository: Repository<ProviderDateOverride>,
+    @InjectRepository(ProviderBusySlot)
+    private readonly busySlotRepository: Repository<ProviderBusySlot>,
     private readonly chatGateway: ChatGateway,
     private readonly commissionService: CommissionService,
     private readonly notificationsService: NotificationsService,
@@ -85,6 +88,7 @@ export class BookingsService {
 
     const provider = await this.providerRepository.findOne({
       where: { id: dto.providerId },
+      relations: { user: true },
     });
     if (!provider) {
       throw new NotFoundException('Provider not found');
@@ -118,6 +122,8 @@ export class BookingsService {
       providerService,
       scheduledDate: new Date(dto.scheduledDate),
       description: dto.description,
+      serviceAddress: dto.serviceAddress,
+      serviceCity: dto.serviceCity,
       isEmergency: dto.isEmergency || false,
       status: BookingStatus.REQUESTED,
     });
@@ -600,6 +606,21 @@ export class BookingsService {
       },
       select: { id: true, scheduledDate: true, estimatedHours: true },
     });
+
+    // Check provider-marked busy slots
+    const busySlots = await this.busySlotRepository.find({
+      where: { provider: { id: providerId }, busyDate: dateStr },
+    });
+    const inBusySlot = busySlots.some((bs) => {
+      const [bsH, bsM] = bs.startTime.split(':').map(Number);
+      const [beH, beM] = bs.endTime.split(':').map(Number);
+      const busyStart = bsH * 60 + bsM;
+      const busyEnd = beH * 60 + beM;
+      return bookingMinutes < busyEnd && bookingEnd > busyStart;
+    });
+    if (inBusySlot) {
+      throw new BadRequestException('Provider is not available during this time');
+    }
 
     const hasConflict = conflictingBookings.some((b) => {
       const bDate = new Date(b.scheduledDate);

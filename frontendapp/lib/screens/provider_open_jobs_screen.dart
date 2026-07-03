@@ -190,8 +190,8 @@ class _ProviderOpenJobsScreenState extends State<ProviderOpenJobsScreen> {
     final customer = job['customer'] as Map<String, dynamic>?;
     final customerName = _customerName(customer);
     final customerCity = (customer?['city'] ?? '').toString();
-    final lat = (job['latitude'] as num?)?.toDouble();
-    final lng = (job['longitude'] as num?)?.toDouble();
+    final lat = double.tryParse('${job['latitude'] ?? ''}');
+    final lng = double.tryParse('${job['longitude'] ?? ''}');
     double? distanceMeters;
     if (lat != null && lng != null && _latitude != null && _longitude != null) {
       distanceMeters = DistanceBadge.calculateDistance(

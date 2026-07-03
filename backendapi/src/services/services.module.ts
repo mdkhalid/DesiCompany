@@ -8,6 +8,7 @@ import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
 import { ProviderDateOverride } from './entities/provider-date-override.entity';
+import { ProviderBusySlot } from './entities/provider-busy-slot.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 
@@ -18,6 +19,7 @@ import { Booking } from '../bookings/entities/booking.entity';
       ProviderService,
       ProviderAvailability,
       ProviderDateOverride,
+      ProviderBusySlot,
       Provider,
       Booking,
     ]),

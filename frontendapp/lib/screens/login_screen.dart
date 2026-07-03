@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import '../services/push_notification_service.dart';
 import '../theme.dart';
 import 'profile_picker_screen.dart';
@@ -78,8 +79,8 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      final errMsg = e.toString();
-      if (errMsg.contains('User not found') || errMsg.contains('404')) {
+      // Check if this is a 404 "User not found" -> new user registration
+      if (e is ApiException && e.isNotFound) {
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -91,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       } else {
-        setState(() { _error = errMsg.replaceFirst('Exception: ', ''); _loading = false; });
+        setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
       }
     }
   }
@@ -120,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(loc.tr('app_tagline'), style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8))),
                 const SizedBox(height: 40),
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(24),

@@ -34,6 +34,12 @@ export class Booking extends BaseEntity {
   @Column({ nullable: true })
   description: string;
 
+  @Column({ nullable: true, name: 'service_address' })
+  serviceAddress?: string;
+
+  @Column({ nullable: true, name: 'service_city' })
+  serviceCity?: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   totalAmount: number;
 

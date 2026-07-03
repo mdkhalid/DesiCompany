@@ -43,4 +43,24 @@ export class UploadsController {
       mimetype: file.mimetype,
     };
   }
+
+  @Post('profile-image')
+  @ApiOperation({ summary: 'Upload profile image' })
+  @UseInterceptors(FileInterceptor('file'))
+  uploadProfileImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() _req: AuthRequest,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+    const url = this.uploadsService.getFileUrl(file.filename);
+    return {
+      url,
+      filename: file.filename,
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+    };
+  }
 }

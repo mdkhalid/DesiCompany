@@ -177,7 +177,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create ticket'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Failed to create ticket'), backgroundColor: Colors.red),
         );
       }
     }
@@ -279,7 +279,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Failed to send'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -316,7 +316,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _messages.isEmpty
-                    ? Center(child: Text('No messages yet'))
+                    ? const Center(child: Text('No messages yet'))
                     : ListView.builder(
                         padding: const EdgeInsets.all(12),
                         itemCount: _messages.length,

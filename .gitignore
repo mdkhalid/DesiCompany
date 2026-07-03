@@ -44,3 +44,6 @@ frontendapp/android/upload-keystore.jks
 adminweb/node_modules/
 adminweb/dist/
 adminweb/tsconfig.tsbuildinfo
+
+# Flutter tool state
+.flutter_tool_state

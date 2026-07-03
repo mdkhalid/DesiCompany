@@ -1,27 +1,19 @@
-﻿import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import 'api_service.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class AuthService {
-  static const _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock_this_device,
-    ),
-  );
-
   // Keys
-  static const _keyToken = 'token';
-  static const _keyRefreshToken = 'refresh_token';
-  static const _keyUserData = 'user_data';
+  static const _keyToken = 'auth_token';
+  static const _keyRefreshToken = 'auth_refresh_token';
+  static const _keyUserData = 'auth_user_data';
 
   static Future<void> sendOtp(String phone) async {
     await ApiService.post('/auth/otp/request', body: {'phone': phone});
   }
 
-  /// Register a new user (first-time flow). Requires a valid OTP.
   static Future<User> register({
     required String phone,
     required String otp,
@@ -39,39 +31,37 @@ class AuthService {
     final token = data['tokens']['accessToken'] as String;
     final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
-    await _secureStorage.write(key: _keyToken, value: token);
-    if (refreshToken != null) await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
-    await _secureStorage.write(key: _keyUserData, value: jsonEncode(userData));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyToken, token);
+    if (refreshToken != null) await prefs.setString(_keyRefreshToken, refreshToken);
+    await prefs.setString(_keyUserData, jsonEncode(userData));
     return User.fromJson(userData, token: token);
   }
 
-  /// Switch the active role for the current session.
-  /// Returns new tokens with the requested role.
   static Future<User> switchRole(String newRole) async {
     final data = await ApiService.post('/auth/switch-role', body: {
       'activeRole': newRole,
     });
     final token = data['tokens']['accessToken'] as String;
     final refreshToken = data['tokens']['refreshToken'] as String?;
+    final prefs = await SharedPreferences.getInstance();
 
-    // Update stored user data with new role
-    final userDataStr = await _secureStorage.read(key: _keyUserData);
+    final userDataStr = prefs.getString(_keyUserData);
     if (userDataStr != null) {
       final userData = jsonDecode(userDataStr) as Map<String, dynamic>;
       userData['role'] = newRole;
-      await _secureStorage.write(key: _keyUserData, value: jsonEncode(userData));
+      await prefs.setString(_keyUserData, jsonEncode(userData));
     }
 
-    await _secureStorage.write(key: _keyToken, value: token);
-    if (refreshToken != null) await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
-    final updatedDataStr = await _secureStorage.read(key: _keyUserData);
+    await prefs.setString(_keyToken, token);
+    if (refreshToken != null) await prefs.setString(_keyRefreshToken, refreshToken);
+    final updatedDataStr = prefs.getString(_keyUserData);
     return User.fromJson(
       jsonDecode(updatedDataStr ?? '{}') as Map<String, dynamic>,
       token: token,
     );
   }
 
-  /// Add a new role to an already-authenticated user (no OTP needed).
   static Future<User> addRole({
     required String role,
     String? firstName,
@@ -85,9 +75,10 @@ class AuthService {
     final token = data['tokens']['accessToken'] as String;
     final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
-    await _secureStorage.write(key: _keyToken, value: token);
-    if (refreshToken != null) await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
-    await _secureStorage.write(key: _keyUserData, value: jsonEncode(userData));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyToken, token);
+    if (refreshToken != null) await prefs.setString(_keyRefreshToken, refreshToken);
+    await prefs.setString(_keyUserData, jsonEncode(userData));
     return User.fromJson(userData, token: token);
   }
 
@@ -100,28 +91,28 @@ class AuthService {
     final token = data['tokens']['accessToken'] as String;
     final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
-    await _secureStorage.write(key: _keyToken, value: token);
-    if (refreshToken != null) await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
-    await _secureStorage.write(key: _keyUserData, value: jsonEncode(userData));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyToken, token);
+    if (refreshToken != null) await prefs.setString(_keyRefreshToken, refreshToken);
+    await prefs.setString(_keyUserData, jsonEncode(userData));
     return User.fromJson(userData, token: token);
   }
 
-  /// Verify OTP and return user info with available roles for role selection.
   static Future<VerifyOtpResponse> verifyOtpAndSelectRole(String phone, String otp) async {
     final data = await ApiService.post('/auth/verify-otp', body: {'phone': phone, 'otp': otp});
     return VerifyOtpResponse.fromJson(data);
   }
 
   static Future<void> logout() async {
-    await _secureStorage.delete(key: _keyToken);
-    await _secureStorage.delete(key: _keyRefreshToken);
-    await _secureStorage.delete(key: _keyUserData);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyToken);
+    await prefs.remove(_keyRefreshToken);
+    await prefs.remove(_keyUserData);
   }
 
-  /// Exchange the stored refresh token for a new access token.
-  /// Returns the new access token, or null if no refresh is possible.
   static Future<String?> refreshAccessToken() async {
-    final refreshToken = await _secureStorage.read(key: _keyRefreshToken);
+    final prefs = await SharedPreferences.getInstance();
+    final refreshToken = prefs.getString(_keyRefreshToken);
     if (refreshToken == null || refreshToken.isEmpty) return null;
     try {
       final data = await ApiService.post('/auth/refresh', body: {
@@ -131,10 +122,10 @@ class AuthService {
       final newAccess = tokens?['accessToken'] as String?;
       final newRefresh = tokens?['refreshToken'] as String?;
       if (newAccess != null) {
-        await _secureStorage.write(key: _keyToken, value: newAccess);
+        await prefs.setString(_keyToken, newAccess);
       }
       if (newRefresh != null) {
-        await _secureStorage.write(key: _keyRefreshToken, value: newRefresh);
+        await prefs.setString(_keyRefreshToken, newRefresh);
       }
       return newAccess;
     } catch (e, st) {
@@ -144,32 +135,38 @@ class AuthService {
   }
 
   static Future<bool> isLoggedIn() async {
-    final token = await _secureStorage.read(key: _keyToken);
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_keyToken);
     return token != null && token.isNotEmpty;
   }
 
   static Future<String?> getToken() async {
-    return _secureStorage.read(key: _keyToken);
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyToken);
   }
 
   static Future<String?> getUserData() async {
-    return _secureStorage.read(key: _keyUserData);
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserData);
   }
 
   static Future<String?> getUserRole() async {
-    final userData = await _secureStorage.read(key: _keyUserData);
+    final prefs = await SharedPreferences.getInstance();
+    final userData = prefs.getString(_keyUserData);
     if (userData == null) return null;
     return (jsonDecode(userData) as Map)['role'] as String?;
   }
 
   static Future<String?> getUserId() async {
-    final userData = await _secureStorage.read(key: _keyUserData);
+    final prefs = await SharedPreferences.getInstance();
+    final userData = prefs.getString(_keyUserData);
     if (userData == null) return null;
     return (jsonDecode(userData) as Map)['id'] as String?;
   }
 
   static Future<String?> getProviderId() async {
-    final userData = await _secureStorage.read(key: _keyUserData);
+    final prefs = await SharedPreferences.getInstance();
+    final userData = prefs.getString(_keyUserData);
     if (userData == null) return null;
     return (jsonDecode(userData) as Map)['providerId'] as String?;
   }

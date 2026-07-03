@@ -45,6 +45,14 @@ export class CreateBookingDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
+  @IsString()
+  serviceAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  serviceCity?: string;
+
   @ApiPropertyOptional({
     description: 'Mark as urgent/emergency service',
     default: false,

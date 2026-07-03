@@ -147,12 +147,15 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                           color: Colors.white.withValues(alpha: 0.8),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          '${loc.tr('current_profile')}: ${widget.user.role.toUpperCase()}',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Text(
+                            '${loc.tr('current_profile')}: ${widget.user.role.toUpperCase()}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

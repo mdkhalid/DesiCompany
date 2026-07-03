@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -105,6 +105,8 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  final Set<String> _acceptingQuotes = {};
+
   Future<void> _loadUserId() async {
     final uid = await AuthService.getUserId();
     if (mounted) setState(() => _currentUserId = uid);
@@ -113,6 +115,29 @@ class _ChatScreenState extends State<ChatScreen> {
   bool get _isDirect => widget.mode == 'direct' || widget.mode == 'direct_chat';
 
   // ==================== MESSAGE CACHING ====================
+
+  Future<void> _fetchHistoricalMessages() async {
+    try {
+      final type = _isDirect ? 'direct' : 'booking';
+      final targetId = _isDirect ? _directRoomId : widget.bookingId;
+      if (targetId == null) return;
+      final data = await ApiService.get('/chat/messages/$type/$targetId?limit=100');
+      if (data is List && data.isNotEmpty) {
+        final msgs = data.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
+
+        // Merge with existing messages (avoid duplicates by ID)
+        final existingIds = _messages.map((m) => m.id).toSet();
+        for (final m in msgs) {
+          if (!existingIds.contains(m.id)) {
+            _messages.add(m);
+          }
+        }
+        _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        if (mounted) setState(() {});
+        _scrollToBottom();
+      }
+    } catch (_) {}
+  }
 
   Future<void> _loadCachedMessages() async {
     try {
@@ -234,6 +259,8 @@ class _ChatScreenState extends State<ChatScreen> {
       } else {
         debugPrint('[CHAT] No bookingId or providerId - cannot join');
       }
+      // Load historical messages
+      _fetchHistoricalMessages();
     });
 
     _socket.onConnectError((err) async {
@@ -957,7 +984,13 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildReadStatusIcon(ChatMessage msg) {
-    final isRead = msg.status == 'read' || msg.isRead;
+    // WhatsApp-style ticks:
+    //   sent     -> single grey tick
+    //   delivered -> double grey tick
+    //   read     -> double blue tick
+    final st = msg.status;
+    final isRead = st == 'read' || msg.isRead;
+    final isDelivered = st == 'delivered' || isRead;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -967,7 +1000,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         const SizedBox(width: 3),
         Icon(
-          isRead ? Icons.done_all : Icons.done,
+          isDelivered ? Icons.done_all : Icons.done,
           size: 14,
           color: isRead ? Colors.blue : Colors.grey.shade600,
         ),
@@ -1002,13 +1035,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   padding: const EdgeInsets.only(right: 4),
                   child: Text('edited', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontStyle: FontStyle.italic)),
                 ),
-              if (isMe)
-                _buildReadStatusIcon(msg)
-              else
-                Text(
-                  _formatTime(msg.createdAt),
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-                ),
+              _buildReadStatusIcon(msg),
             ],
           ),
         ],
@@ -1192,7 +1219,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (isMe) _buildReadStatusIcon(msg),
+                _buildReadStatusIcon(msg),
               ],
             ),
           ],
@@ -1417,15 +1444,20 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _acceptQuote(ChatMessage msg) {
+    if (_acceptingQuotes.contains(msg.id)) return;
+    _acceptingQuotes.add(msg.id);
+
     if (_isDirect && _directRoomId != null) {
       _socket.emit('send_quick_reply', {
         'roomId': _directRoomId,
         'quickReplyType': 'accept_quote',
+        'quoteId': msg.id,
       });
     } else if (widget.bookingId != null) {
       _socket.emit('send_quick_reply', {
         'bookingId': widget.bookingId,
         'quickReplyType': 'accept_quote',
+        'quoteId': msg.id,
       });
     }
 
@@ -1473,13 +1505,7 @@ class _ChatScreenState extends State<ChatScreen> {
             style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: isMe ? Colors.black87 : Colors.black54),
           ),
           const SizedBox(height: 2),
-          if (isMe)
-            _buildReadStatusIcon(msg)
-          else
-            Text(
-              _formatTime(msg.createdAt),
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-            ),
+              _buildReadStatusIcon(msg),
         ],
       ),
     );
@@ -1554,13 +1580,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
             const SizedBox(height: 4),
-            if (isMe)
-              _buildReadStatusIcon(msg)
-            else
-              Text(
-                _formatTime(msg.createdAt),
-                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-              ),
+            _buildReadStatusIcon(msg),
           ],
         ),
       ),

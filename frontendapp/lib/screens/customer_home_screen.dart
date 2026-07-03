@@ -10,6 +10,8 @@ import '../widgets/labeled_icon_button.dart';
 import 'support_tickets_screen.dart';
 import 'disputes_screen.dart';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:desicompany/services/app_logger.dart';
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -115,6 +117,100 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     } catch (e, st) { AppLogger.e('customer_home_screen', 'Operation failed', e, st); }
   }
 
+  Future<void> _showLocationPicker() async {
+    final loc = LocalizationProvider.of(context);
+    final cityController = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Set location'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx, 'gps'),
+                icon: const Icon(Icons.my_location),
+                label: Text(loc.tr('use_current_location')),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Row(children: [
+              Expanded(child: Divider()),
+              Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('OR', style: TextStyle(color: Colors.grey, fontSize: 12))),
+              Expanded(child: Divider()),
+            ]),
+            const SizedBox(height: 16),
+            TextField(
+              controller: cityController,
+              decoration: InputDecoration(
+                hintText: 'Enter city name (e.g. Lucknow)',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (cityController.text.trim().isNotEmpty) {
+                    Navigator.pop(ctx, cityController.text.trim());
+                  }
+                },
+                child: const Text('Search in this city'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    if (result == 'gps') {
+      // Use GPS
+      final position = await LocationService.getCurrentLocation();
+      if (!mounted || position == null) return;
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+        _locationText = 'Current location';
+        _loading = true;
+      });
+      _loadProviders();
+      LocationService.getAddressFromCoordinates(position.latitude, position.longitude)
+          .then((addr) { if (mounted) setState(() => _locationText = addr); });
+    } else {
+      // Search by city name
+      try {
+        final cityName = result;
+        final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=$cityName&limit=1&countrycodes=in');
+        final response = await http.get(url, headers: {'User-Agent': 'DesiCompanyApp/1.0'});
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data is List && data.isNotEmpty) {
+            final lat = double.parse(data[0]['lat']);
+            final lon = double.parse(data[0]['lon']);
+            if (!mounted) return;
+            setState(() {
+              _latitude = lat;
+              _longitude = lon;
+              _locationText = cityName;
+              _radiusKm = 10;
+              _loading = true;
+            });
+            _loadProviders();
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
   Future<void> _initLocation() async {
     final position = await LocationService.getCurrentLocation();
     if (!mounted) return;
@@ -213,9 +309,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             GestureDetector(
-              onTap: _locationText == 'Set location'
-                  ? () => Navigator.pushNamed(context, '/profile')
-                  : null,
+              onTap: _showLocationPicker,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

@@ -71,6 +71,7 @@ interface QuickReplyPayload {
   roomId?: string;
   quickReplyType: string;
   value: string;
+  quoteId?: string;
 }
 
 @WebSocketGateway({
@@ -221,7 +222,7 @@ export class ChatGateway
         sub: string;
         phone: string;
         role: string;
-      }>(token);
+      }>(token, { secret: process.env.JWT_SECRET });
 
       this.userRepository
         .findOne({
@@ -787,6 +788,22 @@ export class ChatGateway
         status: 'delivered',
       });
 
+      // Mark original quote as accepted
+      if (payload.quickReplyType === 'accept_quote' && payload.quoteId) {
+        await this.directMessageRepository.update(
+          { id: payload.quoteId },
+          { metadata: { ...(saved.metadata || {}), accepted: true } },
+        );
+        // Re-emit the updated quote so both sides see the change
+        const updatedQuote = await this.directMessageRepository.findOne({ where: { id: payload.quoteId } });
+        if (updatedQuote) {
+          this.server.to(targetId).emit('message_updated', {
+            id: updatedQuote.id,
+            metadata: updatedQuote.metadata,
+          });
+        }
+      }
+
       let qrNotifyUserId: string | null = null;
       if (customerUserId === client.data.userId) {
         const provider = await this.providerRepository.findOne({
@@ -828,6 +845,21 @@ export class ChatGateway
         createdAt: saved.createdAt,
         status: 'delivered',
       });
+
+      // Mark original quote as accepted (booking path)
+      if (payload.quickReplyType === 'accept_quote' && payload.quoteId) {
+        await this.messageRepository.update(
+          { id: payload.quoteId },
+          { metadata: { ...(saved.metadata || {}), accepted: true } },
+        );
+        const updatedQuote = await this.messageRepository.findOne({ where: { id: payload.quoteId } });
+        if (updatedQuote) {
+          this.server.to(room).emit('message_updated', {
+            id: updatedQuote.id,
+            metadata: updatedQuote.metadata,
+          });
+        }
+      }
 
       const qrBooking = await this.bookingRepository.findOne({
         where: { id: targetId },

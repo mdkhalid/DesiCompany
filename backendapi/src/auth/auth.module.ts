@@ -9,6 +9,7 @@ import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { RevokedToken } from './entities/revoked-token.entity';
 import { SmsModule } from '../sms/sms.module';
+import { OtpStoreService } from '../common/redis-otp.service';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { SmsModule } from '../sms/sms.module';
     SmsModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, OtpStoreService],
   exports: [AuthService, JwtStrategy, JwtModule],
 })
 export class AuthModule {}

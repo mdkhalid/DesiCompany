@@ -70,7 +70,7 @@ export class Grievance extends BaseEntity {
   })
   priority: GrievancePriority;
 
-  @Column({ name: 'subject', length: 200, nullable: true })
+  @Column({ name: 'subject', type: 'varchar', length: 200, nullable: true })
   subject: string | null;
 
   @Column({ name: 'description', type: 'text', nullable: true })
@@ -90,7 +90,7 @@ export class Grievance extends BaseEntity {
   @Column({ name: 'resolved_at', type: 'timestamp', nullable: true })
   resolvedAt: Date | null;
 
-  @Column({ name: 'resolved_by', nullable: true })
+  @Column({ name: 'resolved_by', type: 'varchar', nullable: true })
   resolvedBy: string | null;
 
   @Column({ name: 'admin_notes', type: 'text', nullable: true })

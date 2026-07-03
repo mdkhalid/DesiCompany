@@ -2,9 +2,9 @@
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
-import '../utils/id_helpers.dart';
 import 'write_review_screen.dart';
 import 'grievance_chat_screen.dart';
+import 'booking_detail_screen.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class MyBookingsScreen extends StatefulWidget {
@@ -91,7 +91,29 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 
   String _statusLabel(String status) {
-    return status.replaceAll('_', ' ').toUpperCase();
+    return switch (status) {
+      'requested' => 'Requested',
+      'accepted' => 'Accepted',
+      'on_the_way' => 'On the way',
+      'working' => 'Working',
+      'completed' => 'Completed',
+      'rejected' => 'Rejected',
+      'cancelled' => 'Cancelled',
+      _ => status.replaceAll('_', ' '),
+    };
+  }
+
+  IconData _statusIcon(String status) {
+    return switch (status) {
+      'requested' => Icons.mail_outline,
+      'accepted' => Icons.check_circle_outline,
+      'on_the_way' => Icons.directions_walk,
+      'working' => Icons.build,
+      'completed' => Icons.celebration_outlined,
+      'rejected' => Icons.cancel_outlined,
+      'cancelled' => Icons.cancel_outlined,
+      _ => Icons.info_outline,
+    };
   }
 
   void _openWriteReview(Map booking) {
@@ -141,7 +163,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     final isCompleted = status == 'completed';
                     final isReviewed = _reviewedBookingIds.contains(b['id']);
 
-                    return Container(
+                    final provider = b['provider'] as Map? ?? {};
+                    final psvc = b['providerService'] as Map? ?? {};
+                    final cat = psvc['category'] as Map? ?? {};
+                    final svcName = cat['nameEn'] as String? ?? 'Service';
+                    final provName = '${provider['firstName'] ?? ''} ${provider['lastName'] ?? ''}'.trim();
+                    final sched = b['scheduledDate'] as String?;
+                    String dateStr = '';
+                    if (sched != null) {
+                      try {
+                        final dt = DateTime.parse(sched);
+                        dateStr = '${dt.day}/${dt.month}/${dt.year}';
+                      } catch (_) {}
+                    }
+                    return InkWell(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BookingDetailScreen(bookingId: b['id']))).then((_) => _loadBookings()),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -152,25 +190,40 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            Text('${loc.tr('booking_number')}${shortId(b['id']?.toString())}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15)),
+                            Expanded(child: Text(svcName, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 15), overflow: TextOverflow.ellipsis)),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                              child: Text(_statusLabel(status), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(_statusIcon(status), size: 14, color: statusColor),
+                                const SizedBox(width: 4),
+                                Text(_statusLabel(status), style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                              ]),
                             ),
                           ]),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
+                          Row(children: [
+                            Icon(Icons.person, size: 14, color: Colors.grey.shade500),
+                            const SizedBox(width: 4),
+                            Text(provName, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                          ]),
+                          Row(children: [
+                            Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade500),
+                            const SizedBox(width: 4),
+                            Text(dateStr, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                          ]),
+                          const SizedBox(height: 6),
                           Row(children: [
                             const Icon(Icons.currency_rupee, size: 16, color: AppTheme.textSecondary),
-                            Text('${b['totalAmount'] ?? 0}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                            Text('₹${double.tryParse('${b['totalAmount']}')?.toStringAsFixed(0) ?? b['totalAmount'] ?? '0'}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                           ]),
-                          if ((b['convenienceFee'] ?? 0) > 0) ...[
+                          if ((double.tryParse('${b['convenienceFee']}') ?? 0) > 0) ...[
                             const SizedBox(height: 4),
                             Row(children: [
                               const Icon(Icons.receipt_long, size: 14, color: Color(0xFFE65100)),
                               const SizedBox(width: 4),
                               Text(
-                                '${loc.tr('convenience_fee')}: ₹${b['convenienceFee']}',
+                                '${loc.tr('convenience_fee')}: ₹${double.tryParse('${b['convenienceFee']}')?.toStringAsFixed(0) ?? b['convenienceFee']}',
                                 style: const TextStyle(color: Color(0xFFE65100), fontSize: 12),
                               ),
                             ]),
@@ -231,7 +284,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           ],
                         ]),
                       ),
-                    );
+                    ));
                   },
                 ),
     );

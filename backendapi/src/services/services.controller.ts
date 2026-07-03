@@ -238,4 +238,40 @@ export class ServicesController {
   ) {
     return this.servicesService.getAvailableSlots(providerId, date);
   }
+
+  // ─── Busy Slots (Provider-managed unavailable time slots) ─────
+
+  @Get('busy-slots')
+  @Roles(UserRole.PROVIDER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get busy slots for a provider, optionally filtered by date' })
+  getBusySlots(
+    @Query('providerId') providerId: string,
+    @Query('date') date?: string,
+  ) {
+    return this.servicesService.getBusySlots(providerId, date);
+  }
+
+  @Post('busy-slots')
+  @Roles(UserRole.PROVIDER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create a busy time slot (unavailable block)' })
+  createBusySlot(
+    @Body() body: { providerId: string; busyDate: string; startTime: string; endTime: string; reason?: string },
+  ) {
+    return this.servicesService.createBusySlot(body.providerId, {
+      busyDate: body.busyDate,
+      startTime: body.startTime,
+      endTime: body.endTime,
+      reason: body.reason,
+    });
+  }
+
+  @Delete('busy-slots/:id')
+  @Roles(UserRole.PROVIDER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Delete a busy slot' })
+  deleteBusySlot(
+    @Param('id') id: string,
+    @Query('providerId') providerId: string,
+  ) {
+    return this.servicesService.deleteBusySlot(providerId, id);
+  }
 }

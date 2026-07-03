@@ -300,20 +300,23 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         ),
         child: Row(
           children: [
-            // Icon
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : gradientColors.first.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                icon,
-                size: 32,
-                color: isSelected ? Colors.white : gradientColors.first,
+            // Icon (Flexible allows the Row to shrink this area on narrow screens)
+            Flexible(
+              fit: FlexFit.loose,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : gradientColors.first.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: isSelected ? Colors.white : gradientColors.first,
+                ),
               ),
             ),
             const SizedBox(width: 16),

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
@@ -18,7 +18,6 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
   List _reviews = [];
   bool _loading = true;
   String? _error;
-  Set<String> _bookedServiceIds = {};
   double? _distanceMeters;
 
   @override
@@ -31,7 +30,6 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
     } else {
       _loadServices();
     }
-    _loadExistingBookings();
     _loadReviews();
   }
 
@@ -82,20 +80,6 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
     });
   }
 
-  Future<void> _loadExistingBookings() async {
-    try {
-      final data = await ApiService.get('/bookings/customer/me');
-      if (!mounted) return;
-      final bookings = data as List;
-      final bookedIds = bookings
-          .map((b) => b['providerService']?['id'] ?? b['providerServiceId'])
-          .whereType<String>()
-          .toSet();
-      if (bookedIds.isNotEmpty) {
-        setState(() => _bookedServiceIds = bookedIds);
-      }
-    } catch (e, st) { AppLogger.e('provider_detail_screen', 'Operation failed', e, st); }
-  }
 
   Future<void> _loadServices() async {
     try {
@@ -119,43 +103,137 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
     String? selectedSlot;
     List slots = [];
     bool loadingSlots = false;
+    bool dateUnavailable = false;
+    String? unavailableReason;
+    bool submitting = false;
+    String? submitError;
+    final descriptionController = TextEditingController();
+    final addressController = TextEditingController();
+    final cityController = TextEditingController();
 
-    final result = await showDialog<Map<String, String>>(
+    final availabilities = (widget.provider['availabilities'] as List?) ?? [];
+    final availableWeekdays = availabilities
+        .map((a) => a['dayOfWeek'] as int?)
+        .whereType<int>()
+        .toSet();
+    final hasSchedule = availableWeekdays.isNotEmpty;
+    bool isDayAvailable(DateTime d) {
+      if (!hasSchedule) return true;
+      return availableWeekdays.contains(d.weekday % 7);
+    }
+
+    String _estimateText(Map svc) {
+      if (svc['fixedRate'] != null) return 'Fixed price: ₹${svc['fixedRate']}';
+      if (svc['hourlyRate'] != null) return 'From ₹${svc['hourlyRate']}/hr (final depends on hours)';
+      if (svc['dailyRate'] != null) return 'From ₹${svc['dailyRate']}/day';
+      return 'Price quoted by provider';
+    }
+
+    Future<void> refreshSlotsNow(DateTime picked, StateSetter setState, BuildContext dialogCtx) async {
+      setState(() {
+        selectedSlot = null;
+        slots = [];
+        loadingSlots = true;
+        dateUnavailable = false;
+        unavailableReason = null;
+        submitError = null;
+      });
+      try {
+        final dateStr = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+        final data = await ApiService.get('/services/available-slots?providerId=${widget.provider['id']}&date=$dateStr');
+        if (!dialogCtx.mounted) return;
+        final isAvailable = data is Map ? (data['available'] ?? true) : true;
+        final parsed = (data is Map ? data['slots'] : []) as List;
+        setState(() {
+          slots = parsed;
+          loadingSlots = false;
+          if (!isAvailable) {
+            dateUnavailable = true;
+            unavailableReason = data['reason'] as String?;
+          }
+        });
+      } catch (e) {
+        if (dialogCtx.mounted) setState(() => loadingSlots = false);
+      }
+    }
+
+    final success = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text('Book Service'),
-          content: SizedBox(
-            width: double.maxFinite,
+          title: Text(loc.tr('book_service')),
+          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (submitError != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(children: [
+                      Icon(Icons.error_outline, color: Colors.red.shade700, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(submitError!, style: TextStyle(color: Colors.red.shade700, fontSize: 13))),
+                    ]),
+                  ),
+                // Price estimate
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.currency_rupee, color: Colors.blue, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_estimateText(service), style: const TextStyle(color: Colors.blue, fontSize: 13))),
+                  ]),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: loc.tr('describe_work_hint'),
+                    filled: true,
+                    fillColor: AppTheme.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.all(14),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 InkWell(
-                  onTap: () async {
+                  onTap: submitting ? null : () async {
+                    DateTime firstSelectable = DateTime.now().add(const Duration(days: 1));
+                    if (hasSchedule) {
+                      while (!isDayAvailable(firstSelectable) &&
+                             firstSelectable.isBefore(DateTime.now().add(const Duration(days: 90)))) {
+                        firstSelectable = firstSelectable.add(const Duration(days: 1));
+                      }
+                    }
                     final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: DateTime.now().add(const Duration(days: 1)),
-                      firstDate: DateTime.now().add(const Duration(days: 1)),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      context: context,
+                      initialDate: firstSelectable,
+                      firstDate: firstSelectable,
+                      lastDate: DateTime.now().add(const Duration(days: 90)),
+                      selectableDayPredicate: hasSchedule ? isDayAvailable : null,
                     );
                     if (picked != null) {
-                      setDialogState(() {
-                        date = picked;
-                        selectedSlot = null;
-                        slots = [];
-                        loadingSlots = true;
-                      });
-                      try {
-                        final dateStr = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                        final data = await ApiService.get('/services/available-slots?providerId=${widget.provider['id']}&date=$dateStr');
-                        if (!ctx.mounted) return;
-                        final parsed = (data is Map ? data['slots'] : []) as List;
-                        setDialogState(() { slots = parsed; loadingSlots = false; });
-                      } catch (e) {
-                        if (ctx.mounted) setDialogState(() => loadingSlots = false);
-                      }
+                      date = picked;
+                      refreshSlotsNow(picked, setDialogState, ctx);
                     }
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -167,11 +245,28 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.calendar_today, color: AppTheme.primary, size: 20),
+                      Icon(
+                        date == null || dateUnavailable
+                            ? Icons.calendar_today
+                            : Icons.check_circle,
+                        color: dateUnavailable ? Colors.orange : AppTheme.primary,
+                        size: 20,
+                      ),
                       const SizedBox(width: 12),
-                      Text(
-                        date == null ? loc.tr('preferred_date') : '${date!.day}/${date!.month}/${date!.year}',
-                        style: TextStyle(fontWeight: FontWeight.w500, color: date == null ? AppTheme.textSecondary : AppTheme.textPrimary),
+                      Expanded(
+                        child: Text(
+                          date == null
+                              ? loc.tr('preferred_date')
+                              : '${date!.day}/${date!.month}/${date!.year}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: date == null
+                                ? AppTheme.textSecondary
+                                : dateUnavailable
+                                    ? Colors.orange
+                                    : AppTheme.textPrimary,
+                          ),
+                        ),
                       ),
                     ]),
                   ),
@@ -182,10 +277,41 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                     padding: EdgeInsets.all(16),
                     child: CircularProgressIndicator(),
                   ))
+                else if (dateUnavailable)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(children: [
+                      Icon(Icons.error_outline, color: Colors.orange.shade700, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          unavailableReason ?? 'Provider not available on this date',
+                          style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
+                        ),
+                      ),
+                    ]),
+                  )
                 else if (date != null && slots.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('No available slots for this date', style: TextStyle(color: AppTheme.textSecondary)),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(children: [
+                      Icon(Icons.event_busy, color: Colors.red.shade600, size: 20),
+                      const SizedBox(width: 10),
+                      Text('Fully booked for this date',
+                          style: TextStyle(color: Colors.red.shade700, fontSize: 13)),
+                    ]),
                   )
                 else
                    Wrap(
@@ -193,26 +319,57 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                      runSpacing: 8,
                      children: slots.map((s) {
                        final start = s['start'] as String? ?? '';
+                       final isBooked = s['booked'] == true;
                        final display = start.length >= 5
                           ? '${int.parse(start.split(':')[0]) > 12 ? int.parse(start.split(':')[0]) - 12 : (int.parse(start.split(':')[0]) == 0 ? 12 : int.parse(start.split(':')[0]))}:${start.split(':')[1]} ${int.parse(start.split(':')[0]) >= 12 ? 'PM' : 'AM'}'
                           : start;
                       final isSelected = selectedSlot == start;
                       return GestureDetector(
-                        onTap: () => setDialogState(() => selectedSlot = start),
+                        onTap: isBooked || submitting ? null : () => setDialogState(() { selectedSlot = start; submitError = null; }),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: isSelected ? AppTheme.primary : Colors.white,
+                            color: isSelected
+                                ? AppTheme.primary
+                                : isBooked
+                                    ? Colors.red.shade50
+                                    : Colors.green.shade50,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: isSelected ? AppTheme.primary : Colors.grey.shade300),
-                          ),
-                          child: Text(
-                            display,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : AppTheme.textPrimary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : isBooked
+                                      ? Colors.red.shade200
+                                      : Colors.green.shade200,
                             ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.circle,
+                                size: 8,
+                                color: isSelected
+                                    ? Colors.white
+                                    : isBooked
+                                        ? Colors.red.shade400
+                                        : Colors.green.shade600,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                display,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : isBooked
+                                          ? Colors.red.shade600
+                                          : Colors.green.shade700,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  decoration: isBooked ? TextDecoration.lineThrough : null,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -222,40 +379,63 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(loc.tr('cancel'))),
-            ElevatedButton(
-              onPressed: date == null || selectedSlot == null
-                  ? null
-                  : () => Navigator.pop(ctx, {
-                      'date': '${date!.year}-${date!.month.toString().padLeft(2, '0')}-${date!.day.toString().padLeft(2, '0')}',
-                      'time': selectedSlot!,
-                    }),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: Text(loc.tr('book'), style: const TextStyle(color: Colors.white)),
+            TextButton(
+              onPressed: submitting ? null : () => Navigator.pop(ctx, false),
+              child: Text(loc.tr('cancel')),
             ),
+            submitting
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                : ElevatedButton(
+                    onPressed: date == null || selectedSlot == null || dateUnavailable
+                        ? null
+                        : () async {
+                            setDialogState(() { submitting = true; submitError = null; });
+                            try {
+                              await ApiService.post('/bookings', body: {
+                                'customerId': 'me',
+                                'providerId': widget.provider['id'],
+                                'providerServiceId': service['id'],
+                                'scheduledDate': '${date!.year}-${date!.month.toString().padLeft(2, '0')}-${date!.day.toString().padLeft(2, '0')}T${selectedSlot!}:00Z',
+                                'description': descriptionController.text.trim(),
+                                'serviceAddress': addressController.text.trim().isEmpty ? null : addressController.text.trim(),
+                                'serviceCity': cityController.text.trim().isEmpty ? null : cityController.text.trim(),
+                              });
+                              if (!ctx.mounted) return;
+                              Navigator.pop(ctx, true);
+                            } catch (e) {
+                              if (!ctx.mounted) return;
+                              String msg;
+                              if (e is ApiException && (e.statusCode == 400 || e.statusCode == 409)) {
+                                msg = 'This slot was just booked. Please pick another.';
+                                refreshSlotsNow(date!, setDialogState, ctx);
+                              } else if (e is ApiException) {
+                                msg = e.message;
+                              } else {
+                                msg = 'Booking failed. Please try again.';
+                              }
+                              setDialogState(() { submitting = false; submitError = msg; });
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text(loc.tr('book'), style: const TextStyle(color: Colors.white)),
+                  ),
           ],
         ),
       ),
     );
 
-    if (result == null) return;
-    try {
-      await ApiService.post('/bookings', body: {
-        'customerId': 'me',
-        'providerId': widget.provider['id'],
-        'providerServiceId': service['id'],
-        'scheduledDate': '${result['date']}T${result['time']}:00Z',
-      });
-      if (!mounted) return;
-      setState(() => _bookedServiceIds.add(service['id'] as String));
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.tr('booking_requested'))));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
+    if (success != true) return;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.tr('booking_requested'))));
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    Navigator.pushNamed(context, '/my-bookings');
   }
 
   @override
@@ -373,42 +553,63 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                       if (s['hourlyRate'] != null) loc.tr('hourly_price', params: {'price': '${s['hourlyRate']}'}),
                       if (s['dailyRate'] != null) loc.tr('daily_price', params: {'price': '${s['dailyRate']}'}),
                     ].join(' | ');
-                    final isBooked = _bookedServiceIds.contains(s['id']);
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: isBooked ? Colors.grey.shade100 : Colors.white,
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
-                        child: Row(children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isBooked ? Colors.grey.shade200 : color.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Icon(Icons.build, color: color, size: 28),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        s['category']?['nameEn'] ?? loc.tr('service'),
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(pricing, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: Icon(Icons.check_circle, color: isBooked ? Colors.green : color, size: 28),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(s['category']?['nameEn'] ?? loc.tr('service'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isBooked ? AppTheme.textSecondary : AppTheme.textPrimary)),
-                            const SizedBox(height: 4),
-                            Text(isBooked ? loc.tr('already_booked') : pricing, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-                          ])),
-                          ElevatedButton(
-                            onPressed: isBooked ? null : () => _bookService(s),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isBooked ? Colors.green : color,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => _bookService(s),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: color,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: Text(loc.tr('book'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                              ),
                             ),
-                            child: Text(isBooked ? loc.tr('booked') : loc.tr('book'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                          ),
-                        ]),
+                          ],
+                        ),
                       ),
                     );
                   }),

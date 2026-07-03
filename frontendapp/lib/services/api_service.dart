@@ -1,10 +1,28 @@
-﻿import 'dart:convert';
-import 'dart:io' show Platform;
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
-import 'package:desicompany/services/app_logger.dart';
+/// Typed exception for API errors with the HTTP status code.
+class ApiException implements Exception {
+  final int statusCode;
+  final String message;
+  final dynamic body;
+
+  ApiException(this.statusCode, this.message, [this.body]);
+
+  @override
+  String toString() => message;
+
+  bool get isNotFound => statusCode == 404;
+  bool get isUnauthorized => statusCode == 401;
+  bool get isConflict => statusCode == 409;
+  bool get isBadRequest => statusCode == 400;
+}
+
+/// Whether Android emulator 10.0.2.2 routing is applicable.
+bool get _isAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
 class ApiService {
   /// Base URL for the backend API.
   ///
@@ -33,13 +51,8 @@ class ApiService {
         'API_BASE_URL not set. Pass --dart-define=API_BASE_URL=https://your-api.com/api/v1 when building release.',
       );
     }
-    try {
-      if (Platform.isAndroid) {
-        // Android emulator routes 10.0.2.2 to host machine's localhost.
-        return 'http://10.0.2.2:3000/api/v1';
-      }
-    } catch (e, st) { AppLogger.e('api_service', 'Operation failed', e, st);
-      // Platform may not be available (e.g. web).
+    if (_isAndroid) {
+      return 'http://10.0.2.2:3000/api/v1';
     }
     return 'http://localhost:3000/api/v1';
   }
@@ -69,7 +82,6 @@ class ApiService {
   }
 
   /// Send a request, automatically refreshing the access token on 401 and retrying once.
-  /// The retry always rebuilds headers so the freshly-issued access token is used.
   static Future<http.Response> _sendWithRefresh(
     Future<http.Response> Function() send, {
     bool allowRefresh = true,
@@ -78,20 +90,39 @@ class ApiService {
     if (res.statusCode == 401 && allowRefresh) {
       final newToken = await AuthService.refreshAccessToken();
       if (newToken != null) {
-        // Rebuild the request so the new Authorization header is sent.
         return await send();
       }
     }
     return res;
   }
 
+  static ApiException _buildException(http.Response res) {
+    final body = res.body;
+    String message;
+    try {
+      final json = jsonDecode(body);
+      message = json['message'] ?? 'Request failed: $body';
+    } catch (_) {
+      message = 'Request failed (${res.statusCode})';
+    }
+    return ApiException(res.statusCode, message, body);
+  }
+
   static Future<dynamic> get(String path) async {
     final res = await _sendWithRefresh(
       () async => http.get(_uri(path), headers: await _headers()),
     );
-    if (res.statusCode == 401) throw Exception('Unauthorized');
-    if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
-    return jsonDecode(res.body);
+    if (res.statusCode == 304) return null;
+    if (res.statusCode >= 400) throw _buildException(res);
+    if (res.statusCode == 304) return null;
+        if (res.statusCode >= 400) throw _buildException(res);
+        if (res.statusCode == 304) return null;
+        if (res.statusCode >= 400) throw _buildException(res);
+        if (res.statusCode == 304) return null;
+        if (res.statusCode >= 400) throw _buildException(res);
+        if (res.statusCode == 304) return null;
+        if (res.statusCode >= 400) throw _buildException(res);
+        return jsonDecode(res.body);
   }
 
   static Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
@@ -101,11 +132,9 @@ class ApiService {
         headers: await _headers(),
         body: body != null ? jsonEncode(body) : null,
       ),
-      // Don't auto-refresh on the refresh endpoint itself.
       allowRefresh: !path.endsWith('/auth/refresh'),
     );
-    if (res.statusCode == 401) throw Exception('Unauthorized');
-    if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
+    if (res.statusCode >= 400) throw _buildException(res);
     return jsonDecode(res.body);
   }
 
@@ -117,8 +146,7 @@ class ApiService {
         body: body != null ? jsonEncode(body) : null,
       ),
     );
-    if (res.statusCode == 401) throw Exception('Unauthorized');
-    if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
+    if (res.statusCode >= 400) throw _buildException(res);
     return jsonDecode(res.body);
   }
 
@@ -130,8 +158,7 @@ class ApiService {
         body: body != null ? jsonEncode(body) : null,
       ),
     );
-    if (res.statusCode == 401) throw Exception('Unauthorized');
-    if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
+    if (res.statusCode >= 400) throw _buildException(res);
     return jsonDecode(res.body);
   }
 
@@ -143,8 +170,7 @@ class ApiService {
         body: body != null ? jsonEncode(body) : null,
       ),
     );
-    if (res.statusCode == 401) throw Exception('Unauthorized');
-    if (res.statusCode >= 400) throw Exception('Request failed: ${res.body}');
+    if (res.statusCode >= 400) throw _buildException(res);
     return jsonDecode(res.body);
   }
 }

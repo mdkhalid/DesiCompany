@@ -165,7 +165,7 @@ class _DisputesScreenState extends State<DisputesScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Dispute submitted successfully'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Dispute submitted successfully'), backgroundColor: Colors.green),
         );
       }
     } catch (e) {

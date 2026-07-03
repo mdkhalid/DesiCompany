@@ -9,6 +9,7 @@ import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
 import { ProviderDateOverride } from './entities/provider-date-override.entity';
+import { ProviderBusySlot } from './entities/provider-busy-slot.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
@@ -40,6 +41,8 @@ export class ServicesService {
     private readonly availabilityRepository: Repository<ProviderAvailability>,
     @InjectRepository(ProviderDateOverride)
     private readonly dateOverrideRepository: Repository<ProviderDateOverride>,
+    @InjectRepository(ProviderBusySlot)
+    private readonly busySlotRepository: Repository<ProviderBusySlot>,
     @InjectRepository(Provider)
     private readonly providerRepository: Repository<Provider>,
     @InjectRepository(Booking)
@@ -391,7 +394,7 @@ export class ServicesService {
         };
       }
 
-      const allSlots: { start: string; end: string }[] = [];
+      const allSlots: { start: string; end: string; booked: boolean }[] = [];
       const activeStatuses = [
         BookingStatus.REQUESTED,
         BookingStatus.ACCEPTED,
@@ -420,8 +423,20 @@ export class ServicesService {
           return { startMin: startMinutes, endMin: startMinutes + duration };
         });
 
+      // Busy slots (provider-marked unavailable times for this date)
+      const busySlots = await this.busySlotRepository.find({
+        where: { provider: { id: providerId }, busyDate: date },
+      });
+
       const isOverlapping = (slotStart: number, slotEnd: number) =>
-        bookedRanges.some((b) => slotStart < b.endMin && slotEnd > b.startMin);
+        bookedRanges.some((b) => slotStart < b.endMin && slotEnd > b.startMin) ||
+        busySlots.some((bs) => {
+          const [bsH, bsM] = bs.startTime.split(':').map(Number);
+          const [beH, beM] = bs.endTime.split(':').map(Number);
+          const busyStart = bsH * 60 + bsM;
+          const busyEnd = beH * 60 + beM;
+          return slotStart < busyEnd && slotEnd > busyStart;
+        });
 
       for (const avail of availability) {
         const slots = this.generateTimeSlotRanges(
@@ -430,9 +445,11 @@ export class ServicesService {
           60,
         );
         for (const slot of slots) {
-          if (!isOverlapping(slot.startMin, slot.endMin)) {
-            allSlots.push({ start: slot.start, end: slot.end });
-          }
+          allSlots.push({
+            start: slot.start,
+            end: slot.end,
+            booked: isOverlapping(slot.startMin, slot.endMin),
+          });
         }
       }
 
@@ -444,7 +461,7 @@ export class ServicesService {
     }
 
     const slots = this.generateTimeSlotRanges(startTime, endTime, 60).map(
-      (s) => ({ start: s.start, end: s.end }),
+      (s) => ({ start: s.start, end: s.end, booked: false }),
     );
 
     return {
@@ -533,25 +550,20 @@ export class ServicesService {
       dto.longitude !== undefined &&
       dto.radiusKm
     ) {
-      const radius = dto.radiusKm * 1000;
       const lat = dto.latitude;
       const lng = dto.longitude;
-      query.addSelect(
-        `6371000 * acos(
-          cos(radians(:lat)) * cos(radians(provider.latitude)) *
-          cos(radians(provider.longitude) - radians(:lng)) +
-          sin(radians(:lat)) * sin(radians(provider.latitude))
-        )`,
-        'distance',
-      );
+      // Haversine distance in meters
+      const haversine = `6371000 * acos(
+        cos(radians(:lat)) * cos(radians(provider.latitude)) *
+        cos(radians(provider.longitude) - radians(:lng)) +
+        sin(radians(:lat)) * sin(radians(provider.latitude))
+      )`;
+      query.addSelect(`(${haversine})`, 'distance');
       query.setParameters({ lat, lng });
+      // Effective radius = smaller of customer's search radius and provider's service radius
       query.andWhere(
-        `6371000 * acos(
-          cos(radians(:lat)) * cos(radians(provider.latitude)) *
-          cos(radians(provider.longitude) - radians(:lng)) +
-          sin(radians(:lat)) * sin(radians(provider.latitude))
-        ) <= :radius`,
-        { radius },
+        `(${haversine}) / 1000 <= LEAST(:radiusKm, COALESCE(provider.serviceRadiusKm, :radiusKm))`,
+        { radiusKm: dto.radiusKm },
       );
       query.orderBy('distance', 'ASC');
     }
@@ -590,6 +602,49 @@ export class ServicesService {
     }
 
     return query.getMany();
+  }
+
+  // ─── Busy Slot Management ────────────────────────────────────
+
+  async getBusySlots(
+    providerId: string,
+    date?: string,
+  ): Promise<ProviderBusySlot[]> {
+    const where: Record<string, unknown> = { provider: { id: providerId } };
+    if (date) where['busyDate'] = date;
+    return this.busySlotRepository.find({
+      where,
+      order: { busyDate: 'ASC', startTime: 'ASC' },
+    });
+  }
+
+  async createBusySlot(
+    providerId: string,
+    dto: { busyDate: string; startTime: string; endTime: string; reason?: string },
+  ): Promise<ProviderBusySlot> {
+    const provider = await this.providerRepository.findOne({
+      where: { id: providerId },
+    });
+    if (!provider) throw new NotFoundException('Provider not found');
+    if (dto.startTime >= dto.endTime) {
+      throw new BadRequestException('startTime must be before endTime');
+    }
+    const slot = this.busySlotRepository.create({
+      provider,
+      busyDate: dto.busyDate,
+      startTime: dto.startTime,
+      endTime: dto.endTime,
+      reason: dto.reason,
+    });
+    return this.busySlotRepository.save(slot);
+  }
+
+  async deleteBusySlot(providerId: string, slotId: string): Promise<void> {
+    const slot = await this.busySlotRepository.findOne({
+      where: { id: slotId, provider: { id: providerId } },
+    });
+    if (!slot) throw new NotFoundException('Busy slot not found');
+    await this.busySlotRepository.remove(slot);
   }
 
   private async getCategoryAndDescendantIds(

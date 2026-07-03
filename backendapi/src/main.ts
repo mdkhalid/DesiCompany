@@ -103,22 +103,44 @@ async function bootstrap() {
     .map((o) => o.trim())
     .filter(Boolean);
 
-  if (allowedOrigins.length > 0) {
-    app.enableCors({
-      origin: allowedOrigins,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-      credentials: true,
-    });
-  } else if (process.env.NODE_ENV === 'production') {
-    app
-      .get(Logger)
-      .warn(
-        'CORS_ALLOWED_ORIGINS is not set. CORS will deny all origins in production.',
-      );
-  } else {
-    // Dev: allow all origins
-    app.enableCors({ origin: true, credentials: true });
+  const isDev = process.env.NODE_ENV !== 'production';
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (server-to-server, curl, etc.)
+      if (!origin) return callback(null, true);
+
+      // Allow explicitly listed origins
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      // In development, allow any localhost, LAN (192.168.*), or 127.0.0.1 origin
+      if (isDev) {
+        try {
+          const url = new URL(origin);
+          const host = url.hostname;
+          if (
+            host === 'localhost' ||
+            host === '127.0.0.1' ||
+            host.startsWith('192.168.')
+          ) {
+            return callback(null, true);
+          }
+        } catch {
+          // Invalid URL, deny
+        }
+      }
+
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Cache-Control', 'Pragma'],
+    credentials: true,
+  });
+
+  if (isDev && allowedOrigins.length === 0) {
+    app.get(Logger).warn(
+      'CORS_ALLOWED_ORIGINS is not set. All localhost and LAN origins are allowed in development.',
+    );
   }
 
   const config = new DocumentBuilder()
