@@ -81,7 +81,9 @@ export class UsersService {
       suspendedBy: user.suspendedBy,
       suspensionReason: user.suspensionReason,
       customerId: finalCustomerId,
+      customer: user.customer ?? customer ?? null,
       providerId: finalProviderId,
+      provider: user.provider ?? provider ?? null,
     };
   }
 
