@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 import 'booking_detail_screen.dart';
 import 'chat_screen.dart';
@@ -50,7 +51,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } catch (e, st) { AppLogger.e('notifications_screen', 'Operation failed', e, st); }
   }
 
-  void _handleTap(Map<String, dynamic> n) {
+  void _handleTap(Map<String, dynamic> n) async {
     if (n['isRead'] != true) {
       _markAsRead(n['id']);
     }
@@ -60,18 +61,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (metadata['type'] == 'chat_quick_reply' || metadata['type'] == 'chat_message') {
         final roomId = metadata['roomId'] as String?;
         final bookingId = metadata['bookingId'] as String?;
-        final providerId = metadata['providerId'] as String?;
         final isDirect = roomId != null && roomId.startsWith('direct_');
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
-              bookingId: isDirect ? null : bookingId,
-              providerId: isDirect ? (providerId ?? roomId.split('_').last) : null,
-              mode: isDirect ? 'direct' : 'booking',
+        if (isDirect) {
+          final parts = roomId.split('_');
+          final customerUserId = parts.length > 1 ? parts[1] : null;
+          final providerEntityId = parts.length > 2 ? parts[2] : null;
+          final userRole = await AuthService.getUserRole();
+          final partnerId = userRole == 'provider' ? customerUserId : providerEntityId;
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatScreen(
+                providerId: partnerId,
+                mode: 'direct',
+              ),
             ),
-          ),
-        );
+          );
+        } else if (bookingId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatScreen(bookingId: bookingId, mode: 'booking'),
+            ),
+          );
+        }
       } else if (metadata['bookingId'] != null) {
         Navigator.push(
           context,
