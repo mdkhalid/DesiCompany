@@ -28,25 +28,18 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Fallback: if relation is not loaded, query directly
-    let customerId = user.customer?.id ?? null;
-    let providerId = user.provider?.id ?? null;
-
-    if (!providerId) {
-      const provider = await this.providerRepository.findOne({
+    // Always query provider and customer directly by userId for reliability
+    const [provider, customer] = await Promise.all([
+      this.providerRepository.findOne({
         where: { user: { id: userId } },
-        select: { id: true },
-      });
-      providerId = provider?.id ?? null;
-    }
-
-    if (!customerId) {
-      const customer = await this.customerRepository.findOne({
+      }),
+      this.customerRepository.findOne({
         where: { user: { id: userId } },
-        select: { id: true },
-      });
-      customerId = customer?.id ?? null;
-    }
+      }),
+    ]);
+
+    const providerId = provider?.id ?? user.provider?.id ?? null;
+    const customerId = customer?.id ?? user.customer?.id ?? null;
 
     return {
       id: user.id,
