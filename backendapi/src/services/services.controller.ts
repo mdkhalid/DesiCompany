@@ -9,6 +9,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -29,6 +30,10 @@ import { SearchProvidersDto } from './dto/search-providers.dto';
 import { CreateDateOverrideDto } from './dto/date-override.dto';
 import { SetWeeklyScheduleDto } from './dto/set-weekly-schedule.dto';
 
+interface AuthRequest {
+  user: { id: string; role: UserRole };
+}
+
 @ApiTags('Services')
 @ApiBearerAuth()
 @Controller('services')
@@ -39,15 +44,15 @@ export class ServicesController {
   @Get('providers')
   @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all verified providers' })
-  findAllProviders() {
-    return this.servicesService.findAllVerifiedProviders();
+  findAllProviders(@Req() req: AuthRequest) {
+    return this.servicesService.findAllVerifiedProviders(req.user.id);
   }
 
   @Get('search')
   @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Search providers with filters' })
-  searchProviders(@Query() dto: SearchProvidersDto) {
-    return this.servicesService.searchVerifiedProviders(dto);
+  searchProviders(@Query() dto: SearchProvidersDto, @Req() req: AuthRequest) {
+    return this.servicesService.searchVerifiedProviders(dto, req.user.id);
   }
 
   @Get('categories')

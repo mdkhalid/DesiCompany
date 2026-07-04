@@ -509,7 +509,7 @@ export class ServicesService {
     return slots;
   }
 
-  async findAllVerifiedProviders() {
+  async findAllVerifiedProviders(currentUserId?: string) {
     const gracePeriodDays = await this.settingsService.getProviderGracePeriodDays();
     const gracePeriodEnabled = await this.settingsService.isProviderGracePeriodEnabled();
     const gracePeriodDate = new Date();
@@ -529,10 +529,16 @@ export class ServicesService {
       .andWhere('provider.latitude IS NOT NULL')
       .andWhere('provider.longitude IS NOT NULL');
 
+    // Exclude the current user from results (a user shouldn't see
+    // their own provider profile in the customer-side browse list).
+    if (currentUserId) {
+      query.andWhere('provider.user != :currentUserId', { currentUserId });
+    }
+
     return query.getMany();
   }
 
-  async searchVerifiedProviders(dto: SearchProvidersDto) {
+  async searchVerifiedProviders(dto: SearchProvidersDto, currentUserId?: string) {
     const gracePeriodDays = await this.settingsService.getProviderGracePeriodDays();
     const gracePeriodEnabled = await this.settingsService.isProviderGracePeriodEnabled();
     const gracePeriodDate = new Date();
@@ -549,6 +555,12 @@ export class ServicesService {
         graceEnabled: gracePeriodEnabled,
         gracePeriodDate 
       });
+
+    // Exclude the current user from search results (so a dual-role user
+    // doesn't see themselves when browsing providers as a customer).
+    if (currentUserId) {
+      query.andWhere('provider.user != :currentUserId', { currentUserId });
+    }
 
     if (dto.categoryId) {
       // Get all subcategory IDs for hierarchical search
