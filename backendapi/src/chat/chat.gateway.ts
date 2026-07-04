@@ -1458,15 +1458,23 @@ export class ChatGateway
       client.emit('error', { message: 'Invalid room ID format' });
       return;
     }
-    const customerId = parts[1];
+    const customerUserId = parts[1];
     const providerId = parts[2];
+
+    const customerEntity = await this.customerRepository.findOne({
+      where: { user: { id: customerUserId } },
+    });
+    if (!customerEntity) {
+      client.emit('error', { message: 'Customer not found' });
+      return;
+    }
 
     void client.join(room);
 
     // Get unread IDs before marking as read
     const unreadDirectMessages = await this.directMessageRepository.find({
       where: {
-        customer: { id: customerId },
+        customer: { id: customerEntity.id },
         provider: { id: providerId },
         isRead: false,
       },
@@ -1477,7 +1485,7 @@ export class ChatGateway
     if (unreadIds.length > 0) {
       await this.directMessageRepository.update(
         {
-          customer: { id: customerId },
+          customer: { id: customerEntity.id },
           provider: { id: providerId },
           isRead: false,
         },
@@ -1486,7 +1494,7 @@ export class ChatGateway
     }
 
     const messages = await this.directMessageRepository.find({
-      where: [{ customer: { id: customerId }, provider: { id: providerId } }],
+      where: [{ customer: { id: customerEntity.id }, provider: { id: providerId } }],
       relations: { sender: true },
       order: { createdAt: 'ASC' },
       take: 50,

@@ -55,9 +55,10 @@ class _ChatScreenState extends State<ChatScreen> {
   String get _messagesBoxName => 'chat_messages_${widget.bookingId ?? _directRoomId ?? 'direct_${widget.providerId}'}';
   String get _pendingBoxName => 'pending_messages_${widget.bookingId ?? _directRoomId ?? 'direct_${widget.providerId}'}';
 
-  // Hive boxes
-  late Box<HiveChatMessage> _messagesBox;
-  late Box<HiveChatMessage> _pendingBox;
+  // Hive boxes - nullable until initialized
+  Box<HiveChatMessage>? _messagesBox;
+  Box<HiveChatMessage>? _pendingBox;
+  bool _hiveReady = false;
 
   // Retry timer
   Timer? _retryTimer;
@@ -77,6 +78,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _initHive() async {
     _messagesBox = await Hive.openBox<HiveChatMessage>(_messagesBoxName);
     _pendingBox = await Hive.openBox<HiveChatMessage>(_pendingBoxName);
+    _hiveReady = true;
     _loadCachedMessages();
   }
 
@@ -87,9 +89,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _retryPendingMessages() async {
-    if (_pendingBox.isEmpty || !_socket.connected) return;
+    if (_pendingBox == null || _pendingBox!.isEmpty || !_socket.connected) return;
 
-    final pendingMessages = _pendingBox.values.toList();
+    final pendingMessages = _pendingBox!.values.toList();
     for (final hiveMsg in pendingMessages) {
       final msg = hiveMsg.toChatMessage();
       if (_isDirect && _directRoomId != null) {
@@ -151,8 +153,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _loadCachedMessages() async {
     try {
-      if (_messagesBox.isNotEmpty) {
-        final msgs = _messagesBox.values.map((hiveMsg) => hiveMsg.toChatMessage()).toList();
+      if (_messagesBox != null && _messagesBox!.isNotEmpty) {
+        final msgs = _messagesBox!.values.map((hiveMsg) => hiveMsg.toChatMessage()).toList();
         if (mounted) {
           setState(() => _messages.addAll(msgs));
         }
@@ -162,27 +164,30 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _saveMessagesToCache() async {
     try {
-      await _messagesBox.clear();
+      if (_messagesBox == null) return;
+      await _messagesBox!.clear();
       for (final msg in _messages) {
-        await _messagesBox.add(HiveChatMessage.fromChatMessage(msg));
+        await _messagesBox!.add(HiveChatMessage.fromChatMessage(msg));
       }
     } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _addPendingMessage(ChatMessage msg) async {
     try {
-      await _pendingBox.add(HiveChatMessage.fromChatMessage(msg, isPending: true));
+      if (_pendingBox == null) return;
+      await _pendingBox!.add(HiveChatMessage.fromChatMessage(msg, isPending: true));
     } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st); }
   }
 
   Future<void> _removePendingMessage(String id) async {
     try {
-      final key = _pendingBox.keys.firstWhere(
-        (key) => _pendingBox.get(key)?.id == id,
+      if (_pendingBox == null) return;
+      final key = _pendingBox!.keys.firstWhere(
+        (key) => _pendingBox!.get(key)?.id == id,
         orElse: () => null,
       );
       if (key != null) {
-        await _pendingBox.delete(key);
+        await _pendingBox!.delete(key);
       }
     } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st); }
   }
@@ -238,8 +243,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _socket.disconnect();
     _socket.dispose();
     _retryTimer?.cancel();
-    _messagesBox.close();
-    _pendingBox.close();
+    _messagesBox?.close();
+    _pendingBox?.close();
     super.dispose();
   }
 
