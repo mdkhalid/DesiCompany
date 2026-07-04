@@ -173,9 +173,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _switchProfile() async {
-    final roles = _profile?['roles'];
-    if (roles is! List || roles.length < 2) return;
-
     final user = User.fromJson(_profile!);
     if (!mounted) return;
     Navigator.push(
@@ -344,25 +341,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (role == 'provider')
           _infoTile(Icons.radar, 'Service Radius', _serviceRadius != null ? '${_serviceRadius!.toStringAsFixed(0)} km' : loc.tr('not_provided')),
         const SizedBox(height: 16),
-        // Switch profile button (only if user has multiple roles)
-        if (_profile?['roles'] is List && (_profile!['roles'] as List).length > 1)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: _switchProfile,
-                icon: const Icon(Icons.swap_horiz, size: 18),
-                label: Text(loc.tr('switch_profile'), style: const TextStyle(fontSize: 14)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF00BFA5),
-                  side: const BorderSide(color: Color(0xFF00BFA5)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+        // Switch profile button
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: _switchProfile,
+              icon: const Icon(Icons.swap_horiz, size: 18),
+              label: Text(loc.tr('switch_profile'), style: const TextStyle(fontSize: 14)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF00BFA5),
+                side: const BorderSide(color: Color(0xFF00BFA5)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
+        ),
         SizedBox(
           width: double.infinity,
           height: 48,

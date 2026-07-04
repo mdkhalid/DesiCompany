@@ -44,22 +44,12 @@ class AuthService {
     });
     final token = data['tokens']['accessToken'] as String;
     final refreshToken = data['tokens']['refreshToken'] as String?;
+    final userData = data['user'] as Map<String, dynamic>;
     final prefs = await SharedPreferences.getInstance();
-
-    final userDataStr = prefs.getString(_keyUserData);
-    if (userDataStr != null) {
-      final userData = jsonDecode(userDataStr) as Map<String, dynamic>;
-      userData['role'] = newRole;
-      await prefs.setString(_keyUserData, jsonEncode(userData));
-    }
-
+    await prefs.setString(_keyUserData, jsonEncode(userData));
     await prefs.setString(_keyToken, token);
     if (refreshToken != null) await prefs.setString(_keyRefreshToken, refreshToken);
-    final updatedDataStr = prefs.getString(_keyUserData);
-    return User.fromJson(
-      jsonDecode(updatedDataStr ?? '{}') as Map<String, dynamic>,
-      token: token,
-    );
+    return User.fromJson(userData, token: token);
   }
 
   static Future<User> addRole({
@@ -168,7 +158,15 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final userData = prefs.getString(_keyUserData);
     if (userData == null) return null;
-    return (jsonDecode(userData) as Map)['providerId'] as String?;
+    final decoded = jsonDecode(userData) as Map;
+    final flatId = decoded['providerId'] as String?;
+    if (flatId != null && flatId.isNotEmpty) return flatId;
+    final provider = decoded['provider'];
+    if (provider is Map) {
+      final nestedId = provider['id']?.toString();
+      if (nestedId != null && nestedId.isNotEmpty) return nestedId;
+    }
+    return null;
   }
 }
 

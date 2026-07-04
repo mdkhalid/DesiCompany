@@ -8,6 +8,8 @@ import '../widgets/distance_badge.dart';
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'profile_picker_screen.dart';
 import 'package:desicompany/services/app_logger.dart';
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -25,6 +27,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   int _unreadCount = 0;
+  bool _hasMultipleRoles = false;
+  User? _currentUser;
   String _locationText = 'Set location';
   double? _latitude;
   double? _longitude;
@@ -76,6 +80,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       if (mounted) setState(() => _loading = false);
     }
     _loadUnreadCount();
+    _loadUserRole();
   }
 
   Future<void> _loadProviders() async {
@@ -110,6 +115,19 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     try {
       final data = await ApiService.get('/notifications/unread-count');
       if (mounted) setState(() => _unreadCount = data as int);
+    } catch (e, st) { AppLogger.e('customer_home_screen', 'Operation failed', e, st); }
+  }
+
+  Future<void> _loadUserRole() async {
+    try {
+      final data = await ApiService.get('/users/profile');
+      if (!mounted) return;
+      final roles = data['roles'];
+      final parsedRoles = roles is List ? roles.cast<String>() : <String>[];
+      setState(() {
+        _hasMultipleRoles = parsedRoles.length > 1;
+        _currentUser = User.fromJson(Map<String, dynamic>.from(data));
+      });
     } catch (e, st) { AppLogger.e('customer_home_screen', 'Operation failed', e, st); }
   }
 
@@ -339,6 +357,40 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
           Row(
             children: [
+              if (_hasMultipleRoles) ...[
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProfilePickerScreen(user: _currentUser!),
+                      ),
+                    ).then((_) {
+                      _loadUserRole();
+                      _loadUnreadCount();
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.swap_horiz, color: Colors.white, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          loc.tr('switch_profile'),
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               _buildNotificationButton(),
               const SizedBox(width: 8),
               _buildIconButton(

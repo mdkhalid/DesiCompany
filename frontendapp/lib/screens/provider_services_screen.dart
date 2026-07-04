@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 
 class ProviderServicesScreen extends StatefulWidget {
@@ -32,15 +33,26 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
       });
     }
     try {
+      // Source 1: /users/profile response
       final profile = await ApiService.get('/users/profile');
-      final provider = profile is Map ? profile['provider'] : null;
-      _providerId = provider is Map ? provider['id']?.toString() : null;
+      _providerId = _extractProviderId(profile);
+
+      // Source 2: SharedPreferences fallback (in case profile response is stale)
+      _providerId ??= await AuthService.getProviderId();
+
+      // Source 3: Nested provider object in profile
+      if (_providerId == null && profile is Map) {
+        final provider = profile['provider'];
+        if (provider is Map) {
+          _providerId = provider['id']?.toString();
+        }
+      }
 
       if (_providerId == null) {
         if (mounted) {
           setState(() {
             _loading = false;
-            _error = 'provider_id_missing';
+            _error = 'Could not find your provider profile. Please try switching roles again.';
           });
         }
         return;
@@ -64,6 +76,18 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
         });
       }
     }
+  }
+
+  String? _extractProviderId(dynamic profile) {
+    if (profile is! Map) return null;
+    final flatId = profile['providerId'];
+    if (flatId is String && flatId.isNotEmpty) return flatId;
+    final provider = profile['provider'];
+    if (provider is Map) {
+      final id = provider['id'];
+      if (id != null) return id.toString();
+    }
+    return null;
   }
 
   Future<void> _showAddDialog() async {

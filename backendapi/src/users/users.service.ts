@@ -28,7 +28,11 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    return {
+      ...user,
+      customerId: user.customer?.id ?? null,
+      providerId: user.provider?.id ?? null,
+    };
   }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {

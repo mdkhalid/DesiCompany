@@ -35,7 +35,16 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
     try {
       User user;
       if (_isFromLogin) {
-        user = await AuthService.verifyOtp(widget.phone!, widget.otp!, role: role);
+        // First: authenticate without role to avoid "User does not have this role"
+        user = await AuthService.verifyOtp(widget.phone!, widget.otp!);
+        // Then: add the role if user doesn't have it yet, or switch if they do
+        if (user.roles.contains(role)) {
+          if (user.role != role) {
+            user = await AuthService.switchRole(role);
+          }
+        } else {
+          user = await AuthService.addRole(role: role);
+        }
       } else if (widget.user.roles.contains(role)) {
         user = await AuthService.switchRole(role);
       } else {

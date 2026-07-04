@@ -108,7 +108,7 @@ export class AuthService {
 
   async register(
     registerDto: RegisterDto,
-  ): Promise<{ user: User; tokens: AuthTokens }> {
+  ): Promise<{ user: Record<string, unknown> | User; tokens: AuthTokens }> {
     // Block admin registration via API - admins must be created through admin page
     if (registerDto.role === UserRole.ADMIN) {
       throw new BadRequestException('Admin registration is not allowed');
@@ -161,12 +161,20 @@ export class AuthService {
     }
 
     const tokens = this.generateTokens(savedUser);
-    return { user: savedUser, tokens };
+
+    // Reload with relations so providerId/customerId are available
+    const fullUser = await this.userRepository.findOne({
+      where: { id: savedUser.id },
+      relations: { customer: true, provider: true },
+    });
+
+    return { user: this.toUserResponse(fullUser || savedUser), tokens };
   }
 
-  async login(loginDto: LoginDto): Promise<{ user: User; tokens: AuthTokens }> {
+  async login(loginDto: LoginDto): Promise<{ user: Record<string, unknown> | User; tokens: AuthTokens }> {
     const user = await this.userRepository.findOne({
       where: { phone: loginDto.phone },
+      relations: { customer: true, provider: true },
     });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -187,19 +195,39 @@ export class AuthService {
 
     await this.otpStore.delete(loginDto.phone);
 
+    // Build available roles from both the roles array and sub-entity presence
+    const availableRoles: UserRole[] = [];
+    if (user.customer || user.roles?.includes(UserRole.CUSTOMER)) {
+      availableRoles.push(UserRole.CUSTOMER);
+    }
+    if (user.provider || user.roles?.includes(UserRole.PROVIDER)) {
+      availableRoles.push(UserRole.PROVIDER);
+    }
+    if (availableRoles.length === 0) {
+      availableRoles.push(user.role);
+    }
+
+    // Sync the roles column if stale or empty
+    const rolesChanged =
+      !user.roles ||
+      user.roles.length === 0 ||
+      availableRoles.length !== user.roles.length ||
+      availableRoles.some((r) => !user.roles.includes(r));
+    if (rolesChanged) {
+      user.roles = availableRoles;
+    }
+
     if (loginDto.role && loginDto.role !== user.role) {
-      // Validate that user actually has the requested role
-      const userRoles =
-        user.roles && user.roles.length > 0 ? user.roles : [user.role];
-      if (!userRoles.includes(loginDto.role)) {
+      if (!availableRoles.includes(loginDto.role)) {
         throw new BadRequestException('User does not have this role');
       }
       user.role = loginDto.role;
-      await this.userRepository.save(user);
     }
 
+    await this.userRepository.save(user);
+
     const tokens = this.generateTokens(user);
-    return { user, tokens };
+    return { user: this.toUserResponse(user), tokens };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<VerifyOtpResponse> {
@@ -237,6 +265,17 @@ export class AuthService {
       availableRoles.push(user.role);
     }
 
+    // Sync the roles column if stale or empty (migrated users)
+    const rolesChanged =
+      !user.roles ||
+      user.roles.length === 0 ||
+      availableRoles.length !== user.roles.length ||
+      availableRoles.some((r) => !user.roles.includes(r));
+    if (rolesChanged) {
+      user.roles = availableRoles;
+      await this.userRepository.save(user);
+    }
+
     const userResponse = {
       id: user.id,
       phone: user.phone,
@@ -257,23 +296,47 @@ export class AuthService {
   async switchRole(
     userId: string,
     activeRole: UserRole,
-  ): Promise<{ tokens: AuthTokens }> {
+  ): Promise<{ user: Record<string, unknown> | User; tokens: AuthTokens }> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
+      relations: { customer: true, provider: true },
     });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const availableRoles =
-      user.roles && user.roles.length > 0 ? user.roles : [user.role];
+    // Build available roles from both the roles array and sub-entity presence
+    const availableRoles: UserRole[] = [];
+    if (user.customer || user.roles?.includes(UserRole.CUSTOMER)) {
+      if (!availableRoles.includes(UserRole.CUSTOMER)) availableRoles.push(UserRole.CUSTOMER);
+    }
+    if (user.provider || user.roles?.includes(UserRole.PROVIDER)) {
+      if (!availableRoles.includes(UserRole.PROVIDER)) availableRoles.push(UserRole.PROVIDER);
+    }
+    if (availableRoles.length === 0) {
+      availableRoles.push(user.role);
+    }
+
+    // Sync the roles column if it's stale or empty
+    const rolesChanged =
+      !user.roles ||
+      user.roles.length === 0 ||
+      availableRoles.length !== user.roles.length ||
+      availableRoles.some((r) => !user.roles.includes(r));
+    if (rolesChanged) {
+      user.roles = availableRoles;
+    }
 
     if (!availableRoles.includes(activeRole)) {
       throw new BadRequestException('User does not have this role');
     }
 
+    // Update the active role in the DB
+    user.role = activeRole;
+    await this.userRepository.save(user);
+
     const tokens = this.generateTokensForRole(user, activeRole);
-    return { tokens };
+    return { user: this.toUserResponse(user), tokens };
   }
 
   async addRole(
@@ -281,7 +344,7 @@ export class AuthService {
     newRole: UserRole,
     firstName?: string,
     lastName?: string,
-  ): Promise<{ user: User; tokens: AuthTokens }> {
+  ): Promise<{ user: Record<string, unknown> | User; tokens: AuthTokens }> {
     // Only customer and provider roles can be self-added
     if (newRole !== UserRole.CUSTOMER && newRole !== UserRole.PROVIDER) {
       throw new BadRequestException(
@@ -307,14 +370,14 @@ export class AuthService {
     // Create profile FIRST, then update roles (avoid inconsistency)
     if (newRole === UserRole.CUSTOMER && !user.customer) {
       const customer = this.customerRepository.create({
-        user,
+        user: { id: userId } as User,
         firstName: firstName || '',
         lastName: lastName || undefined,
       });
       await this.customerRepository.save(customer);
     } else if (newRole === UserRole.PROVIDER && !user.provider) {
       const provider = this.providerRepository.create({
-        user,
+        user: { id: userId } as User,
         firstName: firstName || '',
         lastName: lastName || undefined,
       });
@@ -326,8 +389,14 @@ export class AuthService {
     user.role = newRole;
     await this.userRepository.save(user);
 
+    // Reload user with relations to ensure provider/customer is included in response
+    const updatedUser = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: { customer: true, provider: true },
+    });
+
     const tokens = this.generateTokens(user);
-    return { user, tokens };
+    return { user: this.toUserResponse(updatedUser || user), tokens };
   }
 
   async refreshToken(refreshToken: string): Promise<{ tokens: AuthTokens }> {
@@ -406,5 +475,22 @@ export class AuthService {
 
   private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private toUserResponse(user: User): Record<string, unknown> {
+    return {
+      id: user.id,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+      roles: user.roles,
+      status: user.status,
+      profileImage: user.profileImage,
+      language: user.language,
+      customerId: user.customer?.id ?? null,
+      customer: user.customer ?? null,
+      providerId: user.provider?.id ?? null,
+      provider: user.provider ?? null,
+    };
   }
 }

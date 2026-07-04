@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../models/user.dart';
 import '../theme.dart';
+import '../l10n/strings.dart';
 import '../utils/id_helpers.dart';
+import 'profile_picker_screen.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class ProviderHomeScreen extends StatefulWidget {
@@ -17,6 +20,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   double _todayEarnings = 0.0;
   int _pendingCount = 0;
   int _unreadCount = 0;
+  bool _hasMultipleRoles = false;
+  User? _currentUser;
   bool _loading = true;
   String _providerName = '';
 
@@ -36,6 +41,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           setState(() => _providerName = name);
         }
       }
+      final roles = profile['roles'];
+      final parsedRoles = roles is List ? roles.cast<String>() : <String>[];
+      setState(() {
+        _hasMultipleRoles = parsedRoles.length > 1;
+        _currentUser = User.fromJson(Map<String, dynamic>.from(profile));
+      });
     } catch (e, st) { AppLogger.e('provider_home_screen', 'Operation failed', e, st); }
   }
 
@@ -107,6 +118,40 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                     ],
                   ),
                 ),
+                if (_hasMultipleRoles) ...[
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProfilePickerScreen(user: _currentUser!),
+                        ),
+                      ).then((_) {
+                        _loadProviderName();
+                        _loadUnreadCount();
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.swap_horiz, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            loc.tr('switch_profile'),
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 GestureDetector(
                   onTap: () async {
                     await Navigator.pushNamed(context, '/notifications');
