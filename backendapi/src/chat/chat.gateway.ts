@@ -737,17 +737,25 @@ export class ChatGateway
       return;
     }
 
-    const quickReplyMessages: Record<string, string> = {
-      accept_quote: 'I accept this quote',
-      decline_quote: 'I decline this quote',
-      need_discount: 'Can you give a discount?',
-      confirm_booking: 'Please confirm the booking',
-      need_more_info: 'I need more information',
-      price_negotiate: 'Can we negotiate on price?',
-      reschedule: 'Can we reschedule?',
+    const senderRole = client.data.user?.role;
+
+    const quickReplyMessages: Record<string, { customer: string; provider: string }> = {
+      accept_quote: { customer: 'I accept this quote', provider: 'Quote accepted' },
+      decline_quote: { customer: 'I decline this quote', provider: 'Quote declined' },
+      need_discount: { customer: 'Can you give a discount?', provider: 'Discount not available' },
+      confirm_booking: { customer: 'Please confirm my booking', provider: 'Please confirm the booking' },
+      need_more_info: { customer: 'I need more information', provider: 'Let me know if you need more info' },
+      price_negotiate: { customer: 'Can we negotiate on price?', provider: 'Feel free to discuss pricing' },
+      reschedule: { customer: 'Can we reschedule?', provider: 'Can we reschedule?' },
+      on_my_way: { customer: 'The provider is on the way', provider: "I'm on my way" },
+      work_started: { customer: 'Work has been started', provider: 'Work has started' },
+      when_available: { customer: 'When are you available?', provider: 'I am available now' },
     };
 
-    const content = quickReplyMessages[payload.quickReplyType] || payload.value;
+    const templates = quickReplyMessages[payload.quickReplyType];
+    const content = templates
+      ? (senderRole === 'provider' ? templates.provider : templates.customer)
+      : (payload.value || payload.quickReplyType);
     const isDirect = targetId.startsWith('direct_');
 
     if (isDirect) {

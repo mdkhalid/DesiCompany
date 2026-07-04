@@ -50,6 +50,8 @@ export class BookingRemindersService {
           booking.customer.user.id,
           'Service Reminder',
           `${providerName} will arrive in ${minutesUntil} minutes for your ${serviceName} service.`,
+          'reminder',
+          { bookingId: booking.id },
         );
 
         this.pushNotificationsService
@@ -69,6 +71,8 @@ export class BookingRemindersService {
           booking.provider.user.id,
           'Service Reminder',
           `You have a ${serviceName} service in ${minutesUntil} minutes with ${customerName}.`,
+          'reminder',
+          { bookingId: booking.id },
         );
 
         this.pushNotificationsService
@@ -120,6 +124,8 @@ export class BookingRemindersService {
         booking.customer.user.id,
         'Rate Your Experience',
         `How was your ${serviceName} service with ${providerName}? Leave a review to help others.`,
+        'review_reminder',
+        { bookingId: booking.id },
       );
 
       this.pushNotificationsService

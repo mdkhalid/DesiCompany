@@ -113,6 +113,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   bool get _isDirect => widget.mode == 'direct' || widget.mode == 'direct_chat';
+  bool get _isProvider => widget.mode == 'provider';
 
   // ==================== MESSAGE CACHING ====================
 
@@ -800,16 +801,19 @@ class _ChatScreenState extends State<ChatScreen> {
                         const SizedBox(height: 16),
                         Wrap(
                           spacing: 8,
-                          children: [
-                            ActionChip(
-                              label: const Text('Hello'),
-                              onPressed: () => _sendQuickReply('need_more_info'),
-                            ),
-                            ActionChip(
-                              label: const Text('Price?'),
-                              onPressed: () => _sendQuickReply('price_negotiate'),
-                            ),
-                          ],
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: _isProvider
+                              ? [
+                                  ActionChip(label: const Text('Hello'), onPressed: () => _sendQuickReply('need_more_info')),
+                                  ActionChip(label: const Text('Confirm booking'), onPressed: () => _sendQuickReply('confirm_booking')),
+                                  ActionChip(label: const Text('On my way'), onPressed: () => _sendQuickReply('on_my_way')),
+                                ]
+                              : [
+                                  ActionChip(label: const Text('Hello'), onPressed: () => _sendQuickReply('need_more_info')),
+                                  ActionChip(label: const Text('Price?'), onPressed: () => _sendQuickReply('price_negotiate')),
+                                  ActionChip(label: const Text('Discount?'), onPressed: () => _sendQuickReply('need_discount')),
+                                ],
                         ),
                       ],
                     ),
@@ -1489,27 +1493,59 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildQuickReplyMessage(ChatMessage msg, bool isMe) {
+    final type = msg.quickReplyType ?? '';
+    final label = _quickReplyLabel(type);
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
       decoration: BoxDecoration(
-        color: isMe ? Colors.blue.shade100 : Colors.grey.shade200,
+        color: isMe ? Colors.blue.shade50 : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade200, width: 0.5),
+        border: Border.all(
+          color: isMe ? Colors.blue.shade200 : Colors.grey.shade300,
+          width: 0.5,
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.quickreply, size: 12, color: Colors.blue.shade400),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.blue.shade400),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           Text(
             msg.content,
-            style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: isMe ? Colors.black87 : Colors.black54),
+            style: TextStyle(fontSize: 14, color: isMe ? Colors.black87 : Colors.black54),
           ),
           const SizedBox(height: 2),
-              _buildReadStatusIcon(msg),
+          _buildReadStatusIcon(msg),
         ],
       ),
     );
+  }
+
+  String _quickReplyLabel(String type) {
+    switch (type) {
+      case 'need_more_info': return 'Quick Reply';
+      case 'price_negotiate': return 'Price Negotiation';
+      case 'need_discount': return 'Discount Request';
+      case 'confirm_booking': return 'Booking Confirmation';
+      case 'on_my_way': return 'On My Way';
+      case 'work_started': return 'Work Started';
+      case 'when_available': return 'Availability Request';
+      case 'accept_quote': return 'Quote Accepted';
+      case 'decline_quote': return 'Quote Declined';
+      default: return 'Quick Reply';
+    }
   }
 
   Widget _buildLocationMessage(ChatMessage msg, bool isMe) {
@@ -1779,57 +1815,59 @@ class _ChatScreenState extends State<ChatScreen> {
   void _showMoreOptions(LocalizationProvider loc) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.image),
-              title: const Text('Send Image'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage();
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.attach_file),
-              title: const Text('Document'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickFile();
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.location_on, color: Colors.teal),
-              title: const Text('Share Location'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _shareLocation();
-              },
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.currency_rupee),
-              title: const Text('Send Quote'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showQuoteDialog();
-              },
-            ),
-            const Divider(height: 1),
-            ExpansionTile(
-              leading: const Icon(Icons.quickreply),
-              title: const Text('Quick Reply'),
-              children: [
-                ListTile(title: const Text('Can you give a discount?'), onTap: () { Navigator.pop(ctx); _sendQuickReply('need_discount'); }),
-                ListTile(title: const Text('Confirm booking'), onTap: () { Navigator.pop(ctx); _sendQuickReply('confirm_booking'); }),
-                ListTile(title: const Text('Can we negotiate on price?'), onTap: () { Navigator.pop(ctx); _sendQuickReply('price_negotiate'); }),
-                ListTile(title: const Text('I need more information'), onTap: () { Navigator.pop(ctx); _sendQuickReply('need_more_info'); }),
-              ],
-            ),
-          ],
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.8,
+          expand: false,
+          builder: (ctx, scrollController) => ListView(
+            controller: scrollController,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.image),
+                title: const Text('Send Image'),
+                onTap: () { Navigator.pop(ctx); _pickImage(); },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.attach_file),
+                title: const Text('Document'),
+                onTap: () { Navigator.pop(ctx); _pickFile(); },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.location_on, color: Colors.teal),
+                title: const Text('Share Location'),
+                onTap: () { Navigator.pop(ctx); _shareLocation(); },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.currency_rupee),
+                title: const Text('Send Quote'),
+                onTap: () { Navigator.pop(ctx); _showQuoteDialog(); },
+              ),
+              const Divider(height: 1),
+              ExpansionTile(
+                leading: const Icon(Icons.quickreply),
+                title: const Text('Quick Reply'),
+                children: _isProvider
+                    ? [
+                        ListTile(title: const Text('Confirm booking'), onTap: () { Navigator.pop(ctx); _sendQuickReply('confirm_booking'); }),
+                        ListTile(title: const Text('On my way'), onTap: () { Navigator.pop(ctx); _sendQuickReply('on_my_way'); }),
+                        ListTile(title: const Text('I need more information'), onTap: () { Navigator.pop(ctx); _sendQuickReply('need_more_info'); }),
+                        ListTile(title: const Text('Work started'), onTap: () { Navigator.pop(ctx); _sendQuickReply('work_started'); }),
+                      ]
+                    : [
+                        ListTile(title: const Text('Can you give a discount?'), onTap: () { Navigator.pop(ctx); _sendQuickReply('need_discount'); }),
+                        ListTile(title: const Text('Can we negotiate on price?'), onTap: () { Navigator.pop(ctx); _sendQuickReply('price_negotiate'); }),
+                        ListTile(title: const Text('I need more information'), onTap: () { Navigator.pop(ctx); _sendQuickReply('need_more_info'); }),
+                        ListTile(title: const Text('When can you come?'), onTap: () { Navigator.pop(ctx); _sendQuickReply('when_available'); }),
+                      ],
+              ),
+            ],
+          ),
         ),
       ),
     );

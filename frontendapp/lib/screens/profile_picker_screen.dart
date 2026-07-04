@@ -163,7 +163,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                     description: loc.tr('customer_desc'),
                     isActive: widget.user.role == 'customer',
                     isNew: !widget.user.canBeCustomer,
-                    gradientColors: const [Color(0xFF66A3FF), Color(0xFF66A3FF)],
+                    color: const Color(0xFFFF7043),
                     onTap: () => _selectRole('customer'),
                   ),
                   const SizedBox(height: 12),
@@ -175,7 +175,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                     description: loc.tr('provider_desc'),
                     isActive: widget.user.role == 'provider',
                     isNew: !widget.user.canBeProvider,
-                    gradientColors: const [Color(0xFF00BFA5), Color(0xFF009688)],
+                    color: const Color(0xFF00BFA5),
                     onTap: () => _selectRole('provider'),
                   ),
                 ],
@@ -194,36 +194,29 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
     required bool isActive,
     required bool isNew,
     required VoidCallback onTap,
-    required List<Color> gradientColors,
+    required Color color,
   }) {
     final loc = LocalizationProvider.of(context);
+    final textColor = isActive ? Colors.white : const Color(0xFF1E1E2E);
+    final subTextColor = isActive ? Colors.white70 : Colors.grey.shade600;
 
     return GestureDetector(
       onTap: _loading ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
+      child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: isActive
-              ? LinearGradient(
-                  colors: gradientColors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isActive ? null : Colors.white,
+          color: isActive ? color : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? gradientColors.first : Colors.grey.shade200,
-            width: isActive ? 1 : 1.5,
+            color: isActive ? color : Colors.grey.shade200,
+            width: isActive ? 2 : 1.5,
           ),
           boxShadow: [
             BoxShadow(
               color: isActive
-                  ? gradientColors.first.withValues(alpha: 0.25)
-                  : Colors.black.withValues(alpha: 0.04),
+                  ? color.withOpacity(0.25)
+                  : Colors.black.withOpacity(0.06),
               blurRadius: isActive ? 16 : 8,
               offset: const Offset(0, 4),
             ),
@@ -231,44 +224,40 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
         ),
         child: Row(
           children: [
-            // Icon
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
+            Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: isActive
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : gradientColors.first.withValues(alpha: 0.1),
+                    ? Colors.white.withOpacity(0.2)
+                    : color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(
-                icon,
-                size: 32,
-                color: isActive ? Colors.white : gradientColors.first,
-              ),
+              child: Icon(icon, size: 32, color: isActive ? Colors.white : color),
             ),
             const SizedBox(width: 16),
-            // Text
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: isActive ? Colors.white : const Color(0xFF1E1E2E),
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
                         ),
                       ),
-                      if (isActive)
+                      if (isActive) ...[
+                        const SizedBox(width: 8),
                         Container(
-                          margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -280,9 +269,10 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                             ),
                           ),
                         ),
-                      if (isNew)
+                      ],
+                      if (isNew) ...[
+                        const SizedBox(width: 8),
                         Container(
-                          margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.amber.shade400,
@@ -297,44 +287,16 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                             ),
                           ),
                         ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isActive
-                          ? Colors.white.withValues(alpha: 0.85)
-                          : Colors.grey.shade600,
-                    ),
-                  ),
+                  Text(description, style: TextStyle(fontSize: 13, color: subTextColor)),
                 ],
               ),
             ),
-            // Arrow
             if (!isActive)
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: _loading
-                    ? SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: gradientColors.first,
-                        ),
-                      )
-                    : Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: gradientColors.first,
-                      ),
-              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: color),
           ],
         ),
       ),

@@ -137,7 +137,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     description: loc.tr('customer_desc'),
                     isSelected: _selectedRole == 'customer',
                     onTap: () => setState(() => _selectedRole = 'customer'),
-                    gradientColors: const [Color(0xFF66A3FF), Color(0xFF66A3FF)],
+                    color: const Color(0xFFFF7043),
                   ),
                   const SizedBox(height: 12),
                   _buildRoleCard(
@@ -146,7 +146,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     description: loc.tr('provider_desc'),
                     isSelected: _selectedRole == 'provider',
                     onTap: () => setState(() => _selectedRole = 'provider'),
-                    gradientColors: const [Color(0xFF00BFA5), Color(0xFF009688)],
+                    color: const Color(0xFF00BFA5),
                   ),
                   const SizedBox(height: 24),
 
@@ -257,7 +257,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     required String description,
     required bool isSelected,
     required VoidCallback onTap,
-    required List<Color> gradientColors,
+    required Color color,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -267,25 +267,18 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(
-                  colors: gradientColors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isSelected ? null : Colors.white,
+          color: isSelected ? color : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? gradientColors.first
-                : Colors.grey.shade200,
-            width: isSelected ? 1 : 1.5,
+          border: Border(
+            left: BorderSide(color: color, width: 4),
+            top: BorderSide(color: isSelected ? color : Colors.grey.shade200, width: 1),
+            right: BorderSide(color: isSelected ? color : Colors.grey.shade200, width: 1),
+            bottom: BorderSide(color: isSelected ? color : Colors.grey.shade200, width: 1),
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? gradientColors.first.withValues(alpha: 0.25)
+                  ? color.withValues(alpha: 0.3)
                   : Colors.black.withValues(alpha: 0.04),
               blurRadius: isSelected ? 16 : 8,
               offset: const Offset(0, 4),
@@ -294,7 +287,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         ),
         child: Row(
           children: [
-            // Icon (Flexible allows the Row to shrink this area on narrow screens)
             Flexible(
               fit: FlexFit.loose,
               child: AnimatedContainer(
@@ -303,18 +295,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? Colors.white.withValues(alpha: 0.2)
-                      : gradientColors.first.withValues(alpha: 0.1),
+                      : color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
                   icon,
                   size: 32,
-                  color: isSelected ? Colors.white : gradientColors.first,
+                  color: isSelected ? Colors.white : color,
                 ),
               ),
             ),
             const SizedBox(width: 16),
-            // Text
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,7 +331,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 ],
               ),
             ),
-            // Checkmark
             if (isSelected)
               Container(
                 padding: const EdgeInsets.all(6),

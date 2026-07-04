@@ -2,6 +2,7 @@
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import 'booking_detail_screen.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class NotificationsScreen extends StatefulWidget {
@@ -46,6 +47,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       await ApiService.patch('/notifications/read-all');
       _loadNotifications();
     } catch (e, st) { AppLogger.e('notifications_screen', 'Operation failed', e, st); }
+  }
+
+  void _handleTap(Map<String, dynamic> n) {
+    // Mark as read
+    if (n['isRead'] != true) {
+      _markAsRead(n['id']);
+    }
+
+    // Navigate based on metadata
+    final metadata = n['metadata'];
+    if (metadata is Map && metadata['bookingId'] != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BookingDetailScreen(bookingId: metadata['bookingId']),
+        ),
+      );
+    }
   }
 
   IconData _notifIcon(String title) {
@@ -116,6 +135,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        onTap: () => _handleTap(n),
                         leading: Container(
                           width: 44,
                           height: 44,

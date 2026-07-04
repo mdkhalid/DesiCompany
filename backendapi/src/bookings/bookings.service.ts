@@ -315,6 +315,8 @@ export class BookingsService {
         notification.userId,
         notification.title,
         notification.message,
+        'booking',
+        { bookingId: booking.id },
       );
 
       // Push notification (fire-and-forget)
@@ -416,6 +418,8 @@ export class BookingsService {
       notifyUserId,
       'New Time Proposed',
       `${proposeBy} proposed a new time for the service.`,
+      'booking',
+      { bookingId: saved.id },
     );
 
     this.pushNotificationsService
@@ -468,6 +472,8 @@ export class BookingsService {
       notifyUserId,
       `Proposal ${decision.charAt(0).toUpperCase() + decision.slice(1)}`,
       `The proposed new time has been ${decision}.`,
+      'booking',
+      { bookingId: saved.id },
     );
 
     this.pushNotificationsService

@@ -57,6 +57,8 @@ export class FollowUpService {
         booking.customer.user.id,
         'How was your service?',
         `Share your experience with ${providerName} for your ${serviceName}. Your feedback helps others!`,
+        'review_followup',
+        { bookingId: booking.id },
       );
 
       this.pushNotificationsService
@@ -106,6 +108,7 @@ export class FollowUpService {
           customer.customer.user.id,
           'We miss you!',
           "It's been a while since your last booking. Check out new providers in your area!",
+          'reengagement',
         );
 
         this.pushNotificationsService
