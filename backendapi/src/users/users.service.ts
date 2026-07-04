@@ -5,6 +5,7 @@ import { User } from './entities/user.entity';
 import { Customer } from './entities/customer.entity';
 import { Provider } from './entities/provider.entity';
 import { UserStatus } from '../common/enums/user-status.enum';
+import { UserRole } from '../common/enums/user-role.enum';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
@@ -41,6 +42,31 @@ export class UsersService {
     const providerId = provider?.id ?? user.provider?.id ?? null;
     const customerId = customer?.id ?? user.customer?.id ?? null;
 
+    // Defensive fix: if user has provider in roles but no provider entity, create it
+    if (!providerId && user.roles?.includes(UserRole.PROVIDER)) {
+      const newProvider = this.providerRepository.create({
+        user,
+        firstName: user.customer?.firstName || '',
+        lastName: user.customer?.lastName || undefined,
+      });
+      const saved = await this.providerRepository.save(newProvider);
+      user.provider = saved;
+    }
+
+    // Defensive fix: if user has customer in roles but no customer entity, create it
+    if (!customerId && user.roles?.includes(UserRole.CUSTOMER)) {
+      const newCustomer = this.customerRepository.create({
+        user,
+        firstName: user.provider?.firstName || '',
+        lastName: user.provider?.lastName || undefined,
+      });
+      const saved = await this.customerRepository.save(newCustomer);
+      user.customer = saved;
+    }
+
+    const finalProviderId = user.provider?.id ?? providerId;
+    const finalCustomerId = user.customer?.id ?? customerId;
+
     return {
       id: user.id,
       phone: user.phone,
@@ -54,8 +80,8 @@ export class UsersService {
       suspendedAt: user.suspendedAt,
       suspendedBy: user.suspendedBy,
       suspensionReason: user.suspensionReason,
-      customerId,
-      providerId,
+      customerId: finalCustomerId,
+      providerId: finalProviderId,
     };
   }
 
