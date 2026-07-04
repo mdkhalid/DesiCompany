@@ -282,7 +282,8 @@ class _ChatScreenState extends State<ChatScreen> {
       final roomId = data['roomId'] as String;
       debugPrint('[CHAT] direct_chat_started: roomId=$roomId');
       _directRoomId = roomId;
-      _loadCachedMessages(); // reload from new cache key (now based on _directRoomId)
+      _loadCachedMessages();
+      _fetchHistoricalMessages();
       _socket.emit('join_direct_chat', {'roomId': roomId});
     });
 
