@@ -47,6 +47,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { AdvertisementsModule } from './advertisements/advertisements.module';
 import { GrievancesModule } from './grievances/grievances.module';
+import { SettingsModule } from './settings/settings.module';
 import { User } from './users/entities/user.entity';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
@@ -118,6 +119,7 @@ import { DirectMessage } from './chat/entities/direct-message.entity';
     SubscriptionsModule,
     AdvertisementsModule,
     GrievancesModule,
+    SettingsModule,
     ErrorLogsModule,
     TypeOrmModule.forFeature([
       User,

@@ -446,6 +446,7 @@ export class ChatGateway
       this.emitToUser(otherUserId, 'new_message', messageData);
       await this.sendPushIfOffline(otherUserId, 'New message', content, {
         bookingId,
+        roomId: `booking_${bookingId}`,
         type: 'chat_message',
       });
       this.logger.log(
@@ -523,6 +524,7 @@ export class ChatGateway
     if (otherUserId) {
       await this.sendPushIfOffline(otherUserId, 'New image', 'Sent an image', {
         bookingId: payload.bookingId,
+        roomId: `booking_${payload.bookingId}`,
         type: 'chat_image',
       });
     }
@@ -604,6 +606,7 @@ export class ChatGateway
     if (otherUserId) {
       await this.sendPushIfOffline(otherUserId, 'New file', content, {
         bookingId: payload.bookingId,
+        roomId: `booking_${payload.bookingId}`,
         type: 'chat_file',
       });
     }
@@ -715,6 +718,7 @@ export class ChatGateway
         if (quoteOtherUserId) {
           await this.sendPushIfOffline(quoteOtherUserId, 'New quote', content, {
             bookingId: targetId,
+            roomId: `booking_${targetId}`,
             type: 'chat_quote',
           });
         }
@@ -883,6 +887,7 @@ export class ChatGateway
         if (qrOtherUserId) {
           await this.sendPushIfOffline(qrOtherUserId, 'Quick reply', content, {
             bookingId: targetId,
+            roomId: `booking_${targetId}`,
             type: 'chat_quick_reply',
           });
         }

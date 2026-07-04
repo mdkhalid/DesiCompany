@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'app_logger.dart';
 import 'notification_websocket_service.dart';
@@ -54,6 +55,12 @@ class PushNotificationService {
     await _localNotifications!
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
+
+    // Check if the app was launched by tapping a notification
+    final launchDetails = await _localNotifications!.getNotificationAppLaunchDetails();
+    if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
+      _handleNotificationTap(launchDetails.notificationResponse?.payload);
+    }
   }
 
   static void _startWebSocketListener() {
@@ -62,7 +69,11 @@ class PushNotificationService {
         _showLocalNotification(
           title: notification['title'] as String? ?? 'New Notification',
           body: notification['message'] as String? ?? '',
-          payload: notification['id'] as String?,
+          payload: jsonEncode({
+            'id': notification['id'],
+            'type': notification['type'],
+            'metadata': notification['metadata'],
+          }),
         );
       },
     );
@@ -71,7 +82,15 @@ class PushNotificationService {
   }
 
   static void _handleNotificationTap(String? payload) {
-    if (payload != null) {}
+    if (payload != null) {
+      try {
+        final data = jsonDecode(payload) as Map<String, dynamic>;
+        final type = data['type'] as String?;
+        final metadata = data['metadata'];
+        // Navigation is handled in main.dart via the notifications screen
+        // when the app resumes. For now, just ensure we store the payload.
+      } catch (_) {}
+    }
   }
 
   static Future<void> _showLocalNotification({

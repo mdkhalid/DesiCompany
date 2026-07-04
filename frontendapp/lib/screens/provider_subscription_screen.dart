@@ -165,11 +165,7 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: const Color(0xFF43A047),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(children: [

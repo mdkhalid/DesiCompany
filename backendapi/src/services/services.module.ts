@@ -11,6 +11,7 @@ import { ProviderDateOverride } from './entities/provider-date-override.entity';
 import { ProviderBusySlot } from './entities/provider-busy-slot.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { Booking } from '../bookings/entities/booking.entity';
       Provider,
       Booking,
     ]),
+    SettingsModule,
   ],
   controllers: [ServicesController, ServiceAreaMapController],
   providers: [ServicesService, ServiceAreaMapService],

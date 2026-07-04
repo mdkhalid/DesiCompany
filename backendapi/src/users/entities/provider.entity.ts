@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToMany, OneToOne, CreateDateColumn } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from './user.entity';
 import { KycDocument } from '../../kyc/entities/kyc-document.entity';
@@ -62,6 +62,9 @@ export class Provider extends BaseEntity {
 
   @Column({ default: false, name: 'is_soft_blocked' })
   isSoftBlocked: boolean;
+
+  @CreateDateColumn({ name: 'provider_created_at' })
+  providerCreatedAt: Date;
 
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
   averageRating: number;

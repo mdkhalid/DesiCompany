@@ -63,6 +63,10 @@ export class ChatService {
     const isProvider = !!user.provider;
     if (!isCustomer && !isProvider) return { conversations: [], total: 0 };
 
+    // For dual-role users, use the currently active role to avoid duplicate
+    // conversations appearing from both customer and provider perspectives.
+    const activeRole: 'customer' | 'provider' = user.role === 'provider' ? 'provider' : 'customer';
+
     const conversations: ConversationItem[] = [];
 
     // === BOOKING CONVERSATIONS ===
@@ -71,13 +75,13 @@ export class ChatService {
       provider: Provider & { user: User };
     };
     let bookings: BookingWithRelations[];
-    if (isCustomer && user.customer) {
+    if (activeRole === 'customer' && user.customer) {
       bookings = await this.bookingRepository.find({
         where: { customer: { id: user.customer.id } },
         relations: { customer: true, provider: { user: true } },
         order: { updatedAt: 'DESC' },
       });
-    } else if (isProvider && user.provider) {
+    } else if (activeRole === 'provider' && user.provider) {
       bookings = await this.bookingRepository.find({
         where: { provider: { id: user.provider.id } },
         relations: { customer: { user: true }, provider: true },
@@ -132,13 +136,13 @@ export class ChatService {
         let partnerId: string;
         let partnerName: string;
 
-        if (isCustomer && booking.provider) {
+        if (activeRole === 'customer' && booking.provider) {
           partnerId = booking.provider.user?.id || '';
           partnerName = this.getFullName(
             booking.provider.firstName,
             booking.provider.lastName,
           );
-        } else if (isProvider && booking.customer) {
+        } else if (activeRole === 'provider' && booking.customer) {
           partnerId = booking.customer.user?.id || '';
           partnerName = this.getFullName(
             booking.customer.firstName,
@@ -156,7 +160,7 @@ export class ChatService {
           type: 'booking',
           partnerId,
           partnerName,
-          partnerRole: isCustomer ? 'provider' : 'customer',
+          partnerRole: activeRole === 'customer' ? 'provider' : 'customer',
           lastMessage: lastMsg?.content || 'No messages yet',
           lastMessageAt: lastMsg?.createdAt || booking.createdAt,
           unreadCount: unreadMap.get(booking.id) || 0,
@@ -167,7 +171,7 @@ export class ChatService {
     }
 
     // === DIRECT (PRE-BOOKING) CONVERSATIONS ===
-    if (isCustomer && user.customer) {
+    if (activeRole === 'customer' && user.customer) {
       await this.addDirectConversations(
         conversations,
         'customer',
@@ -175,7 +179,7 @@ export class ChatService {
         userId,
         'provider',
       );
-    } else if (isProvider && user.provider) {
+    } else if (activeRole === 'provider' && user.provider) {
       await this.addDirectConversations(
         conversations,
         'provider',

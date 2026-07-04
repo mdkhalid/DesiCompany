@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, MoreThan } from 'typeorm';
+import { Repository, In, MoreThan, LessThan, Raw } from 'typeorm';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
@@ -19,6 +19,7 @@ import { UpdateProviderServiceDto } from './dto/update-provider-service.dto';
 import { CreateProviderAvailabilityDto } from './dto/create-provider-availability.dto';
 import { SearchProvidersDto } from './dto/search-providers.dto';
 import { CreateDateOverrideDto } from './dto/date-override.dto';
+import { SettingsService } from '../settings/settings.service';
 
 interface CategoryInput {
   nameEn?: string;
@@ -47,6 +48,7 @@ export class ServicesService {
     private readonly providerRepository: Repository<Provider>,
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
+    private readonly settingsService: SettingsService,
   ) {}
 
   async findAllCategories() {
@@ -508,24 +510,45 @@ export class ServicesService {
   }
 
   async findAllVerifiedProviders() {
-    return this.providerRepository.find({
-      where: { isVerified: true },
-      relations: {
-        user: true,
-        services: { category: true },
-        availabilities: true,
-      },
-    });
-  }
+    const gracePeriodDays = await this.settingsService.getProviderGracePeriodDays();
+    const gracePeriodEnabled = await this.settingsService.isProviderGracePeriodEnabled();
+    const gracePeriodDate = new Date();
+    gracePeriodDate.setDate(gracePeriodDate.getDate() - gracePeriodDays);
 
-  async searchVerifiedProviders(dto: SearchProvidersDto) {
     const query = this.providerRepository
       .createQueryBuilder('provider')
       .leftJoinAndSelect('provider.user', 'user')
       .leftJoinAndSelect('provider.services', 'service')
       .leftJoinAndSelect('service.category', 'category')
       .leftJoinAndSelect('provider.availabilities', 'availability')
-      .where('provider.isVerified = :isVerified', { isVerified: true });
+      .where('(provider.isVerified = :isVerified OR (:graceEnabled = true AND provider.providerCreatedAt > :gracePeriodDate))', { 
+        isVerified: true, 
+        graceEnabled: gracePeriodEnabled,
+        gracePeriodDate 
+      })
+      .andWhere('provider.latitude IS NOT NULL')
+      .andWhere('provider.longitude IS NOT NULL');
+
+    return query.getMany();
+  }
+
+  async searchVerifiedProviders(dto: SearchProvidersDto) {
+    const gracePeriodDays = await this.settingsService.getProviderGracePeriodDays();
+    const gracePeriodEnabled = await this.settingsService.isProviderGracePeriodEnabled();
+    const gracePeriodDate = new Date();
+    gracePeriodDate.setDate(gracePeriodDate.getDate() - gracePeriodDays);
+
+    const query = this.providerRepository
+      .createQueryBuilder('provider')
+      .leftJoinAndSelect('provider.user', 'user')
+      .leftJoinAndSelect('provider.services', 'service')
+      .leftJoinAndSelect('service.category', 'category')
+      .leftJoinAndSelect('provider.availabilities', 'availability')
+      .where('(provider.isVerified = :isVerified OR (:graceEnabled = true AND provider.providerCreatedAt > :gracePeriodDate))', { 
+        isVerified: true, 
+        graceEnabled: gracePeriodEnabled,
+        gracePeriodDate 
+      });
 
     if (dto.categoryId) {
       // Get all subcategory IDs for hierarchical search
@@ -552,6 +575,10 @@ export class ServicesService {
     ) {
       const lat = dto.latitude;
       const lng = dto.longitude;
+      // Only include providers with valid location data
+      query.andWhere('provider.latitude IS NOT NULL');
+      query.andWhere('provider.longitude IS NOT NULL');
+      
       // Haversine distance in meters
       const haversine = `6371000 * acos(
         cos(radians(:lat)) * cos(radians(provider.latitude)) *

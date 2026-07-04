@@ -118,11 +118,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppTheme.primary, AppTheme.primary.withValues(alpha: 0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: const Color(0xFF66A3FF),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(

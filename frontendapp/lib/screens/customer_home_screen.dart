@@ -392,12 +392,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 const SizedBox(width: 8),
               ],
               _buildNotificationButton(),
-              const SizedBox(width: 8),
-              _buildIconButton(
-                Icons.person_outline,
-                () => Navigator.pushNamed(context, '/my-account'),
-                tooltipKey: 'nav_profile',
-              ),
             ],
           ),
         ],

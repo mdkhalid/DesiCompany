@@ -9,6 +9,7 @@ const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Users = lazy(() => import('./pages/Users'));
 const KycVerification = lazy(() => import('./pages/KycVerification'));
+const Settings = lazy(() => import('./pages/Settings'));
 const Categories = lazy(() => import('./pages/Categories'));
 const Bookings = lazy(() => import('./pages/Bookings'));
 const PaymentGateways = lazy(() => import('./pages/PaymentGateways'));
@@ -73,6 +74,7 @@ export default function App() {
           <Route path="/advertisements" element={<ProtectedRoute><Layout><Advertisements /></Layout></ProtectedRoute>} />
           <Route path="/grievances" element={<ProtectedRoute><Layout><Grievances /></Layout></ProtectedRoute>} />
           <Route path="/error-logs" element={<ProtectedRoute><Layout><ErrorLogs /></Layout></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
         </Routes>
       </Suspense>

@@ -166,11 +166,7 @@ class _ProviderCustomerFeedbackScreenState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.primary, AppTheme.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: const Color(0xFF66A3FF),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(

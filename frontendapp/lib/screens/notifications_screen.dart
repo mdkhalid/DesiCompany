@@ -58,31 +58,47 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     final metadata = n['metadata'];
     if (metadata is Map) {
-      if (metadata['type'] == 'chat_quick_reply' || metadata['type'] == 'chat_message') {
+      final type = metadata['type'] as String?;
+      // Handle all chat-related notification types
+      final isChatNotif = type == 'chat_quick_reply' ||
+          type == 'chat_message' ||
+          type == 'chat_image' ||
+          type == 'chat_file' ||
+          type == 'chat_quote' ||
+          type == 'direct_message';
+
+      if (isChatNotif) {
         final roomId = metadata['roomId'] as String?;
         final bookingId = metadata['bookingId'] as String?;
+        // For booking-based chats: roomId is 'booking_<id>', or fallback to bookingId
+        // For direct chats: roomId starts with 'direct_'
         final isDirect = roomId != null && roomId.startsWith('direct_');
-        if (isDirect) {
+        final effectiveBookingId = bookingId ?? (roomId != null && roomId.startsWith('booking_') ? roomId.replaceFirst('booking_', '') : null);
+
+        if (isDirect && roomId != null) {
           final parts = roomId.split('_');
           final customerUserId = parts.length > 1 ? parts[1] : null;
           final providerEntityId = parts.length > 2 ? parts[2] : null;
           final userRole = await AuthService.getUserRole();
           final partnerId = userRole == 'provider' ? customerUserId : providerEntityId;
           if (!mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChatScreen(
-                providerId: partnerId,
-                mode: 'direct',
+          if (partnerId != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatScreen(
+                  providerId: partnerId,
+                  mode: 'direct',
+                ),
               ),
-            ),
-          );
-        } else if (bookingId != null) {
+            );
+          }
+        } else if (effectiveBookingId != null) {
+          if (!mounted) return;
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ChatScreen(bookingId: bookingId, mode: 'booking'),
+              builder: (_) => ChatScreen(bookingId: effectiveBookingId, mode: 'booking'),
             ),
           );
         }

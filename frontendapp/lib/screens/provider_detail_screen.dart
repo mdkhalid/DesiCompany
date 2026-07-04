@@ -452,11 +452,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [color, color.withValues(alpha: 0.7), AppTheme.secondary],
-                ),
+                color: color,
               ),
               child: SafeArea(
                 child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [

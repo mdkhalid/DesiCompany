@@ -181,10 +181,7 @@ class _ProviderScheduleScreenState extends State<ProviderScheduleScreen> {
     final loc = DesiCompanyApp.localeProvider!;
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [AppTheme.gradientStart, AppTheme.gradientEnd],
-        )),
+        color: const Color(0xFF66A3FF),
         child: SafeArea(
           child: Column(children: [
             Padding(
