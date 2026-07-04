@@ -871,36 +871,23 @@ class _ChatScreenState extends State<ChatScreen> {
                         else
                           GestureDetector(
                             onLongPress: () => _showMessageOptions(msg),
-                            child: Column(
-                              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                            child: Row(
+                              mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                               children: [
-                                if (!isMe)
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 4, bottom: 2),
-                                    child: Text(
-                                      msg.senderName,
-                                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                                    ),
-                                  ),
-                                Row(
-                                  mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                                  children: [
-                                    if (msg.deleted)
-                                      _buildDeletedMessage(msg, isMe)
-                                    else if (msg.isImage)
-                                      _buildImageMessage(msg, isMe)
-                                    else if (msg.isDocument)
-                                      _buildDocumentMessage(msg, isMe)
-                                    else if (msg.isQuote)
-                                      _buildQuoteMessage(msg, isMe)
-                                    else if (msg.isQuickReply)
-                                      _buildQuickReplyMessage(msg, isMe)
-                                    else if (msg.isLocation)
-                                      _buildLocationMessage(msg, isMe)
-                                    else
-                                      _buildTextMessage(msg, isMe),
-                                  ],
-                                ),
+                                if (msg.deleted)
+                                  _buildDeletedMessage(msg, isMe)
+                                else if (msg.isImage)
+                                  _buildImageMessage(msg, isMe)
+                                else if (msg.isDocument)
+                                  _buildDocumentMessage(msg, isMe)
+                                else if (msg.isQuote)
+                                  _buildQuoteMessage(msg, isMe)
+                                else if (msg.isQuickReply)
+                                  _buildQuickReplyMessage(msg, isMe)
+                                else if (msg.isLocation)
+                                  _buildLocationMessage(msg, isMe)
+                                else
+                                  _buildTextMessage(msg, isMe),
                               ],
                             ),
                           ),
