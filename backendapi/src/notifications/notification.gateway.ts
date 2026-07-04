@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
+import { UserRole } from '../common/enums/user-role.enum';
 import { NotificationsService } from './notifications.service';
 
 interface AuthenticatedSocket extends Socket {
@@ -130,6 +131,7 @@ export class NotificationGateway
     message: string,
     type?: string,
     metadata?: Record<string, unknown>,
+    recipientRole?: UserRole,
   ): Promise<void> {
     const notification = await this.notificationsService.create(
       userId,
@@ -137,9 +139,16 @@ export class NotificationGateway
       message,
       type,
       metadata,
+      recipientRole,
     );
 
-    const unreadCount = await this.notificationsService.getUnreadCount(userId);
+    // For dual-role users, unread count should reflect only the current
+    // active role's notifications. We use the recipientRole to filter
+    // (or if not specified, count all).
+    const unreadCount = await this.notificationsService.getUnreadCount(
+      userId,
+      recipientRole,
+    );
 
     this.sendToUser(userId, 'notification', {
       id: notification.id,
@@ -147,6 +156,7 @@ export class NotificationGateway
       message: notification.message,
       type: notification.type,
       metadata: notification.metadata,
+      recipientRole: notification.recipientRole,
       isRead: false,
       createdAt: notification.createdAt,
     });

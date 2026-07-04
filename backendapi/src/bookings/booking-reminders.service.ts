@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
+import { UserRole } from '../common/enums/user-role.enum';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -52,6 +53,7 @@ export class BookingRemindersService {
           `${providerName} will arrive in ${minutesUntil} minutes for your ${serviceName} service.`,
           'reminder',
           { bookingId: booking.id },
+          UserRole.CUSTOMER,
         );
 
         this.pushNotificationsService
@@ -73,6 +75,7 @@ export class BookingRemindersService {
           `You have a ${serviceName} service in ${minutesUntil} minutes with ${customerName}.`,
           'reminder',
           { bookingId: booking.id },
+          UserRole.PROVIDER,
         );
 
         this.pushNotificationsService
@@ -126,6 +129,7 @@ export class BookingRemindersService {
         `How was your ${serviceName} service with ${providerName}? Leave a review to help others.`,
         'review_reminder',
         { bookingId: booking.id },
+        UserRole.CUSTOMER,
       );
 
       this.pushNotificationsService

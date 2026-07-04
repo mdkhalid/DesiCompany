@@ -33,12 +33,17 @@ export class NotificationsController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    return this.notificationsService.findByUser(req.user.id, page, limit);
+    return this.notificationsService.findByUser(
+      req.user.id,
+      page,
+      limit,
+      req.user.role,
+    );
   }
 
   @Get('unread-count')
   unreadCount(@Req() req: AuthRequest) {
-    return this.notificationsService.getUnreadCount(req.user.id);
+    return this.notificationsService.getUnreadCount(req.user.id, req.user.role);
   }
 
   @Patch(':id/read')
@@ -50,6 +55,6 @@ export class NotificationsController {
   @Patch('read-all')
   @HttpCode(HttpStatus.OK)
   markAllAsRead(@Req() req: AuthRequest) {
-    return this.notificationsService.markAllAsRead(req.user.id);
+    return this.notificationsService.markAllAsRead(req.user.id, req.user.role);
   }
 }

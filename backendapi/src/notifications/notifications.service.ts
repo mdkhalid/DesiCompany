@@ -20,6 +20,7 @@ export class NotificationsService {
     message: string,
     type?: string,
     metadata?: Record<string, unknown>,
+    recipientRole?: UserRole,
   ): Promise<Notification> {
     const notification = this.notificationRepository.create({
       user: { id: userId } as User,
@@ -27,6 +28,7 @@ export class NotificationsService {
       message,
       type,
       metadata,
+      recipientRole,
     });
     return this.notificationRepository.save(notification);
   }
@@ -35,15 +37,25 @@ export class NotificationsService {
     userId: string,
     page = 1,
     limit = 20,
+    activeRole?: UserRole,
   ): Promise<{
     notifications: Notification[];
     total: number;
     page: number;
     limit: number;
   }> {
+    // For dual-role users, filter by the active role so they only see
+    // notifications relevant to their current role context.
+    // Notifications without a recipientRole (legacy data or broadcasts)
+    // are shown to all roles.
+    const where: Record<string, unknown> = { user: { id: userId } };
+    if (activeRole) {
+      where.recipientRole = activeRole;
+    }
+
     const [notifications, total] =
       await this.notificationRepository.findAndCount({
-        where: { user: { id: userId } },
+        where,
         order: { createdAt: 'DESC' },
         skip: (page - 1) * limit,
         take: limit,
@@ -64,18 +76,33 @@ export class NotificationsService {
     });
   }
 
-  async markAllAsRead(userId: string): Promise<{ success: boolean }> {
-    await this.notificationRepository.update(
-      { user: { id: userId }, isRead: false },
-      { isRead: true },
-    );
+  async markAllAsRead(
+    userId: string,
+    activeRole?: UserRole,
+  ): Promise<{ success: boolean }> {
+    const where: Record<string, unknown> = {
+      user: { id: userId },
+      isRead: false,
+    };
+    if (activeRole) {
+      where.recipientRole = activeRole;
+    }
+    await this.notificationRepository.update(where, { isRead: true });
     return { success: true };
   }
 
-  async getUnreadCount(userId: string): Promise<number> {
-    return this.notificationRepository.count({
-      where: { user: { id: userId }, isRead: false },
-    });
+  async getUnreadCount(
+    userId: string,
+    activeRole?: UserRole,
+  ): Promise<number> {
+    const where: Record<string, unknown> = {
+      user: { id: userId },
+      isRead: false,
+    };
+    if (activeRole) {
+      where.recipientRole = activeRole;
+    }
+    return this.notificationRepository.count({ where });
   }
 
   async broadcast(

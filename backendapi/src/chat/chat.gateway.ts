@@ -144,9 +144,10 @@ export class ChatGateway
     title: string,
     body: string,
     data?: Record<string, string>,
+    recipientRole?: UserRole,
   ) {
     if (!this.isUserOnline(userId)) {
-      await this.pushNotificationsService.sendToUser(userId, title, body, data);
+      await this.pushNotificationsService.sendToUser(userId, title, body, data, recipientRole);
     }
   }
 
@@ -444,11 +445,16 @@ export class ChatGateway
         : booking.customer?.user?.id;
     if (otherUserId) {
       this.emitToUser(otherUserId, 'new_message', messageData);
+      // The recipient is the "other" user. If the sender was the customer, the
+      // recipient is the provider (and vice versa).
+      const recipientRole: UserRole = booking.customer?.user?.id === otherUserId
+        ? UserRole.CUSTOMER
+        : UserRole.PROVIDER;
       await this.sendPushIfOffline(otherUserId, 'New message', content, {
         bookingId,
         roomId: `booking_${bookingId}`,
         type: 'chat_message',
-      });
+      }, recipientRole);
       this.logger.log(
         `[MSG] Sent to room=${room} + direct to user=${otherUserId}`,
       );
@@ -522,11 +528,14 @@ export class ChatGateway
         ? booking.provider?.user?.id
         : booking.customer?.user?.id;
     if (otherUserId) {
+      const recipientRole: UserRole = booking.customer?.user?.id === otherUserId
+        ? UserRole.CUSTOMER
+        : UserRole.PROVIDER;
       await this.sendPushIfOffline(otherUserId, 'New image', 'Sent an image', {
         bookingId: payload.bookingId,
         roomId: `booking_${payload.bookingId}`,
         type: 'chat_image',
-      });
+      }, recipientRole);
     }
   }
 
@@ -604,11 +613,14 @@ export class ChatGateway
         ? booking.provider?.user?.id
         : booking.customer?.user?.id;
     if (otherUserId) {
+      const recipientRole: UserRole = booking.customer?.user?.id === otherUserId
+        ? UserRole.CUSTOMER
+        : UserRole.PROVIDER;
       await this.sendPushIfOffline(otherUserId, 'New file', content, {
         bookingId: payload.bookingId,
         roomId: `booking_${payload.bookingId}`,
         type: 'chat_file',
-      });
+      }, recipientRole);
     }
   }
 
@@ -677,11 +689,15 @@ export class ChatGateway
         directNotifyUserId = customerUserId;
       }
       if (directNotifyUserId) {
+        // For direct messages, the recipient role is opposite of the sender
+        const recipientRole: UserRole = client.data.userId === customerUserId
+          ? UserRole.PROVIDER
+          : UserRole.CUSTOMER;
         await this.sendPushIfOffline(directNotifyUserId, 'New quote', content, {
           roomId: targetId,
           providerId,
           type: 'chat_quote',
-        });
+        }, recipientRole);
       }
     } else {
       const message = this.messageRepository.create({
@@ -716,11 +732,14 @@ export class ChatGateway
             ? quoteBooking.provider?.user?.id
             : quoteBooking.customer?.user?.id;
         if (quoteOtherUserId) {
+          const recipientRole: UserRole = quoteBooking.customer?.user?.id === quoteOtherUserId
+            ? UserRole.CUSTOMER
+            : UserRole.PROVIDER;
           await this.sendPushIfOffline(quoteOtherUserId, 'New quote', content, {
             bookingId: targetId,
             roomId: `booking_${targetId}`,
             type: 'chat_quote',
-          });
+          }, recipientRole);
         }
       }
     }
@@ -828,11 +847,14 @@ export class ChatGateway
         qrNotifyUserId = customerUserId;
       }
       if (qrNotifyUserId) {
+        const recipientRole: UserRole = client.data.userId === customerUserId
+          ? UserRole.PROVIDER
+          : UserRole.CUSTOMER;
         await this.sendPushIfOffline(qrNotifyUserId, 'Quick reply', content, {
           roomId: targetId,
           providerId: providerId,
           type: 'chat_quick_reply',
-        });
+        }, recipientRole);
       }
     } else {
       const message = this.messageRepository.create({
@@ -885,11 +907,14 @@ export class ChatGateway
             ? qrBooking.provider?.user?.id
             : qrBooking.customer?.user?.id;
         if (qrOtherUserId) {
+          const recipientRole: UserRole = qrBooking.customer?.user?.id === qrOtherUserId
+            ? UserRole.CUSTOMER
+            : UserRole.PROVIDER;
           await this.sendPushIfOffline(qrOtherUserId, 'Quick reply', content, {
             bookingId: targetId,
             roomId: `booking_${targetId}`,
             type: 'chat_quick_reply',
-          });
+          }, recipientRole);
         }
       }
     }
@@ -1217,11 +1242,14 @@ export class ChatGateway
       dmNotifyUserId = customerUserId;
     }
     if (dmNotifyUserId) {
+      const recipientRole: UserRole = client.data.userId === customerUserId
+        ? UserRole.PROVIDER
+        : UserRole.CUSTOMER;
       await this.sendPushIfOffline(dmNotifyUserId, 'New message', content, {
         roomId,
         providerId,
         type: 'direct_message',
-      });
+      }, recipientRole);
     }
 
     this.logger.log(
@@ -1289,11 +1317,15 @@ export class ChatGateway
       imgNotifyUserId = customerUserId;
     }
     if (imgNotifyUserId) {
+      const recipientRole: UserRole = client.data.userId === customerUserId
+        ? UserRole.PROVIDER
+        : UserRole.CUSTOMER;
       await this.sendPushIfOffline(
         imgNotifyUserId,
         'New image',
         'Sent an image',
         { roomId: payload.roomId, providerId, type: 'direct_image' },
+        recipientRole,
       );
     }
   }
@@ -1370,11 +1402,14 @@ export class ChatGateway
       fileNotifyUserId = customerUserId;
     }
     if (fileNotifyUserId) {
+      const recipientRole: UserRole = client.data.userId === customerUserId
+        ? UserRole.PROVIDER
+        : UserRole.CUSTOMER;
       await this.sendPushIfOffline(fileNotifyUserId, 'New file', content, {
         roomId: payload.roomId,
         providerId,
         type: 'direct_file',
-      });
+      }, recipientRole);
     }
   }
 
@@ -1438,11 +1473,15 @@ export class ChatGateway
       quoteNotifyUserId = customerUserId;
     }
     if (quoteNotifyUserId) {
+      const recipientRole: UserRole = client.data.userId === customerUserId
+        ? UserRole.PROVIDER
+        : UserRole.CUSTOMER;
       await this.sendPushIfOffline(
         quoteNotifyUserId,
         'New quote',
         payload.message || `Quote: ₹${payload.amount}`,
         { roomId: payload.roomId, providerId, type: 'direct_quote' },
+        recipientRole,
       );
     }
   }

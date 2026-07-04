@@ -311,12 +311,18 @@ export class BookingsService {
     const notification = messages[status];
     if (notification) {
       // In-app notification
+      // Tag the notification with the recipient's role context so dual-role
+      // users only see it in the correct role's view.
+      const recipientRole: UserRole = notification.userId === booking.provider.user.id
+        ? UserRole.PROVIDER
+        : UserRole.CUSTOMER;
       await this.notificationsService.create(
         notification.userId,
         notification.title,
         notification.message,
         'booking',
         { bookingId: booking.id },
+        recipientRole,
       );
 
       // Push notification (fire-and-forget)
@@ -420,6 +426,7 @@ export class BookingsService {
       `${proposeBy} proposed a new time for the service.`,
       'booking',
       { bookingId: saved.id },
+      role === UserRole.PROVIDER ? UserRole.CUSTOMER : UserRole.PROVIDER,
     );
 
     this.pushNotificationsService
@@ -474,6 +481,7 @@ export class BookingsService {
       `The proposed new time has been ${decision}.`,
       'booking',
       { bookingId: saved.id },
+      role === UserRole.PROVIDER ? UserRole.CUSTOMER : UserRole.PROVIDER,
     );
 
     this.pushNotificationsService

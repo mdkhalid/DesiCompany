@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
+import { UserRole } from '../common/enums/user-role.enum';
 import { NotificationGateway } from '../notifications/notification.gateway';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class PushNotificationsService {
     title: string,
     body: string,
     data?: Record<string, string>,
+    recipientRole?: UserRole,
   ) {
     const type = data?.type || 'general';
     this.logger.debug(
@@ -31,6 +33,7 @@ export class PushNotificationsService {
       body,
       type,
       data,
+      recipientRole,
     );
   }
 
@@ -39,9 +42,10 @@ export class PushNotificationsService {
     title: string,
     body: string,
     data?: Record<string, string>,
+    recipientRole?: UserRole,
   ) {
     for (const userId of userIds) {
-      await this.sendToUser(userId, title, body, data);
+      await this.sendToUser(userId, title, body, data, recipientRole);
     }
   }
 

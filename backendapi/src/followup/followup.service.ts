@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
+import { UserRole } from '../common/enums/user-role.enum';
 import { Review } from '../reviews/entities/review.entity';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -59,6 +60,7 @@ export class FollowUpService {
         `Share your experience with ${providerName} for your ${serviceName}. Your feedback helps others!`,
         'review_followup',
         { bookingId: booking.id },
+        UserRole.CUSTOMER,
       );
 
       this.pushNotificationsService
@@ -109,6 +111,8 @@ export class FollowUpService {
           'We miss you!',
           "It's been a while since your last booking. Check out new providers in your area!",
           'reengagement',
+          undefined,
+          UserRole.CUSTOMER,
         );
 
         this.pushNotificationsService
