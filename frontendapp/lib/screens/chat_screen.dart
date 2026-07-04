@@ -768,6 +768,14 @@ class _ChatScreenState extends State<ChatScreen> {
         current.day != previous.day;
   }
 
+  // Returns true if the current message is from the same sender as the
+  // previous message (used to reduce spacing between consecutive messages
+  // from the same person, like WhatsApp does).
+  bool _isSameSenderAsPrevious(int index) {
+    if (index == 0) return false;
+    return _messages[index].senderId == _messages[index - 1].senderId;
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = LocalizationProvider.of(context);
@@ -869,26 +877,31 @@ class _ChatScreenState extends State<ChatScreen> {
                         if (isSystem)
                           _buildSystemMessage(msg)
                         else
-                          GestureDetector(
-                            onLongPress: () => _showMessageOptions(msg),
-                            child: Row(
-                              mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                              children: [
-                                if (msg.deleted)
-                                  _buildDeletedMessage(msg, isMe)
-                                else if (msg.isImage)
-                                  _buildImageMessage(msg, isMe)
-                                else if (msg.isDocument)
-                                  _buildDocumentMessage(msg, isMe)
-                                else if (msg.isQuote)
-                                  _buildQuoteMessage(msg, isMe)
-                                else if (msg.isQuickReply)
-                                  _buildQuickReplyMessage(msg, isMe)
-                                else if (msg.isLocation)
-                                  _buildLocationMessage(msg, isMe)
-                                else
-                                  _buildTextMessage(msg, isMe),
-                              ],
+                          Padding(
+                            padding: EdgeInsets.only(
+                              top: _isSameSenderAsPrevious(i) ? 2 : 8,
+                            ),
+                            child: GestureDetector(
+                              onLongPress: () => _showMessageOptions(msg),
+                              child: Row(
+                                mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                                children: [
+                                  if (msg.deleted)
+                                    _buildDeletedMessage(msg, isMe)
+                                  else if (msg.isImage)
+                                    _buildImageMessage(msg, isMe)
+                                  else if (msg.isDocument)
+                                    _buildDocumentMessage(msg, isMe)
+                                  else if (msg.isQuote)
+                                    _buildQuoteMessage(msg, isMe)
+                                  else if (msg.isQuickReply)
+                                    _buildQuickReplyMessage(msg, isMe)
+                                  else if (msg.isLocation)
+                                    _buildLocationMessage(msg, isMe)
+                                  else
+                                    _buildTextMessage(msg, isMe),
+                                ],
+                              ),
                             ),
                           ),
                       ],
@@ -1371,7 +1384,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 leading: const Icon(Icons.info_outline),
                 title: const Text('Message Info'),
                 subtitle: Text(
-                  'Sent by ${msg.senderName} at ${_formatTime(msg.createdAt)}',
+                  'Sent at ${_formatTime(msg.createdAt)}',
                 ),
                 onTap: () => Navigator.pop(ctx),
               ),
