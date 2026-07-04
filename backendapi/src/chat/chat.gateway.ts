@@ -163,7 +163,10 @@ export class ChatGateway
           senderName =
             `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
         }
-        if (!senderName) senderName = sender.phone;
+        // Fallback to role-based label instead of exposing phone number
+        if (!senderName) {
+          senderName = sender.role === 'provider' ? 'Provider' : 'Customer';
+        }
       }
       return {
         id: m.id,
