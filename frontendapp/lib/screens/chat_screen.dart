@@ -42,6 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isTyping = false;
   final Set<String> _typingUsers = {};
   String? _currentUserId;
+  String? _userRole;
   String _targetLang = 'en';
   bool _translating = false;
   bool _showEmojiPicker = false;
@@ -109,11 +110,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _loadUserId() async {
     final uid = await AuthService.getUserId();
-    if (mounted) setState(() => _currentUserId = uid);
+    final role = await AuthService.getUserRole();
+    if (mounted) setState(() { _currentUserId = uid; _userRole = role; });
   }
 
   bool get _isDirect => widget.mode == 'direct' || widget.mode == 'direct_chat';
-  bool get _isProvider => widget.mode == 'provider';
+  bool get _isProvider => _userRole == 'provider';
 
   // ==================== MESSAGE CACHING ====================
 
