@@ -331,6 +331,30 @@ export class AuthService {
       throw new BadRequestException('User does not have this role');
     }
 
+    // Defensive fix: if user has provider role but no provider entity, create it
+    if (activeRole === UserRole.PROVIDER && !user.provider) {
+      const customerData = user.customer;
+      const provider = this.providerRepository.create({
+        user,
+        firstName: customerData?.firstName || '',
+        lastName: customerData?.lastName || undefined,
+      });
+      await this.providerRepository.save(provider);
+      user.provider = provider;
+    }
+
+    // Defensive fix: if user has customer role but no customer entity, create it
+    if (activeRole === UserRole.CUSTOMER && !user.customer) {
+      const providerData = user.provider;
+      const customer = this.customerRepository.create({
+        user,
+        firstName: providerData?.firstName || '',
+        lastName: providerData?.lastName || undefined,
+      });
+      await this.customerRepository.save(customer);
+      user.customer = customer;
+    }
+
     // Update the active role in the DB
     user.role = activeRole;
     await this.userRepository.save(user);
@@ -375,20 +399,13 @@ export class AuthService {
         lastName: lastName || undefined,
       });
       await this.customerRepository.save(customer);
-      // eslint-disable-next-line no-console
-      console.log('[addRole] Created customer entity:', customer.id, 'for userId:', userId);
     } else if (newRole === UserRole.PROVIDER && !user.provider) {
       const provider = this.providerRepository.create({
         user,
         firstName: firstName || '',
         lastName: lastName || undefined,
       });
-      const savedProvider = await this.providerRepository.save(provider);
-      // eslint-disable-next-line no-console
-      console.log('[addRole] Created provider entity:', savedProvider.id, 'for userId:', userId, 'provider.userId:', (savedProvider as any).userId);
-    } else {
-      // eslint-disable-next-line no-console
-      console.log('[addRole] Skipped creating entity. newRole:', newRole, 'user.provider:', user.provider?.id ?? 'null');
+      await this.providerRepository.save(provider);
     }
 
     // Update roles after profile is created successfully
