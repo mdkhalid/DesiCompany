@@ -41,6 +41,21 @@ export class UsersService {
     const providerId = provider?.id ?? user.provider?.id ?? null;
     const customerId = customer?.id ?? user.customer?.id ?? null;
 
+    // Debug log
+    // eslint-disable-next-line no-console
+    console.log('[getProfile]', {
+      userId,
+      phone: user.phone,
+      role: user.role,
+      roles: user.roles,
+      userProvider: user.provider?.id ?? 'null',
+      userCustomer: user.customer?.id ?? 'null',
+      directProvider: provider?.id ?? 'null',
+      directCustomer: customer?.id ?? 'null',
+      providerId,
+      customerId,
+    });
+
     return {
       id: user.id,
       phone: user.phone,

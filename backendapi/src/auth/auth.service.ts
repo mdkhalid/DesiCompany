@@ -370,14 +370,14 @@ export class AuthService {
     // Create profile FIRST, then update roles (avoid inconsistency)
     if (newRole === UserRole.CUSTOMER && !user.customer) {
       const customer = this.customerRepository.create({
-        user: { id: userId } as User,
+        user,
         firstName: firstName || '',
         lastName: lastName || undefined,
       });
       await this.customerRepository.save(customer);
     } else if (newRole === UserRole.PROVIDER && !user.provider) {
       const provider = this.providerRepository.create({
-        user: { id: userId } as User,
+        user,
         firstName: firstName || '',
         lastName: lastName || undefined,
       });
