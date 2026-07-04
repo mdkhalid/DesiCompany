@@ -120,6 +120,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF66A3FF),
         title: const Text('Requests'),
         centerTitle: true,
         actions: [

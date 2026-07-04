@@ -64,13 +64,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF6C3FB4), Color(0xFF5E35B1), Color(0xFF7C4DFF)],
-          ),
-        ),
+        color: const Color(0xFF66A3FF),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -169,7 +163,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                     description: loc.tr('customer_desc'),
                     isActive: widget.user.role == 'customer',
                     isNew: !widget.user.canBeCustomer,
-                    gradientColors: const [Color(0xFF6C3FB4), Color(0xFF7C4DFF)],
+                    gradientColors: const [Color(0xFF66A3FF), Color(0xFF66A3FF)],
                     onTap: () => _selectRole('customer'),
                   ),
                   const SizedBox(height: 12),

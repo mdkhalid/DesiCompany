@@ -209,6 +209,7 @@ class _ProviderBusySlotsScreenState extends State<ProviderBusySlotsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF66A3FF),
         title: const Text('Busy Slots'),
         actions: [
           IconButton(

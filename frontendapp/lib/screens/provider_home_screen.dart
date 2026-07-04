@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
-import 'booking_detail_screen.dart';
-import '../services/auth_service.dart';
 import '../theme.dart';
 import '../utils/id_helpers.dart';
-import 'support_tickets_screen.dart';
-import 'disputes_screen.dart';
-import 'provider_busy_slots_screen.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class ProviderHomeScreen extends StatefulWidget {
@@ -79,10 +74,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         preferredSize: const Size.fromHeight(64),
         child: SafeArea(
           child: Container(
-            decoration: const BoxDecoration(gradient: LinearGradient(
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [Color(0xFF00BFA5), Color(0xFF009688)],
-            )),
+            color: const Color(0xFF66A3FF),
             child: Row(
               children: [
                 const SizedBox(width: 12),
@@ -107,58 +99,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                     ],
                   ),
                 ),
-                Expanded(
-                  flex: 2,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildHeaderButton(Icons.work_outline, loc.tr('header_jobs'),
-                          () => Navigator.pushNamed(context, '/provider-open-jobs')),
-                        _buildHeaderButton(Icons.schedule, 'Schedule',
-                          () => Navigator.pushNamed(context, '/provider-schedule')),
-                        _buildHeaderButton(Icons.account_balance_wallet, loc.tr('header_wallet'),
-                          () => Navigator.pushNamed(context, '/wallet')),
-                        _buildHeaderButton(Icons.chat, loc.tr('nav_chat'),
-                          () => Navigator.pushNamed(context, '/conversations')),
-                        _buildHeaderButton(Icons.person, loc.tr('nav_profile'),
-                          () => Navigator.pushNamed(context, '/profile')),
-                        _buildHeaderButton(Icons.logout, loc.tr('header_logout'),
-                          () async {
-                            await AuthService.logout();
-                            if (mounted) Navigator.pushReplacementNamed(context, '/login');
-                          }),
-                        // Extra items in a sub-menu
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_horiz, color: Colors.white),
-                          onSelected: (v) {
-                            switch (v) {
-                              case 'services': Navigator.pushNamed(context, '/provider-services'); break;
-                              case 'reviews': Navigator.pushNamed(context, '/provider-reviews'); break;
-                              case 'kyc': Navigator.pushNamed(context, '/provider-kyc-upload'); break;
-                              case 'subscriptions': Navigator.pushNamed(context, '/provider-subscriptions'); break;
-                              case 'quotes': Navigator.pushNamed(context, '/provider-my-quotes'); break;
-                              case 'support': Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportTicketsScreen())); break;
-                              case 'disputes': Navigator.push(context, MaterialPageRoute(builder: (_) => const DisputesScreen())); break;
-                              case 'busy': Navigator.push(context, MaterialPageRoute(builder: (_) => const ProviderBusySlotsScreen())); break;
-                            }
-                          },
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(value: 'services', child: ListTile(leading: Icon(Icons.handyman), title: Text('Services'), dense: true)),
-                            const PopupMenuItem(value: 'reviews', child: ListTile(leading: Icon(Icons.star_rate), title: Text('Reviews'), dense: true)),
-                            const PopupMenuItem(value: 'kyc', child: ListTile(leading: Icon(Icons.verified_user), title: Text('KYC'), dense: true)),
-                            const PopupMenuItem(value: 'subscriptions', child: ListTile(leading: Icon(Icons.card_membership), title: Text('Subscriptions'), dense: true)),
-                            const PopupMenuItem(value: 'quotes', child: ListTile(leading: Icon(Icons.feedback), title: Text('Quotes'), dense: true)),
-                            const PopupMenuItem(value: 'support', child: ListTile(leading: Icon(Icons.support_agent), title: Text('Support'), dense: true)),
-                            const PopupMenuItem(value: 'disputes', child: ListTile(leading: Icon(Icons.gavel), title: Text('Disputes'), dense: true)),
-                            const PopupMenuItem(value: 'busy', child: ListTile(leading: Icon(Icons.event_busy), title: Text('Busy Slots'), dense: true)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                _buildHeaderButton(Icons.notifications_outlined, loc.tr('header_notifications'),
+                  () => Navigator.pushNamed(context, '/notifications')),
+                const SizedBox(width: 4),
+                _buildHeaderButton(Icons.person_outline, loc.tr('nav_profile'),
+                  () => Navigator.pushNamed(context, '/my-account')),
+                const SizedBox(width: 8),
               ],
             ),
           ),
@@ -167,13 +113,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF00BFA5), Color(0xFF009688)],
-                ),
-              ),
+              color: const Color(0xFF66A3FF),
               child: _bookings.isEmpty
                 ? Center(child: Container(
                     margin: const EdgeInsets.all(40),
@@ -309,7 +249,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               _navItem(Icons.assignment_outlined, 'Requests', true, () {}),
               _navItem(Icons.wallet, loc.tr('nav_wallet'), false, () => Navigator.pushNamed(context, '/wallet')),
               _navItem(Icons.chat, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/conversations')),
-              _navItem(Icons.person, loc.tr('nav_profile'), false, () => Navigator.pushNamed(context, '/profile')),
+              _navItem(Icons.person, 'My Account', false, () => Navigator.pushNamed(context, '/my-account')),
             ]),
           ),
         ),
@@ -347,9 +287,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: active ? const Color(0xFF00BFA5) : AppTheme.textSecondary, size: 24),
+        Icon(icon, color: active ? AppTheme.primary : AppTheme.textSecondary, size: 24),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: active ? const Color(0xFF00BFA5) : AppTheme.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 11, color: active ? AppTheme.primary : AppTheme.textSecondary)),
       ]),
     );
   }

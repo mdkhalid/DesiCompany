@@ -70,13 +70,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF6C3FB4), Color(0xFF5E35B1), Color(0xFF7C4DFF)],
-          ),
-        ),
+        color: const Color(0xFF66A3FF),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -143,7 +137,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     description: loc.tr('customer_desc'),
                     isSelected: _selectedRole == 'customer',
                     onTap: () => setState(() => _selectedRole = 'customer'),
-                    gradientColors: const [Color(0xFF6C3FB4), Color(0xFF7C4DFF)],
+                    gradientColors: const [Color(0xFF66A3FF), Color(0xFF66A3FF)],
                   ),
                   const SizedBox(height: 12),
                   _buildRoleCard(

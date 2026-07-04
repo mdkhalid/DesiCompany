@@ -280,6 +280,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF66A3FF),
         title: Text(loc.tr('conversations')),
         actions: [
           IconButton(

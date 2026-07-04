@@ -34,6 +34,7 @@ class _SupportTicketsScreenState extends State<SupportTicketsScreen> {
     final loc = LocalizationProvider.of(context);
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF66A3FF),
         title: Text(loc.tr('support_tickets')),
         actions: [
           IconButton(

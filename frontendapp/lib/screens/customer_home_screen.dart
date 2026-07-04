@@ -1,14 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
 import '../l10n/strings.dart';
 import '../widgets/distance_badge.dart';
-import '../widgets/labeled_icon_button.dart';
-import 'support_tickets_screen.dart';
-import 'disputes_screen.dart';
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -273,13 +269,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF6C3FB4), Color(0xFF5E35B1), Color(0xFF7C4DFF)],
-          ),
-        ),
+        color: const Color(0xFF66A3FF),
         child: SafeArea(
           child: Column(
             children: [
@@ -303,100 +293,62 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final loc = LocalizationProvider.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            GestureDetector(
-              onTap: _showLocationPicker,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.location_on, color: Colors.white, size: 18),
-                      ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _locationText == 'Set location' ? loc.tr('set_location') : _locationText,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.8),
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            loc.tr('find_services'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Row(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          GestureDetector(
+            onTap: _showLocationPicker,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                LabeledIconButton(
-                  icon: Icons.work_outline,
-                  label: loc.tr('header_jobs'),
-                  iconColor: Colors.white,
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
-                  onTap: () => Navigator.pushNamed(context, '/customer-jobs'),
-                ),
-                const SizedBox(width: 6),
-                LabeledIconButton(
-                  icon: Icons.card_giftcard,
-                  label: loc.tr('membership_plans'),
-                  iconColor: Colors.white,
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
-                  onTap: () => Navigator.pushNamed(context, '/customer-memberships'),
-                ),
-                const SizedBox(width: 6),
-                LabeledIconButton(
-                  icon: Icons.support_agent,
-                  label: loc.tr('support'),
-                  iconColor: Colors.white,
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportTicketsScreen())),
-                ),
-                const SizedBox(width: 6),
-                LabeledIconButton(
-                  icon: Icons.gavel,
-                  label: loc.tr('disputes'),
-                  iconColor: Colors.white,
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DisputesScreen())),
-                ),
-                const SizedBox(width: 6),
-                _buildNotificationButton(),
-                const SizedBox(width: 8),
-                _buildIconButton(
-                  Icons.logout,
-                  () async {
-                  await AuthService.logout();
-                  if (mounted) Navigator.pushReplacementNamed(context, '/login');
-                },
-                  tooltipKey: 'header_logout',
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _locationText == 'Set location' ? loc.tr('set_location') : _locationText,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          loc.tr('find_services'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          Row(
+            children: [
+              _buildNotificationButton(),
+              const SizedBox(width: 8),
+              _buildIconButton(
+                Icons.person_outline,
+                () => Navigator.pushNamed(context, '/my-account'),
+                tooltipKey: 'nav_profile',
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -924,7 +876,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               _navItem(Icons.home_rounded, loc.tr('nav_home'), true, () {}),
               _navItem(Icons.assignment_outlined, 'Requests', false, () => Navigator.pushNamed(context, '/customer-requests')),
               _navItem(Icons.chat_bubble_outline, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/conversations')),
-              _navItem(Icons.person_outline, loc.tr('nav_profile'), false, () => Navigator.pushNamed(context, '/profile')),
+              _navItem(Icons.person_outline, 'My Account', false, () => Navigator.pushNamed(context, '/my-account')),
             ],
           ),
         ),

@@ -752,6 +752,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final loc = LocalizationProvider.of(context);
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF66A3FF),
         title: Text(_isDirect && widget.providerName != null
             ? widget.providerName!
             : loc.tr('chat')),
@@ -1670,7 +1671,7 @@ class _ChatScreenState extends State<ChatScreen> {
         gradient: LinearGradient(
           colors: [
             const Color(0xFF6C3FB4).withValues(alpha: 0.08),
-            const Color(0xFF7C4DFF).withValues(alpha: 0.04),
+            const Color(0xFF66A3FF).withValues(alpha: 0.04),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

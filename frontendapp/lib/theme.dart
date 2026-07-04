@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const primary = Color(0xFF6C3FB4);
-  static const primaryLight = Color(0xFF9C6ADE);
-  static const secondary = Color(0xFF00BFA5);
+  static const primary = Color(0xFF66A3FF);
+  static const primaryDark = Color(0xFF4A8DF5);
+  static const primaryLight = Color(0xFF8DB8FF);
+  static const secondary = Color(0xFF5851DB);
   static const accent = Color(0xFFFF6F00);
-  static const background = Color(0xFFF5F0FF);
+  static const background = Color(0xFFF0F4FF);
   static const surface = Colors.white;
   static const error = Color(0xFFE53935);
   static const textPrimary = Color(0xFF1A1A2E);
   static const textSecondary = Color(0xFF6B7280);
-  static const gradientStart = Color(0xFF6C3FB4);
-  static const gradientEnd = Color(0xFF00BFA5);
+  static const gradientStart = Color(0xFF66A3FF);
+  static const gradientEnd = Color(0xFF5851DB);
 
   static ThemeData get theme => ThemeData(
     useMaterial3: true,
@@ -71,19 +72,11 @@ class AppTheme {
   );
 
   static BoxDecoration get gradientBackground => const BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [gradientStart, gradientEnd],
-    ),
+    color: primary,
   );
 
   static BoxDecoration get cardGradient => BoxDecoration(
-    gradient: LinearGradient(
-      colors: [Colors.purple.shade50, Colors.teal.shade50],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
+    color: Colors.blue.shade50,
     borderRadius: BorderRadius.circular(20),
   );
 }

@@ -19,6 +19,7 @@ import 'screens/customer_requests_screen.dart';
 import 'screens/provider_requests_screen.dart';
 import 'screens/my_bookings_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/my_account_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/write_review_screen.dart';
 import 'screens/provider_reviews_screen.dart';
@@ -136,6 +137,7 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
             '/admin-gateways': (_) => const AdminGatewaysScreen(),
             '/wallet': (_) => const WalletScreen(),
             '/profile': (_) => const ProfileScreen(),
+            '/my-account': (_) => const MyAccountScreen(),
             '/notifications': (_) => const NotificationsScreen(),
             '/provider-reviews': (_) => const ProviderReviewsScreen(),
             '/provider-services': (_) => const ProviderServicesScreen(),

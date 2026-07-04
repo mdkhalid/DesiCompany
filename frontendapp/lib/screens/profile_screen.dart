@@ -213,13 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final loc = LocalizationProvider.of(context);
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF6C3FB4), Color(0xFF5E35B1)],
-          ),
-        ),
+        color: const Color(0xFF66A3FF),
         child: SafeArea(
           child: Column(
             children: [
@@ -285,11 +279,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 width: 100,
                                 height: 100,
                                 decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF6C3FB4), Color(0xFF5E35B1)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
+                                  color: const Color(0xFF66A3FF),
                                   borderRadius: BorderRadius.circular(50),
                                 ),
                                 child: Center(

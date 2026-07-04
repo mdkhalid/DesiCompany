@@ -442,7 +442,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
   Widget build(BuildContext context) {
     final loc = LocalizationProvider.of(context);
     final p = widget.provider;
-    final color = Colors.deepPurple;
+    final color = AppTheme.primary;
     final totalReviews = p['totalReviews'] ?? _reviews.length;
     return Scaffold(
       body: CustomScrollView(slivers: [
@@ -515,8 +515,8 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                         icon: const Icon(Icons.directions, size: 18),
                         label: Text(loc.tr('get_directions')),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.deepPurple,
-                          side: const BorderSide(color: Colors.deepPurple),
+                          foregroundColor: AppTheme.primary,
+                          side: const BorderSide(color: AppTheme.primary),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -531,7 +531,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                       icon: const Icon(Icons.chat_bubble_outline, size: 18),
                       label: Text(loc.tr('ask_question')),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
+                        backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

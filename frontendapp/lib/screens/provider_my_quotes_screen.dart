@@ -123,10 +123,7 @@ class _ProviderMyQuotesScreenState extends State<ProviderMyQuotesScreen> {
     final loc = DesiCompanyApp.localeProvider!;
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF6C3FB4), Color(0xFF5E35B1), Color(0xFF7C4DFF)],
-        )),
+        color: const Color(0xFF66A3FF),
         child: SafeArea(
           child: Column(children: [
             _buildAppBar(loc),

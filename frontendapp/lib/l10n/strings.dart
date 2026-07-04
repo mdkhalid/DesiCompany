@@ -56,6 +56,7 @@ class AppStrings {
       'nav_chat': 'Chat',
       'nav_profile': 'Profile',
       'nav_wallet': 'Wallet',
+      'my_account': 'My Account',
 
       // Customer Home
       'find_services': 'Find Services',
@@ -470,6 +471,7 @@ class AppStrings {
       'nav_chat': 'चैट',
       'nav_profile': 'प्रोफ़ाइल',
       'nav_wallet': 'वॉलेट',
+      'my_account': 'मेरा खाता',
 
       // Customer Home
       'find_services': 'सेवाएं खोजें',

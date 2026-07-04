@@ -119,6 +119,7 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF66A3FF),
         title: const Text('My Requests'),
         centerTitle: true,
         actions: [

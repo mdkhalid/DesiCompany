@@ -171,7 +171,9 @@ class _ProviderKycUploadScreenState extends State<ProviderKycUploadScreen> {
   Widget build(BuildContext context) {
     final loc = LocalizationProvider.of(context);
     return Scaffold(
-      appBar: AppBar(leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (Navigator.canPop(context)) { Navigator.pop(context); } else { Navigator.pushReplacementNamed(context, '/provider-home'); } }), title: Text(loc.tr('kyc_upload'))),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF66A3FF),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () { if (Navigator.canPop(context)) { Navigator.pop(context); } else { Navigator.pushReplacementNamed(context, '/provider-home'); } }), title: Text(loc.tr('kyc_upload'))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
