@@ -124,9 +124,12 @@ class _ChatScreenState extends State<ChatScreen> {
       final type = _isDirect ? 'direct' : 'booking';
       final targetId = _isDirect ? _directRoomId : widget.bookingId;
       if (targetId == null) return;
+      debugPrint('[CHAT] Fetching messages: type=$type, targetId=$targetId');
       final data = await ApiService.get('/chat/messages/$type/$targetId?limit=100');
-      if (data is List && data.isNotEmpty) {
-        final msgs = data.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
+      final messagesList = data is Map ? data['messages'] : data;
+      if (messagesList is List && messagesList.isNotEmpty) {
+        debugPrint('[CHAT] Got ${messagesList.length} historical messages');
+        final msgs = messagesList.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
 
         // Merge with existing messages (avoid duplicates by ID)
         final existingIds = _messages.map((m) => m.id).toSet();
@@ -138,8 +141,12 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         if (mounted) setState(() {});
         _scrollToBottom();
+      } else {
+        debugPrint('[CHAT] No historical messages found');
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[CHAT] Error fetching messages: $e');
+    }
   }
 
   Future<void> _loadCachedMessages() async {
