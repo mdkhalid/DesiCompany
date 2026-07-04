@@ -3,6 +3,7 @@ import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 import 'booking_detail_screen.dart';
+import 'chat_screen.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class NotificationsScreen extends StatefulWidget {
@@ -50,20 +51,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _handleTap(Map<String, dynamic> n) {
-    // Mark as read
     if (n['isRead'] != true) {
       _markAsRead(n['id']);
     }
 
-    // Navigate based on metadata
     final metadata = n['metadata'];
-    if (metadata is Map && metadata['bookingId'] != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => BookingDetailScreen(bookingId: metadata['bookingId']),
-        ),
-      );
+    if (metadata is Map) {
+      if (metadata['type'] == 'chat_quick_reply' || metadata['type'] == 'chat_message') {
+        final roomId = metadata['roomId'] as String?;
+        final bookingId = metadata['bookingId'] as String?;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              bookingId: bookingId,
+              providerId: null,
+              mode: roomId != null ? 'direct' : 'booking',
+            ),
+          ),
+        );
+      } else if (metadata['bookingId'] != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BookingDetailScreen(bookingId: metadata['bookingId']),
+          ),
+        );
+      }
     }
   }
 
@@ -125,15 +139,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   itemBuilder: (context, index) {
                     final n = _notifications[index];
                     final isRead = n['isRead'] == true;
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: isRead ? Colors.white : AppTheme.primary.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isRead ? Colors.grey.shade200 : AppTheme.primary.withValues(alpha: 0.2),
+                    return Material(
+                      color: isRead ? Colors.white : AppTheme.primary.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isRead ? Colors.grey.shade200 : AppTheme.primary.withValues(alpha: 0.2),
+                          ),
                         ),
-                      ),
-                      child: ListTile(
+                        child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         onTap: () => _handleTap(n),
                         leading: Container(
@@ -169,6 +185,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 ),
                               )
                             : null,
+                       ),
                       ),
                     );
                   },
