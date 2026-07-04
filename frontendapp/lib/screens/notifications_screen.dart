@@ -60,13 +60,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (metadata['type'] == 'chat_quick_reply' || metadata['type'] == 'chat_message') {
         final roomId = metadata['roomId'] as String?;
         final bookingId = metadata['bookingId'] as String?;
+        final providerId = metadata['providerId'] as String?;
+        final isDirect = roomId != null && roomId.startsWith('direct_');
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => ChatScreen(
-              bookingId: bookingId,
-              providerId: null,
-              mode: roomId != null ? 'direct' : 'booking',
+              bookingId: isDirect ? null : bookingId,
+              providerId: isDirect ? (providerId ?? roomId.split('_').last) : null,
+              mode: isDirect ? 'direct' : 'booking',
             ),
           ),
         );

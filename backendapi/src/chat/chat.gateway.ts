@@ -676,6 +676,7 @@ export class ChatGateway
       if (directNotifyUserId) {
         await this.sendPushIfOffline(directNotifyUserId, 'New quote', content, {
           roomId: targetId,
+          providerId,
           type: 'chat_quote',
         });
       }
@@ -825,6 +826,7 @@ export class ChatGateway
       if (qrNotifyUserId) {
         await this.sendPushIfOffline(qrNotifyUserId, 'Quick reply', content, {
           roomId: targetId,
+          providerId: providerId,
           type: 'chat_quick_reply',
         });
       }
@@ -1212,6 +1214,7 @@ export class ChatGateway
     if (dmNotifyUserId) {
       await this.sendPushIfOffline(dmNotifyUserId, 'New message', content, {
         roomId,
+        providerId,
         type: 'direct_message',
       });
     }
@@ -1285,7 +1288,7 @@ export class ChatGateway
         imgNotifyUserId,
         'New image',
         'Sent an image',
-        { roomId: payload.roomId, type: 'direct_image' },
+        { roomId: payload.roomId, providerId, type: 'direct_image' },
       );
     }
   }
@@ -1364,6 +1367,7 @@ export class ChatGateway
     if (fileNotifyUserId) {
       await this.sendPushIfOffline(fileNotifyUserId, 'New file', content, {
         roomId: payload.roomId,
+        providerId,
         type: 'direct_file',
       });
     }
@@ -1433,7 +1437,7 @@ export class ChatGateway
         quoteNotifyUserId,
         'New quote',
         payload.message || `Quote: ₹${payload.amount}`,
-        { roomId: payload.roomId, type: 'direct_quote' },
+        { roomId: payload.roomId, providerId, type: 'direct_quote' },
       );
     }
   }
