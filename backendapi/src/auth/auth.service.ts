@@ -375,13 +375,20 @@ export class AuthService {
         lastName: lastName || undefined,
       });
       await this.customerRepository.save(customer);
+      // eslint-disable-next-line no-console
+      console.log('[addRole] Created customer entity:', customer.id, 'for userId:', userId);
     } else if (newRole === UserRole.PROVIDER && !user.provider) {
       const provider = this.providerRepository.create({
         user,
         firstName: firstName || '',
         lastName: lastName || undefined,
       });
-      await this.providerRepository.save(provider);
+      const savedProvider = await this.providerRepository.save(provider);
+      // eslint-disable-next-line no-console
+      console.log('[addRole] Created provider entity:', savedProvider.id, 'for userId:', userId, 'provider.userId:', (savedProvider as any).userId);
+    } else {
+      // eslint-disable-next-line no-console
+      console.log('[addRole] Skipped creating entity. newRole:', newRole, 'user.provider:', user.provider?.id ?? 'null');
     }
 
     // Update roles after profile is created successfully
