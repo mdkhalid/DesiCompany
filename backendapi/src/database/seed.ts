@@ -45,7 +45,11 @@ async function seed() {
       status: UserStatus.ACTIVE,
     });
     await userRepository.save(admin);
-    console.log('Admin user created');
+    console.log('Admin user created with phone: ' + (process.env.ADMIN_PHONE || '9999999999'));
+    console.log('  → Login OTP:');
+    console.log('     - In mock mode (OTP_MOCK=true in .env): Use "123456" for any phone');
+    console.log('     - In production: Check backend terminal logs for the OTP');
+    console.log('     - Or set OTP_MOCK=true in backend/.env for development');
   }
 
   const customerExists = await userRepository.findOne({

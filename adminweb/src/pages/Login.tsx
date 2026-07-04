@@ -7,6 +7,7 @@ export default function Login() {
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const navigate = useNavigate();
@@ -14,11 +15,13 @@ export default function Login() {
   async function handleSendOtp() {
     try {
       setError('');
+      setInfo('');
       setSending(true);
       await sendOtp(phone);
+      setInfo('OTP generated. In development mode, check the backend terminal for the OTP code (or use 123456 if OTP_MOCK=true is set).');
       setStep('otp');
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to send OTP');
+      setError(e instanceof Error ? e.message : 'Failed to send OTP. Please check the backend server.');
     } finally {
       setSending(false);
     }
@@ -27,6 +30,7 @@ export default function Login() {
   async function handleVerifyOtp() {
     try {
       setError('');
+      setInfo('');
       setVerifying(true);
       const data = await verifyOtp(phone, otp);
       if (data.user.role !== 'admin') {
@@ -35,7 +39,7 @@ export default function Login() {
       }
       navigate('/');
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to verify OTP');
+      setError(e instanceof Error ? e.message : 'Failed to verify OTP. Please check the backend server.');
     } finally {
       setVerifying(false);
     }
@@ -46,17 +50,24 @@ export default function Login() {
       <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-sm">
         <h1 className="text-2xl font-bold text-center mb-6">DesiCompany Admin</h1>
         {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>}
+        {info && <div className="bg-blue-50 text-blue-700 p-3 rounded-lg mb-4 text-sm">{info}</div>}
         {step === 'phone' ? (
           <div className="space-y-4">
-            <input
-              className="w-full border rounded-lg px-3 py-2"
-              placeholder="Phone number"
-              type="tel"
-              inputMode="numeric"
-              maxLength={10}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            />
+            <div>
+              <label className="text-sm font-medium block mb-1">Phone number</label>
+              <input
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="9999999999"
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Default admin: <span className="font-mono">9999999999</span>
+              </p>
+            </div>
             <button
               onClick={handleSendOtp}
               disabled={phone.length !== 10 || sending}
@@ -64,25 +75,43 @@ export default function Login() {
             >
               {sending ? 'Sending...' : 'Send OTP'}
             </button>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
+              <p className="font-medium mb-1">Dev Mode Info:</p>
+              <p>If <code className="bg-yellow-100 px-1 rounded">OTP_MOCK=true</code> is set in backend <code className="bg-yellow-100 px-1 rounded">.env</code>, use OTP <code className="bg-yellow-100 px-1 rounded font-bold">123456</code> for any phone number.</p>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-gray-500">OTP sent to {phone}</p>
-            <input
-              className="w-full border rounded-lg px-3 py-2"
-              placeholder="Enter OTP"
-              type="tel"
-              inputMode="numeric"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            />
+            <p className="text-sm text-gray-500">OTP sent to <span className="font-medium">{phone}</span></p>
+            <div>
+              <label className="text-sm font-medium block mb-1">Enter OTP</label>
+              <input
+                className="w-full border rounded-lg px-3 py-2"
+                placeholder="123456"
+                type="tel"
+                inputMode="numeric"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              />
+            </div>
             <button
               onClick={handleVerifyOtp}
               disabled={otp.length < 4 || verifying}
               className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {verifying ? 'Verifying...' : 'Verify & Login'}
+            </button>
+            <button
+              onClick={() => {
+                setStep('phone');
+                setOtp('');
+                setError('');
+                setInfo('');
+              }}
+              className="w-full text-sm text-gray-500 hover:text-gray-700"
+            >
+              ← Change phone number
             </button>
           </div>
         )}
