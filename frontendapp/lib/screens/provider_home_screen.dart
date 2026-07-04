@@ -16,11 +16,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   int _todayJobs = 0;
   double _todayEarnings = 0.0;
   int _pendingCount = 0;
+  int _unreadCount = 0;
   bool _loading = true;
   String _providerName = '';
 
   @override
-  void initState() { super.initState(); _loadBookings(); _loadProviderName(); }
+  void initState() { super.initState(); _loadBookings(); _loadProviderName(); _loadUnreadCount(); }
 
   Future<void> _loadProviderName() async {
     try {
@@ -35,6 +36,13 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           setState(() => _providerName = name);
         }
       }
+    } catch (e, st) { AppLogger.e('provider_home_screen', 'Operation failed', e, st); }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final data = await ApiService.get('/notifications/unread-count');
+      if (mounted) setState(() => _unreadCount = data as int);
     } catch (e, st) { AppLogger.e('provider_home_screen', 'Operation failed', e, st); }
   }
 
@@ -99,8 +107,41 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                     ],
                   ),
                 ),
-                _buildHeaderButton(Icons.notifications_outlined, loc.tr('header_notifications'),
-                  () => Navigator.pushNamed(context, '/notifications')),
+                GestureDetector(
+                  onTap: () async {
+                    await Navigator.pushNamed(context, '/notifications');
+                    _loadUnreadCount();
+                  },
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 20),
+                      ),
+                      if (_unreadCount > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFE53935),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              _unreadCount > 9 ? '9+' : '$_unreadCount',
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
                 const SizedBox(width: 4),
                 _buildHeaderButton(Icons.person_outline, loc.tr('nav_profile'),
                   () => Navigator.pushNamed(context, '/my-account')),
