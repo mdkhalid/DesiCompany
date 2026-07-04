@@ -28,10 +28,41 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    // Fallback: if relation is not loaded, query directly
+    let customerId = user.customer?.id ?? null;
+    let providerId = user.provider?.id ?? null;
+
+    if (!providerId) {
+      const provider = await this.providerRepository.findOne({
+        where: { user: { id: userId } },
+        select: { id: true },
+      });
+      providerId = provider?.id ?? null;
+    }
+
+    if (!customerId) {
+      const customer = await this.customerRepository.findOne({
+        where: { user: { id: userId } },
+        select: { id: true },
+      });
+      customerId = customer?.id ?? null;
+    }
+
     return {
-      ...user,
-      customerId: user.customer?.id ?? null,
-      providerId: user.provider?.id ?? null,
+      id: user.id,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+      roles: user.roles,
+      status: user.status,
+      profileImage: user.profileImage,
+      language: user.language,
+      fcmToken: user.fcmToken,
+      suspendedAt: user.suspendedAt,
+      suspendedBy: user.suspendedBy,
+      suspensionReason: user.suspensionReason,
+      customerId,
+      providerId,
     };
   }
 
