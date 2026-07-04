@@ -316,6 +316,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('new_message', (data) {
+      debugPrint('[CHAT] new_message received: ${data['messageType']} from=${data['senderName']}');
       final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
       _replaceOrAdd(msg);
       _saveMessagesToCache();
@@ -610,6 +611,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendQuickReply(String type) {
+    debugPrint('[CHAT] _sendQuickReply: type=$type, _isDirect=$_isDirect, _directRoomId=$_directRoomId, bookingId=${widget.bookingId}');
     if (_isDirect && _directRoomId != null) {
       _socket.emit('send_quick_reply', {
         'roomId': _directRoomId,
