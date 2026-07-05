@@ -38,6 +38,7 @@ export class ChatController {
     private readonly translationService: TranslationService,
   ) {}
 
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @Get('conversations')
   @ApiOperation({ summary: 'Get all conversations for current user' })
   @ApiResponse({ status: 200, description: 'List of conversations' })
@@ -49,6 +50,7 @@ export class ChatController {
     return this.chatService.getConversations(req.user.id, page, limit);
   }
 
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @Get('conversations/search')
   @ApiOperation({
     summary: 'Search conversations by partner name or last message',
