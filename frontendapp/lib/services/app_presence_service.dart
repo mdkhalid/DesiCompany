@@ -27,9 +27,10 @@ class AppPresenceService {
     _socket?.disconnect();
     _socket?.dispose();
 
-    final baseUrl = ApiService.baseUrl;
+    final url = '${ApiService.socketBaseUrl}/chat';
+    debugPrint('[PRESENCE] Connecting to $url');
     _socket = io.io(
-      '$baseUrl/chat',
+      url,
       io.OptionBuilder()
           .setTransports(['websocket'])
           .setAuth({'token': token})
@@ -48,11 +49,20 @@ class AppPresenceService {
       debugPrint('[PRESENCE] App presence socket disconnected');
     });
 
+    _socket!.onConnectError((err) {
+      debugPrint('[PRESENCE] Connect error: $err');
+    });
+
+    _socket!.onError((err) {
+      debugPrint('[PRESENCE] Socket error: $err');
+    });
+
     _socket!.on('presence_update', (data) {
       if (data is! Map) return;
       final userId = data['userId']?.toString();
       final online = data['online'] == true;
       if (userId == null) return;
+      debugPrint('[PRESENCE] presence_update userId=$userId online=$online');
       _controller.add(PresenceUpdate(userId, online));
     });
   }

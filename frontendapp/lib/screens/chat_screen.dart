@@ -276,10 +276,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _connectSocket() async {
     final token = await _getToken();
-    final baseWsUrl = ApiService.baseUrl
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://')
-        .replaceFirst('/api/v1', '');
+    final baseWsUrl = ApiService.socketBaseUrl;
 
     _socket = io.io('$baseWsUrl/chat', <String, dynamic>{
       'transports': ['websocket'],

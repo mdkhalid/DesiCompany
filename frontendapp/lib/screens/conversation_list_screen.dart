@@ -107,9 +107,9 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     final token = await AuthService.getToken();
     if (token == null) return;
 
-    final baseUrl = ApiService.baseUrl;
+    final url = '${ApiService.socketBaseUrl}/chat';
     _socket = io.io(
-      '$baseUrl/chat',
+      url,
       io.OptionBuilder()
           .setTransports(['websocket'])
           .setAuth({'token': token})

@@ -57,6 +57,14 @@ class ApiService {
     return 'http://localhost:3000/api/v1';
   }
 
+  /// Base URL for WebSocket connections (scheme + host + port only).
+  /// Strips the API prefix (e.g. /api/v1) so the Socket.IO namespace
+  /// resolves to /chat instead of /api/v1/chat.
+  static String get socketBaseUrl {
+    final uri = Uri.parse(baseUrl);
+    return '${uri.scheme}://${uri.host}:${uri.port}';
+  }
+
   static Future<String?> getToken() async {
     return AuthService.getToken();
   }
@@ -114,15 +122,7 @@ class ApiService {
     );
     if (res.statusCode == 304) return null;
     if (res.statusCode >= 400) throw _buildException(res);
-    if (res.statusCode == 304) return null;
-        if (res.statusCode >= 400) throw _buildException(res);
-        if (res.statusCode == 304) return null;
-        if (res.statusCode >= 400) throw _buildException(res);
-        if (res.statusCode == 304) return null;
-        if (res.statusCode >= 400) throw _buildException(res);
-        if (res.statusCode == 304) return null;
-        if (res.statusCode >= 400) throw _buildException(res);
-        return jsonDecode(res.body);
+    return jsonDecode(res.body);
   }
 
   static Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
