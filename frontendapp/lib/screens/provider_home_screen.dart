@@ -453,10 +453,22 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                               final customer = b['customer'];
                               String customerName = 'Customer';
                               if (customer is Map) {
-                                final firstName = customer['firstName'] ?? '';
-                                final lastName = customer['lastName'] ?? '';
+                                // Try direct firstName/lastName on customer
+                                String firstName = customer['firstName']?.toString() ?? '';
+                                String lastName = customer['lastName']?.toString() ?? '';
+                                
+                                // If empty, try nested user object
+                                if (firstName.isEmpty && lastName.isEmpty) {
+                                  final user = customer['user'];
+                                  if (user is Map) {
+                                    firstName = user['firstName']?.toString() ?? '';
+                                    lastName = user['lastName']?.toString() ?? '';
+                                  }
+                                }
+                                
                                 final fullName = '$firstName $lastName'.trim();
-                                if (fullName.isNotEmpty) {
+                                // Only use the name if it's not empty and doesn't look like a phone number
+                                if (fullName.isNotEmpty && !RegExp(r'^[+\d]').hasMatch(fullName)) {
                                   customerName = fullName;
                                 }
                               }

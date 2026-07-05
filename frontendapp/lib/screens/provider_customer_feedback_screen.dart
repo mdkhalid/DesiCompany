@@ -182,9 +182,7 @@ class _ProviderCustomerFeedbackScreenState
             radius: 24,
             backgroundColor: Colors.white.withValues(alpha: 0.2),
             child: Text(
-              widget.customerName.isNotEmpty
-                  ? widget.customerName[0].toUpperCase()
-                  : '?',
+              _getInitial(widget.customerName),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -402,14 +400,46 @@ class _ProviderCustomerFeedbackScreenState
 
     String customerLabel = '';
     final feedbackCustomer = feedback['customer'];
-    final feedbackUser = feedbackCustomer is Map ? (feedbackCustomer['user'] as Map?) : null;
-    if (feedbackUser != null) {
-      customerLabel = '${feedbackUser['firstName'] ?? ''} ${feedbackUser['lastName'] ?? ''}'.trim();
-    } else if (booking is Map) {
+    if (feedbackCustomer is Map) {
+      // Try direct firstName/lastName on customer
+      String firstName = feedbackCustomer['firstName']?.toString() ?? '';
+      String lastName = feedbackCustomer['lastName']?.toString() ?? '';
+      
+      // If empty, try nested user object (for backwards compatibility)
+      if (firstName.isEmpty && lastName.isEmpty) {
+        final user = feedbackCustomer['user'];
+        if (user is Map) {
+          firstName = user['firstName']?.toString() ?? '';
+          lastName = user['lastName']?.toString() ?? '';
+        }
+      }
+      
+      final fullName = '$firstName $lastName'.trim();
+      // Only use the name if it's not empty and doesn't look like a phone number
+      if (fullName.isNotEmpty && !RegExp(r'^[+\d]').hasMatch(fullName)) {
+        customerLabel = fullName;
+      }
+    }
+    
+    // Fallback to booking.customer if still empty
+    if (customerLabel.isEmpty && booking is Map) {
       final customer = booking['customer'];
-      final user = customer is Map ? (customer['user'] as Map?) : null;
-      if (user != null) {
-        customerLabel = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
+      if (customer is Map) {
+        String firstName = customer['firstName']?.toString() ?? '';
+        String lastName = customer['lastName']?.toString() ?? '';
+        
+        if (firstName.isEmpty && lastName.isEmpty) {
+          final user = customer['user'];
+          if (user is Map) {
+            firstName = user['firstName']?.toString() ?? '';
+            lastName = user['lastName']?.toString() ?? '';
+          }
+        }
+        
+        final fullName = '$firstName $lastName'.trim();
+        if (fullName.isNotEmpty && !RegExp(r'^[+\d]').hasMatch(fullName)) {
+          customerLabel = fullName;
+        }
       }
     }
 
@@ -502,6 +532,17 @@ class _ProviderCustomerFeedbackScreenState
         ],
       ),
     );
+  }
+
+  String _getInitial(String name) {
+    if (name.isEmpty) return 'C';
+    // Find the first letter (skip non-letter characters like +, numbers, etc.)
+    for (int i = 0; i < name.length; i++) {
+      if (RegExp(r'[a-zA-Z]').hasMatch(name[i])) {
+        return name[i].toUpperCase();
+      }
+    }
+    return 'C'; // Fallback to 'C' for Customer
   }
 
   String _tagLabel(String value, LocalizationProvider loc) {
