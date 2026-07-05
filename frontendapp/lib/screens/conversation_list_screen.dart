@@ -164,6 +164,21 @@ class _ConversationListScreenState extends State<ConversationListScreen>
       }
     });
 
+    _socket!.on('presence_update', (data) {
+      if (data is! Map) return;
+      final userId = data['userId']?.toString();
+      final online = data['online'] == true;
+      if (userId == null || !mounted) return;
+      setState(() {
+        for (final c in _conversations) {
+          if (c.partnerId == userId) c.isOnline = online;
+        }
+        for (final c in _searchResults) {
+          if (c.partnerId == userId) c.isOnline = online;
+        }
+      });
+    });
+
     _socket!.on('new_message', (data) {
       _loadConversations();
     });
@@ -198,6 +213,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     _socket?.off('online_status');
     _socket?.off('user_online');
     _socket?.off('user_offline');
+    _socket?.off('presence_update');
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
@@ -211,9 +227,26 @@ class _ConversationListScreenState extends State<ConversationListScreen>
       });
       final data = await ApiService.get('/chat/conversations');
       if (!mounted) return;
+
+      // Preserve socket-updated isOnline state from existing conversations
+      final existingOnlineMap = <String, bool>{};
+      for (final c in _conversations) {
+        if (c.isOnline) existingOnlineMap[c.partnerId] = true;
+      }
+      for (final c in _searchResults) {
+        if (c.isOnline) existingOnlineMap[c.partnerId] = true;
+      }
+
       setState(() {
         final list = data is List ? data : (data['conversations'] as List);
         _conversations = list.map((c) => Conversation.fromJson(c)).toList();
+        // Merge: if socket knew a partner was online, keep it online
+        for (final c in _conversations) {
+          if (existingOnlineMap[c.partnerId] == true) c.isOnline = true;
+        }
+        for (final c in _searchResults) {
+          if (existingOnlineMap[c.partnerId] == true) c.isOnline = true;
+        }
         _loading = false;
       });
     } catch (e) {

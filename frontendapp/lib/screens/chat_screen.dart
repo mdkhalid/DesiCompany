@@ -942,15 +942,13 @@ class _ChatScreenState extends State<ChatScreen> {
                           children: [
                             _buildTypingDots(),
                             const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'typing...',
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: 12,
-                                  fontStyle: FontStyle.italic,
-                                ),
+                            Text(
+                              'typing...',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
                           ],
@@ -976,6 +974,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: GestureDetector(
                               onLongPress: () => _showMessageOptions(msg),
                               child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                                 children: [
                                   if (msg.deleted)
@@ -1139,11 +1138,9 @@ class _ChatScreenState extends State<ChatScreen> {
           bottomRight: Radius.circular(isMe ? 4 : 16),
         ),
       ),
-      child: Wrap(
-        alignment: isMe ? WrapAlignment.end : WrapAlignment.start,
-        crossAxisAlignment: WrapCrossAlignment.end,
-        spacing: 4,
-        runSpacing: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             msg.content,
