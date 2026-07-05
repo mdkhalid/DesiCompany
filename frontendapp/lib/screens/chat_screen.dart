@@ -974,7 +974,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: GestureDetector(
                               onLongPress: () => _showMessageOptions(msg),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisSize: MainAxisSize.max,
                                 mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                                 children: [
                                   if (msg.deleted)
