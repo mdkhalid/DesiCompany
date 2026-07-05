@@ -312,7 +312,7 @@ export class ChatService {
     targetId: string,
     page = 1,
     limit = 50,
-  ): Promise<{ messages: Message[] | DirectMessage[]; total: number }> {
+  ): Promise<{ messages: Record<string, unknown>[]; total: number }> {
     if (type === 'booking') {
       const [messages, total] = await this.messageRepository.findAndCount({
         where: { booking: { id: targetId } },
@@ -328,7 +328,7 @@ export class ChatService {
         { isRead: true },
       );
 
-      return { messages: messages.reverse(), total };
+      return { messages: messages.reverse().map((m) => this.formatMessage(m)), total };
     } else {
       // Direct message - parse room ID
       const parts = targetId.split('_');
@@ -376,8 +376,64 @@ export class ChatService {
         { isRead: true },
       );
 
-      return { messages: messages.reverse(), total };
+      return { messages: messages.reverse().map((m) => this.formatDirectMessage(m)), total };
     }
+  }
+
+  private formatMessage(m: Message): Record<string, unknown> {
+    const sender = m.sender;
+    let senderName = '';
+    if (sender) {
+      if (sender.customer) {
+        senderName = `${sender.customer.firstName || ''} ${sender.customer.lastName || ''}`.trim();
+      } else if (sender.provider) {
+        senderName = `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
+      }
+      if (!senderName) {
+        senderName = sender.role === 'provider' ? 'Provider' : 'Customer';
+      }
+    }
+    return {
+      id: m.id,
+      content: m.content,
+      senderId: sender?.id ?? '',
+      senderName,
+      senderRole: sender?.role ?? '',
+      messageType: m.messageType,
+      metadata: m.metadata,
+      createdAt: m.createdAt,
+      isRead: m.isRead,
+      edited: m.edited,
+      deleted: m.deleted,
+    };
+  }
+
+  private formatDirectMessage(m: DirectMessage): Record<string, unknown> {
+    const sender = m.sender;
+    let senderName = '';
+    if (sender) {
+      if (sender.customer) {
+        senderName = `${sender.customer.firstName || ''} ${sender.customer.lastName || ''}`.trim();
+      } else if (sender.provider) {
+        senderName = `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
+      }
+      if (!senderName) {
+        senderName = sender.role === 'provider' ? 'Provider' : 'Customer';
+      }
+    }
+    return {
+      id: m.id,
+      content: m.content,
+      senderId: sender?.id ?? '',
+      senderName,
+      senderRole: sender?.role ?? '',
+      messageType: m.messageType,
+      metadata: m.metadata,
+      createdAt: m.createdAt,
+      isRead: m.isRead,
+      edited: m.edited,
+      deleted: m.deleted,
+    };
   }
 
   async sendMessage(
