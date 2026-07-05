@@ -125,6 +125,10 @@ export class NotificationGateway
     }
   }
 
+  emitBookingStatusUpdate(userId: string, bookingId: string, status: string) {
+    this.sendToUser(userId, 'booking_status_updated', { bookingId, status });
+  }
+
   async sendNotification(
     userId: string,
     title: string,

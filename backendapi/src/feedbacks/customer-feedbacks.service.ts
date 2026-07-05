@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,6 +15,8 @@ import { CustomerFeedback } from './entities/customer-feedback.entity';
 
 @Injectable()
 export class CustomerFeedbacksService {
+  private readonly logger = new Logger(CustomerFeedbacksService.name);
+  
   constructor(
     @InjectRepository(CustomerFeedback)
     private readonly feedbackRepository: Repository<CustomerFeedback>,
@@ -24,9 +27,13 @@ export class CustomerFeedbacksService {
   ) {}
 
   async create(dto: CreateCustomerFeedbackDto, providerUserId: string) {
+    this.logger.log(`Creating feedback for booking ${dto.bookingId} by provider user ${providerUserId}`);
+    
     const provider = await this.providerRepository.findOne({
       where: { user: { id: providerUserId } },
     });
+    this.logger.log(`Provider found: ${provider ? provider.id : 'null'}`);
+    
     if (!provider) {
       throw new NotFoundException('Provider profile not found');
     }
@@ -35,11 +42,14 @@ export class CustomerFeedbacksService {
       where: { id: dto.bookingId },
       relations: { provider: { user: true }, customer: true },
     });
+    this.logger.log(`Booking found: ${booking ? booking.id : 'null'}, status: ${booking?.status}, provider.id: ${booking?.provider?.id}`);
+    
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
 
     if (booking.provider.id !== provider.id) {
+      this.logger.warn(`Provider ID mismatch: booking.provider.id=${booking.provider.id}, provider.id=${provider.id}`);
       throw new ForbiddenException(
         'You can only leave feedback for your own bookings',
       );
@@ -67,6 +77,7 @@ export class CustomerFeedbacksService {
       tags: dto.tags ?? [],
     });
     await this.feedbackRepository.save(feedback);
+    this.logger.log(`Feedback created successfully: ${feedback.id}`);
 
     return feedback;
   }

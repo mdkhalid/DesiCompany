@@ -23,6 +23,7 @@ import { ProviderDateOverride } from '../services/entities/provider-date-overrid
 import { ProviderBusySlot } from '../services/entities/provider-busy-slot.entity';
 import { CommissionService } from '../commissions/commission.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationGateway } from '../notifications/notification.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PlatformFeesService } from '../platform-fees/platform-fees.service';
@@ -67,6 +68,7 @@ export class BookingsService {
     private readonly chatGateway: ChatGateway,
     private readonly commissionService: CommissionService,
     private readonly notificationsService: NotificationsService,
+    private readonly notificationGateway: NotificationGateway,
     private readonly pushNotificationsService: PushNotificationsService,
     private readonly loyaltyService: LoyaltyService,
     private readonly platformFeesService: PlatformFeesService,
