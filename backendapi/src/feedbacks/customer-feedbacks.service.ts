@@ -74,7 +74,7 @@ export class CustomerFeedbacksService {
   findByProvider(providerId: string) {
     return this.feedbackRepository.find({
       where: { provider: { id: providerId } },
-      relations: { booking: true, customer: { user: true } },
+      relations: { booking: { customer: { user: true } }, customer: { user: true } },
       order: { createdAt: 'DESC' },
     });
   }
@@ -92,7 +92,7 @@ export class CustomerFeedbacksService {
   findAll() {
     return this.feedbackRepository.find({
       relations: {
-        booking: true,
+        booking: { customer: { user: true } },
         customer: { user: true },
         provider: { user: true },
       },

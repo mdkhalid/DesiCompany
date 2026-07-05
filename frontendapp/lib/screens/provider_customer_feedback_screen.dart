@@ -388,7 +388,7 @@ class _ProviderCustomerFeedbackScreenState
   Widget _buildFeedbackCard(Map feedback, LocalizationProvider loc) {
     final rating = double.tryParse('${feedback['rating'] ?? '0'}') ?? 0.0;
     final comment = feedback['comment'] as String?;
-    final tags = (feedback['tags'] as List?)?.cast<String>() ?? [];
+    final tags = (feedback['tags'] as List?)?.cast<String>().where((s) => s.isNotEmpty).toList() ?? [];
     final createdAt = feedback['createdAt'] as String?;
     final booking = feedback['booking'];
 
