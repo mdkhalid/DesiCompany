@@ -336,13 +336,28 @@ export class ChatService {
         return { messages: [], total: 0 };
       }
 
-      const customerId = parts[1];
+      const customerUserId = parts[1];
       const providerId = parts[2];
+
+      // Resolve User IDs to entity IDs
+      const customerEntity = await this.customerRepository.findOne({
+        where: { user: { id: customerUserId } },
+      });
+      if (!customerEntity) {
+        return { messages: [], total: 0 };
+      }
+
+      const providerEntity = await this.providerRepository.findOne({
+        where: { id: providerId },
+      });
+      if (!providerEntity) {
+        return { messages: [], total: 0 };
+      }
 
       const [messages, total] = await this.directMessageRepository.findAndCount(
         {
           where: [
-            { customer: { id: customerId }, provider: { id: providerId } },
+            { customer: { id: customerEntity.id }, provider: { id: providerEntity.id } },
           ],
           relations: { sender: { customer: true, provider: true } },
           order: { createdAt: 'DESC' },
@@ -354,8 +369,8 @@ export class ChatService {
       // Mark as read
       await this.directMessageRepository.update(
         {
-          customer: { id: customerId },
-          provider: { id: providerId },
+          customer: { id: customerEntity.id },
+          provider: { id: providerEntity.id },
           isRead: false,
         },
         { isRead: true },
@@ -388,8 +403,15 @@ export class ChatService {
         throw new Error('Invalid direct chat room ID');
       }
 
-      const customerId = parts[1];
+      const customerUserId = parts[1];
       const providerId = parts[2];
+
+      const customerEntity = await this.customerRepository.findOne({
+        where: { user: { id: customerUserId } },
+      });
+      if (!customerEntity) {
+        throw new Error('Customer not found');
+      }
 
       const provider = await this.providerRepository.findOne({
         where: { id: providerId },
@@ -400,7 +422,7 @@ export class ChatService {
       }
 
       const message = this.directMessageRepository.create({
-        customer: { id: customerId } as Customer,
+        customer: { id: customerEntity.id } as Customer,
         provider: { id: providerId } as Provider,
         sender: { id: userId } as User,
         content,
@@ -453,10 +475,21 @@ export class ChatService {
     if (roomId.startsWith('direct_')) {
       const parts = roomId.split('_');
       if (parts.length !== 3) return { messages: [], total: 0 };
-      const customerId = parts[1];
+      const customerUserId = parts[1];
       const providerId = parts[2];
+
+      const customerEntity = await this.customerRepository.findOne({
+        where: { user: { id: customerUserId } },
+      });
+      if (!customerEntity) return { messages: [], total: 0 };
+
+      const providerEntity = await this.providerRepository.findOne({
+        where: { id: providerId },
+      });
+      if (!providerEntity) return { messages: [], total: 0 };
+
       const [messages] = await this.directMessageRepository.findAndCount({
-        where: { customer: { id: customerId }, provider: { id: providerId } },
+        where: { customer: { id: customerEntity.id }, provider: { id: providerEntity.id } },
         relations: { sender: { customer: true, provider: true } },
         order: { createdAt: 'DESC' },
       });
@@ -487,12 +520,17 @@ export class ChatService {
       const parts = targetId.split('_');
       if (parts.length !== 3 || parts[0] !== 'direct') return;
 
-      const customerId = parts[1];
+      const customerUserId = parts[1];
       const providerId = parts[2];
+
+      const customerEntity = await this.customerRepository.findOne({
+        where: { user: { id: customerUserId } },
+      });
+      if (!customerEntity) return;
 
       await this.directMessageRepository.update(
         {
-          customer: { id: customerId },
+          customer: { id: customerEntity.id },
           provider: { id: providerId },
           isRead: false,
         },

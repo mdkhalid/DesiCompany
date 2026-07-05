@@ -123,10 +123,10 @@ class _ConversationListScreenState extends State<ConversationListScreen>
         final onlineIds = raw.map((e) => e.toString()).toSet();
         setState(() {
           for (final c in _conversations) {
-            c.isOnline = onlineIds.contains(c.partnerId);
+            if (onlineIds.contains(c.partnerId)) c.isOnline = true;
           }
           for (final c in _searchResults) {
-            c.isOnline = onlineIds.contains(c.partnerId);
+            if (onlineIds.contains(c.partnerId)) c.isOnline = true;
           }
         });
       }

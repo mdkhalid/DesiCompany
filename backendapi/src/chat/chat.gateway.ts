@@ -1035,11 +1035,17 @@ export class ChatGateway
     if (payload.roomId) {
       const parts = payload.roomId.split('_');
       if (parts.length === 3 && parts[0] === 'direct') {
-        const customerId = parts[1];
+        const customerUserId = parts[1];
         const providerId = parts[2];
+
+        const customerEntity = await this.customerRepository.findOne({
+          where: { user: { id: customerUserId } },
+        });
+        if (!customerEntity) return;
+
         const unreadDms = await this.directMessageRepository.find({
           where: {
-            customer: { id: customerId },
+            customer: { id: customerEntity.id },
             provider: { id: providerId },
             isRead: false,
           },
@@ -1049,7 +1055,7 @@ export class ChatGateway
         if (unreadIds.length > 0) {
           await this.directMessageRepository.update(
             {
-              customer: { id: customerId },
+              customer: { id: customerEntity.id },
               provider: { id: providerId },
               isRead: false,
             },
