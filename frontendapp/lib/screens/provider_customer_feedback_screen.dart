@@ -401,7 +401,11 @@ class _ProviderCustomerFeedbackScreenState
     }
 
     String customerLabel = '';
-    if (booking is Map) {
+    final feedbackCustomer = feedback['customer'];
+    final feedbackUser = feedbackCustomer is Map ? (feedbackCustomer['user'] as Map?) : null;
+    if (feedbackUser != null) {
+      customerLabel = '${feedbackUser['firstName'] ?? ''} ${feedbackUser['lastName'] ?? ''}'.trim();
+    } else if (booking is Map) {
       final customer = booking['customer'];
       final user = customer is Map ? (customer['user'] as Map?) : null;
       if (user != null) {
