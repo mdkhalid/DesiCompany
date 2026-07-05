@@ -416,7 +416,7 @@ class _ProviderCustomerFeedbackScreenState
       
       final fullName = '$firstName $lastName'.trim();
       // Only use the name if it's not empty and doesn't look like a phone number
-      if (fullName.isNotEmpty && !RegExp(r'^[+\d]').hasMatch(fullName)) {
+      if (fullName.isNotEmpty && !_looksLikePhoneNumber(fullName)) {
         customerLabel = fullName;
       }
     }
@@ -437,7 +437,7 @@ class _ProviderCustomerFeedbackScreenState
         }
         
         final fullName = '$firstName $lastName'.trim();
-        if (fullName.isNotEmpty && !RegExp(r'^[+\d]').hasMatch(fullName)) {
+        if (fullName.isNotEmpty && !_looksLikePhoneNumber(fullName)) {
           customerLabel = fullName;
         }
       }
@@ -543,6 +543,29 @@ class _ProviderCustomerFeedbackScreenState
       }
     }
     return 'C'; // Fallback to 'C' for Customer
+  }
+
+  bool _looksLikePhoneNumber(String text) {
+    // Remove common phone number formatting characters
+    final cleaned = text.replaceAll(RegExp(r'[\s\-\(\)\.]'), '');
+    
+    // If it's mostly digits (more than 60% digits), it's likely a phone number
+    final digitCount = RegExp(r'\d').allMatches(cleaned).length;
+    if (cleaned.length > 0 && digitCount / cleaned.length > 0.6) {
+      return true;
+    }
+    
+    // If it starts with + and has many digits, it's a phone number
+    if (text.startsWith('+') && RegExp(r'\d').allMatches(text).length >= 7) {
+      return true;
+    }
+    
+    // If it's very long and mostly numbers, it's likely a phone number
+    if (cleaned.length >= 10 && digitCount >= 8) {
+      return true;
+    }
+    
+    return false;
   }
 
   String _tagLabel(String value, LocalizationProvider loc) {
