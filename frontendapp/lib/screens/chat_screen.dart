@@ -60,7 +60,6 @@ class _ChatScreenState extends State<ChatScreen> {
   // Hive boxes - nullable until initialized
   Box<HiveChatMessage>? _messagesBox;
   Box<HiveChatMessage>? _pendingBox;
-  bool _hiveReady = false;
 
   // Retry timer
   Timer? _retryTimer;
@@ -80,7 +79,6 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _initHive() async {
     _messagesBox = await Hive.openBox<HiveChatMessage>(_messagesBoxName);
     _pendingBox = await Hive.openBox<HiveChatMessage>(_pendingBoxName);
-    _hiveReady = true;
     _loadCachedMessages();
   }
 
@@ -149,11 +147,11 @@ class _ChatScreenState extends State<ChatScreen> {
       final type = _isDirect ? 'direct' : 'booking';
       final targetId = _isDirect ? _directRoomId : widget.bookingId;
       if (targetId == null) return;
-      debugPrint('[CHAT] Fetching messages: type=$type, targetId=$targetId');
+
       final data = await ApiService.get('/chat/messages/$type/$targetId?limit=100');
       final messagesList = data is Map ? data['messages'] : data;
       if (messagesList is List && messagesList.isNotEmpty) {
-        debugPrint('[CHAT] Got ${messagesList.length} historical messages');
+
         final msgs = messagesList.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
 
         // Merge with existing messages (avoid duplicates by ID)
@@ -167,10 +165,10 @@ class _ChatScreenState extends State<ChatScreen> {
         if (mounted) setState(() {});
         _scrollToBottom();
       } else {
-        debugPrint('[CHAT] No historical messages found');
+
       }
     } catch (e) {
-      debugPrint('[CHAT] Error fetching messages: $e');
+
     }
   }
 
@@ -285,22 +283,16 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.onConnect((_) {
-      debugPrint('[CHAT] Socket connected');
       if (_isDirect) {
-        debugPrint('[CHAT] Starting direct chat with providerId: ${widget.providerId}');
         _socket.emit('start_direct_chat', {'providerId': widget.providerId});
       } else if (widget.bookingId != null) {
-        debugPrint('[CHAT] Joining booking: ${widget.bookingId}');
         _socket.emit('join', {'bookingId': widget.bookingId});
-      } else {
-        debugPrint('[CHAT] No bookingId or providerId - cannot join');
       }
-      // Load historical messages
       _fetchHistoricalMessages();
     });
 
     _socket.onConnectError((err) async {
-      debugPrint('[CHAT] Connection error: $err');      final msg = err.toString().toLowerCase();
+      final msg = err.toString().toLowerCase();
       if (msg.contains('unauthorized') || msg.contains('invalid token') || msg.contains('401')) {
         final refreshed = await AuthService.refreshAccessToken();
         if (refreshed != null && mounted) {
@@ -312,13 +304,11 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.onDisconnect((_) {
-      debugPrint('[CHAT] Socket disconnected');
       if (mounted) setState(() => _partnerOnline = false);
     });
 
     _socket.on('direct_chat_started', (data) {
       final roomId = data['roomId'] as String;
-      debugPrint('[CHAT] direct_chat_started: roomId=$roomId');
       _directRoomId = roomId;
       if (mounted) {
         setState(() {
@@ -370,7 +360,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('direct_chat_history', (data) {
-      debugPrint('[CHAT] Got direct_chat_history: ${(data as List).length} messages');
       final msgs = data.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
       setState(() {
         _messages.clear();
@@ -381,7 +370,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('history', (data) {
-      debugPrint('[CHAT] Got history: ${(data as List).length} messages');
       final msgs = data.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
       setState(() {
         _messages.clear();
@@ -398,7 +386,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('new_message', (data) {
-      debugPrint('[CHAT] new_message received: ${data['messageType']} from=${data['senderName']}');
       final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
       _replaceOrAdd(msg);
       _saveMessagesToCache();
@@ -529,7 +516,7 @@ class _ChatScreenState extends State<ChatScreen> {
     
     if (_socket.connected) {
       if (_isDirect && _directRoomId != null) {
-        debugPrint('[CHAT] Sending direct_message to room $_directRoomId');
+
         _socket.emit('send_direct_message', {
           'roomId': _directRoomId,
           'content': content,
@@ -541,7 +528,7 @@ class _ChatScreenState extends State<ChatScreen> {
         });
       }
     } else {
-      debugPrint('[CHAT] Offline: Adding message to pending queue');
+
       _addPendingMessage(tempMsg);
     }
     _controller.clear();
@@ -693,7 +680,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendQuickReply(String type) {
-    debugPrint('[CHAT] _sendQuickReply: type=$type, _isDirect=$_isDirect, _directRoomId=$_directRoomId, bookingId=${widget.bookingId}');
+
     if (_isDirect && _directRoomId != null) {
       _socket.emit('send_quick_reply', {
         'roomId': _directRoomId,

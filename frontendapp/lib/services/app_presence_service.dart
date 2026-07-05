@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import 'api_service.dart';
@@ -16,7 +15,6 @@ class AppPresenceService {
   static io.Socket? _socket;
   static final _controller = StreamController<PresenceUpdate>.broadcast();
 
-  /// Broadcast stream of presence updates from the global /chat socket.
   static Stream<PresenceUpdate> get updates => _controller.stream;
 
   static Future<void> connect() async {
@@ -28,7 +26,6 @@ class AppPresenceService {
     _socket?.dispose();
 
     final url = '${ApiService.socketBaseUrl}/chat';
-    debugPrint('[PRESENCE] Connecting to $url');
     _socket = io.io(
       url,
       io.OptionBuilder()
@@ -41,28 +38,11 @@ class AppPresenceService {
           .build(),
     );
 
-    _socket!.onConnect((_) {
-      debugPrint('[PRESENCE] App presence socket connected');
-    });
-
-    _socket!.onDisconnect((_) {
-      debugPrint('[PRESENCE] App presence socket disconnected');
-    });
-
-    _socket!.onConnectError((err) {
-      debugPrint('[PRESENCE] Connect error: $err');
-    });
-
-    _socket!.onError((err) {
-      debugPrint('[PRESENCE] Socket error: $err');
-    });
-
     _socket!.on('presence_update', (data) {
       if (data is! Map) return;
       final userId = data['userId']?.toString();
       final online = data['online'] == true;
       if (userId == null) return;
-      debugPrint('[PRESENCE] presence_update userId=$userId online=$online');
       _controller.add(PresenceUpdate(userId, online));
     });
   }

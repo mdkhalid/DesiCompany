@@ -71,7 +71,6 @@ class _ConversationListScreenState extends State<ConversationListScreen>
   String _searchQuery = '';
   io.Socket? _socket;
   final _searchController = TextEditingController();
-  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -79,16 +78,12 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     WidgetsBinding.instance.addObserver(this);
     _loadConversations();
     _connectSocket();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _loadConversations();
-    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
-    _refreshTimer?.cancel();
     _disconnectSocket();
     super.dispose();
   }
@@ -120,12 +115,9 @@ class _ConversationListScreenState extends State<ConversationListScreen>
           .build(),
     );
 
-    _socket!.onConnect((_) {
-      debugPrint('[CONV_LIST] Socket connected');
-    });
+    _socket!.onConnect((_) {});
 
     _socket!.on('online_status', (data) {
-      debugPrint('[CONV_LIST] online_status received: $data');
       final raw = data is Map ? data['onlineUserIds'] : null;
       if (raw is List && mounted) {
         final onlineIds = raw.map((e) => e.toString()).toSet();
@@ -141,7 +133,6 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     });
 
     _socket!.on('user_online', (data) {
-      debugPrint('[CONV_LIST] user_online received: $data');
       final raw = data is Map ? data['userId'] : null;
       if (raw == null) return;
       final userId = raw.toString();
@@ -158,7 +149,6 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     });
 
     _socket!.on('user_offline', (data) {
-      debugPrint('[CONV_LIST] user_offline received: $data');
       final raw = data is Map ? data['userId'] : null;
       if (raw == null) return;
       final userId = raw.toString();
@@ -175,22 +165,18 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     });
 
     _socket!.on('new_message', (data) {
-      debugPrint('[CONV_LIST] new_message received');
       _loadConversations();
     });
 
     _socket!.on('new_direct_message', (data) {
-      debugPrint('[CONV_LIST] new_direct_message received');
       _loadConversations();
     });
 
     _socket!.on('messages_read', (data) {
-      debugPrint('[CONV_LIST] messages_read received');
       _loadConversations();
     });
 
     _socket!.onConnectError((err) async {
-      debugPrint('[CONV_LIST] Connect error: $err');
       final msg = err.toString().toLowerCase();
       if (msg.contains('unauthorized') || msg.contains('invalid token') || msg.contains('jwt expired')) {
         final refreshed = await AuthService.refreshAccessToken();
@@ -202,9 +188,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
       }
     });
 
-    _socket!.onDisconnect((_) {
-      debugPrint('[CONV_LIST] Socket disconnected');
-    });
+    _socket!.onDisconnect((_) {});
   }
 
   void _disconnectSocket() {

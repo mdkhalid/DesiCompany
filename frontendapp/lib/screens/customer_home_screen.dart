@@ -10,7 +10,6 @@ import '../widgets/distance_badge.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'profile_picker_screen.dart';
 import 'package:desicompany/services/app_logger.dart';
 class CustomerHomeScreen extends StatefulWidget {
@@ -86,22 +85,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   void _applyPresenceUpdate(String userId, bool online) {
     if (!mounted) return;
-    debugPrint('[CUSTOMER_HOME] presence_update userId=$userId online=$online');
     setState(() {
-      bool matched = false;
       for (final p in _allProviders) {
         if (matchesProviderUser(p, userId)) {
           p['isOnline'] = online;
-          matched = true;
         }
       }
       for (final p in _filteredProviders) {
         if (matchesProviderUser(p, userId)) {
           p['isOnline'] = online;
-          matched = true;
         }
       }
-      debugPrint('[CUSTOMER_HOME] presence_update matched=$matched');
     });
   }
 
@@ -128,12 +122,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         provs = await ApiService.get(path);
       } else {
         provs = await ApiService.get('/services/providers');
-      }
-      debugPrint('[CUSTOMER_HOME] Loaded ${provs.length} providers');
-      for (final p in provs) {
-        debugPrint(
-          '[CUSTOMER_HOME] Provider ${p['firstName']} userId=${p['userId']} user.id=${(p['user'] is Map ? p['user']['id'] : 'n/a')} isOnline=${p['isOnline']}',
-        );
       }
       if (!mounted) return;
       setState(() {
@@ -440,23 +428,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildIconButton(IconData icon, VoidCallback onTap, {String? tooltipKey}) {
-    final loc = LocalizationProvider.of(context);
-    final button = GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-    );
-    if (tooltipKey == null) return button;
-    return Tooltip(message: loc.tr(tooltipKey), child: button);
   }
 
   Widget _buildNotificationButton() {

@@ -8,8 +8,8 @@ import {
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
-import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -84,13 +84,16 @@ interface QuickReplyPayload {
 })
 @Injectable()
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
 {
   @WebSocketServer()
   server: Server;
 
   private readonly logger = new Logger(ChatGateway.name);
   private readonly messageCounts = new Map<string, number[]>();
+  private readonly partnerIdCache = new Map<string, { ids: string[]; expiry: number }>();
+  private static readonly PARTNER_CACHE_TTL = 60_000; // 60 seconds
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   private isRateLimited(userId: string): boolean {
     const now = Date.now();
@@ -201,6 +204,24 @@ export class ChatGateway
    * client events (like `join`) could arrive before auth completes.
    */
   afterInit(server: Server) {
+    // Clean up rate limit counters and partner cache every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      for (const [userId, timestamps] of this.messageCounts) {
+        const recent = timestamps.filter((t) => now - t < 60000);
+        if (recent.length === 0) {
+          this.messageCounts.delete(userId);
+        } else {
+          this.messageCounts.set(userId, recent);
+        }
+      }
+      for (const [key, cache] of this.partnerIdCache) {
+        if (now > cache.expiry) {
+          this.partnerIdCache.delete(key);
+        }
+      }
+    }, 300_000);
+
     server.use((socket, next) => {
       const auth = socket.handshake.auth as Record<string, unknown>;
       const token =
@@ -234,7 +255,6 @@ export class ChatGateway
             return next(new Error('User not found'));
           }
 
-          // Set auth data BEFORE connection event — handlers can rely on it immediately
           (socket as AuthenticatedSocket).data.userId = user.id;
           (socket as AuthenticatedSocket).data.user = user;
 
@@ -258,6 +278,12 @@ export class ChatGateway
   }
 
   private async getPartnerIds(userId: string): Promise<string[]> {
+    const now = Date.now();
+    const cached = this.partnerIdCache.get(userId);
+    if (cached && now < cached.expiry) {
+      return cached.ids;
+    }
+
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: { customer: true, provider: true },
@@ -300,7 +326,9 @@ export class ChatGateway
       }
     }
 
-    return Array.from(partnerIds);
+    const ids = Array.from(partnerIds);
+    this.partnerIdCache.set(userId, { ids, expiry: now + ChatGateway.PARTNER_CACHE_TTL });
+    return ids;
   }
 
   handleConnection(client: AuthenticatedSocket) {
@@ -309,9 +337,6 @@ export class ChatGateway
       const wasOffline = !this.isUserOnline(userId);
 
       this.registerSocket(userId, client.id);
-      this.logger.log(
-        `[PRESENCE] Client connected: ${client.id} (user: ${userId}) wasOffline=${wasOffline}`,
-      );
 
       // Notify partners that this user is now online
       this.getPartnerIds(userId)
@@ -326,11 +351,7 @@ export class ChatGateway
           );
           client.emit('online_status', { onlineUserIds: onlinePartners });
         })
-        .catch((err) => {
-          this.logger.error(
-            `[PRESENCE] Failed to broadcast online status: ${(err as Error)?.message}`,
-          );
-        });
+        .catch(() => {});
 
       // Global broadcast — used by provider list, customer home, etc.
       if (wasOffline) {
@@ -356,17 +377,19 @@ export class ChatGateway
               this.emitToUser(pid, 'user_offline', { userId });
             }
           })
-          .catch((err) => {
-            this.logger.error(
-              `[PRESENCE] Failed to broadcast offline status: ${(err as Error)?.message}`,
-            );
-          });
+          .catch(() => {});
 
         // Global broadcast
         this.server.emit('presence_update', { userId, online: false });
       }
     }
-    this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
+  onModuleDestroy() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
   }
 
   // ==================== BOOKING-BASED CHAT ====================
@@ -534,8 +557,6 @@ export class ChatGateway
         : booking.customer?.user?.id;
     if (otherUserId) {
       this.emitToUser(otherUserId, 'new_message', messageData);
-      // The recipient is the "other" user. If the sender was the customer, the
-      // recipient is the provider (and vice versa).
       const recipientRole: UserRole = booking.customer?.user?.id === otherUserId
         ? UserRole.CUSTOMER
         : UserRole.PROVIDER;
@@ -544,16 +565,7 @@ export class ChatGateway
         roomId: `booking_${bookingId}`,
         type: 'chat_message',
       }, recipientRole);
-      this.logger.log(
-        `[MSG] Sent to room=${room} + direct to user=${otherUserId}`,
-      );
-    } else {
-      this.logger.log(`[MSG] Sent to room=${room} (no other user found)`);
     }
-
-    this.logger.log(
-      `Message saved in booking ${bookingId} by user ${client.data.userId}`,
-    );
   }
 
   @SubscribeMessage('send_image')
@@ -1137,10 +1149,6 @@ export class ChatGateway
       createdAt: providerMsg.createdAt,
       status: 'delivered',
     });
-
-    this.logger.log(
-      `[SYSTEM_MSG] Role-specific messages for booking ${bookingId}: customer="${customerContent.substring(0, 50)}" provider="${providerContent.substring(0, 50)}"`,
-    );
   }
 
   // ==================== TYPING INDICATORS ====================
@@ -1165,10 +1173,6 @@ export class ChatGateway
       bookingId: payload.bookingId,
       roomId: payload.roomId,
     });
-
-    this.logger.debug(
-      `User ${client.data.userId} typing: ${payload.isTyping} in room ${room}`,
-    );
   }
 
   // ==================== DIRECT CHAT ====================
@@ -1340,10 +1344,6 @@ export class ChatGateway
         type: 'direct_message',
       }, recipientRole);
     }
-
-    this.logger.log(
-      `[DIRECT_MSG] Sent to room=${roomId} by user ${client.data.userId}`,
-    );
   }
 
   @SubscribeMessage('send_direct_image')

@@ -415,8 +415,8 @@ export class ChatService {
     userId: string,
     query: string,
   ): Promise<ConversationItem[]> {
-    const { conversations } = await this.getConversations(userId, 1, 10000);
     const lowerQuery = query.toLowerCase();
+    const { conversations } = await this.getConversations(userId, 1, 100);
     return conversations.filter(
       (c) =>
         c.partnerName.toLowerCase().includes(lowerQuery) ||
