@@ -174,7 +174,7 @@ In development mode, the OTP is always: **`123456`**
 | `EADDRINUSE: address already in use :::3000` | Another backend is already running. Kill it with `taskkill //F //PID <PID>` (get PID via `netstat -ano \| findstr :3000`) |
 | `net::ERR_CONNECTION_REFUSED`                | Backend not running, or wrong LAN IP in `API_BASE_URL`. Check IP with `ipconfig` and rebuild Flutter                      |
 | `Page loads but no data`                     | Check that `API_BASE_URL` points to the correct LAN IP and port                                                           |
-| `net::ERR_FAILED` / `CORS errors`            | Backend allows any localhost and LAN origin in dev mode. Make sure backend is running and firewall is open                 |
+| `net::ERR_FAILED` / `CORS errors`            | Backend allows any localhost and LAN origin in dev mode. Make sure backend is running and firewall is open                |
 | `Visual Studio toolchain error`              | You ran `flutter run -d all` — use `-d web-server` or `-d chrome` instead                                                 |
 | `App not loading on phone`                   | Make sure phone is on the **same WiFi** and the firewall allows ports 3000 and 8080                                       |
 
@@ -202,3 +202,8 @@ cd build/web && python -m http.server 8080
 # Step 5: Open in browser(s)
 # http://192.168.1.5:8080
 ```
+
+flutter run -d chrome --dart-define=API_BASE_URL=http://192.168.1.5:3000/api/v1
+
+testing from browser
+flutter run -d web-server --web-hostname=0.0.0.0 --web-port=8080 --dart-define=API_BASE_URL=http://192.168.1.5:3000/api/v1

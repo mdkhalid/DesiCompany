@@ -43,6 +43,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final Set<String> _typingUsers = {};
   String? _currentUserId;
   String? _userRole;
+  bool _partnerOnline = false;
+  final Set<String> _knownOnlineUserIds = {};
   String _targetLang = 'en';
   bool _translating = false;
   bool _showEmojiPicker = false;
@@ -120,6 +122,27 @@ class _ChatScreenState extends State<ChatScreen> {
   bool get _isProvider => _userRole == 'provider';
 
   // ==================== MESSAGE CACHING ====================
+
+  String? _resolvePartnerUserId() {
+    if (_isDirect) {
+      return widget.providerId;
+    }
+    final info = _bookingInfo;
+    if (info == null || _currentUserId == null) return null;
+    String? customerUserId;
+    String? providerUserId;
+    if (info['customer'] is Map) {
+      final cu = info['customer']['user'];
+      if (cu is Map) customerUserId = cu['id'] as String?;
+    }
+    if (info['provider'] is Map) {
+      final pu = info['provider']['user'];
+      if (pu is Map) providerUserId = pu['id'] as String?;
+    }
+    if (customerUserId == null) return providerUserId;
+    if (customerUserId == _currentUserId) return providerUserId;
+    return customerUserId;
+  }
 
   Future<void> _fetchHistoricalMessages() async {
     try {
@@ -203,6 +226,7 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {
           _bookingInfo = data as Map<String, dynamic>;
           _loadingBooking = false;
+          _partnerOnline = _knownOnlineUserIds.contains(_resolvePartnerUserId() ?? '');
         });
       }
     } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st);
@@ -290,13 +314,62 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
 
+    _socket.onDisconnect((_) {
+      debugPrint('[CHAT] Socket disconnected');
+      if (mounted) setState(() => _partnerOnline = false);
+    });
+
     _socket.on('direct_chat_started', (data) {
       final roomId = data['roomId'] as String;
       debugPrint('[CHAT] direct_chat_started: roomId=$roomId');
       _directRoomId = roomId;
+      if (mounted) {
+        setState(() {
+          _partnerOnline = _knownOnlineUserIds.contains(_resolvePartnerUserId() ?? '');
+        });
+      }
       _loadCachedMessages();
       _fetchHistoricalMessages();
       _socket.emit('join_direct_chat', {'roomId': roomId});
+    });
+
+    _socket.on('online_status', (data) {
+      final raw = data is Map ? data['onlineUserIds'] : null;
+      if (raw is List) {
+        _knownOnlineUserIds
+          ..clear()
+          ..addAll(raw.map((id) => id.toString()));
+        final partnerId = _resolvePartnerUserId();
+        if (mounted) {
+          setState(() {
+            if (partnerId != null) {
+              _partnerOnline = _knownOnlineUserIds.contains(partnerId);
+            }
+          });
+        }
+      }
+    });
+
+    _socket.on('user_online', (data) {
+      final raw = data is Map ? data['userId'] : null;
+      if (raw == null) return;
+      final userId = raw.toString();
+      _knownOnlineUserIds.add(userId);
+      final partnerId = _resolvePartnerUserId();
+      if (partnerId != null && userId == partnerId && mounted) {
+        setState(() => _partnerOnline = true);
+      }
+    });
+
+    _socket.on('user_offline', (data) {
+      final raw = data is Map ? data['userId'] : null;
+      if (raw == null) return;
+      final userId = raw.toString();
+      _knownOnlineUserIds.remove(userId);
+      final partnerId = _resolvePartnerUserId();
+      if (partnerId != null && userId == partnerId && mounted) {
+        setState(() => _partnerOnline = false);
+      }
     });
 
     _socket.on('direct_chat_history', (data) {
@@ -782,9 +855,33 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF66A3FF),
-        title: Text(_isDirect && widget.providerName != null
-            ? widget.providerName!
-            : loc.tr('chat')),
+        title: widget.providerName != null
+            ? FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.providerName!,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    if (_partnerOnline)
+                      Text(
+                        'online',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.greenAccent.shade100,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                  ],
+                ),
+              )
+            : Text(loc.tr('chat')),
         actions: [
           IconButton(
             icon: _targetLang == 'en'
@@ -857,10 +954,21 @@ class _ChatScreenState extends State<ChatScreen> {
                         padding: const EdgeInsets.only(bottom: 8, left: 4),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
                             _buildTypingDots(),
                             const SizedBox(width: 6),
-                            Text('typing...', style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontStyle: FontStyle.italic)),
+                            Flexible(
+                              child: Text(
+                                'typing...',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       );
@@ -1047,19 +1155,25 @@ class _ChatScreenState extends State<ChatScreen> {
           bottomRight: Radius.circular(isMe ? 4 : 16),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Wrap(
+        alignment: isMe ? WrapAlignment.end : WrapAlignment.start,
+        crossAxisAlignment: WrapCrossAlignment.end,
+        spacing: 4,
+        runSpacing: 2,
         children: [
-          Text(msg.content, style: const TextStyle(fontSize: 15)),
-          const SizedBox(height: 2),
+          Text(
+            msg.content,
+            style: const TextStyle(fontSize: 15),
+          ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (msg.edited)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Text('edited', style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontStyle: FontStyle.italic)),
+                Text(
+                  'edited',
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
                 ),
+              if (msg.edited) const SizedBox(width: 4),
               _buildReadStatusIcon(msg),
             ],
           ),

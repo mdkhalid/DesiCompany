@@ -10,6 +10,7 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Customer } from '../users/entities/customer.entity';
+import { PresenceService } from './presence.service';
 
 export interface ConversationItem {
   id: string;
@@ -23,6 +24,7 @@ export interface ConversationItem {
   unreadCount: number;
   bookingId?: string;
   bookingStatus?: string;
+  isOnline?: boolean;
 }
 
 @Injectable()
@@ -42,6 +44,7 @@ export class ChatService {
     private readonly providerRepository: Repository<Provider>,
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
+    private readonly presenceService: PresenceService,
   ) {}
 
   private getFullName(firstName?: string, lastName?: string): string {
@@ -200,6 +203,11 @@ export class ChatService {
     const total = conversations.length;
     const start = (page - 1) * limit;
     const paginated = conversations.slice(start, start + limit);
+
+    // Populate isOnline for each conversation based on presence
+    for (const conv of paginated) {
+      conv.isOnline = this.presenceService.isUserOnline(conv.partnerId);
+    }
 
     return { conversations: paginated, total };
   }

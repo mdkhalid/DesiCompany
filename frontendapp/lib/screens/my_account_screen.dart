@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../services/api_service.dart';
+import '../services/app_presence_service.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
 import 'profile_screen.dart';
@@ -99,6 +100,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
     );
 
     if (confirmed == true) {
+      AppPresenceService.disconnect();
       await AuthService.logout();
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/login');

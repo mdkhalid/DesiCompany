@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, MoreThan, LessThan, Raw } from 'typeorm';
@@ -20,6 +21,7 @@ import { CreateProviderAvailabilityDto } from './dto/create-provider-availabilit
 import { SearchProvidersDto } from './dto/search-providers.dto';
 import { CreateDateOverrideDto } from './dto/date-override.dto';
 import { SettingsService } from '../settings/settings.service';
+import { PresenceService } from '../chat/presence.service';
 
 interface CategoryInput {
   nameEn?: string;
@@ -33,6 +35,8 @@ interface CategoryInput {
 
 @Injectable()
 export class ServicesService {
+  private readonly logger = new Logger(ServicesService.name);
+
   constructor(
     @InjectRepository(ServiceCategory)
     private readonly categoryRepository: Repository<ServiceCategory>,
@@ -49,7 +53,31 @@ export class ServicesService {
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
     private readonly settingsService: SettingsService,
+    private readonly presenceService: PresenceService,
   ) {}
+
+  private annotateProvidersWithPresence<
+    T extends { user?: { id?: string } | null; id?: string; firstName?: string },
+  >(
+    providers: T[],
+  ): (T & { isOnline?: boolean; userId?: string })[] {
+    return providers.map((p) => {
+      const userId = p.user?.id;
+      const annotated = { ...p } as T & {
+        isOnline?: boolean;
+        userId?: string;
+      };
+      annotated.userId = userId;
+      annotated.isOnline = userId
+        ? this.presenceService.isUserOnline(userId)
+        : false;
+      const onlineIds = this.presenceService.getOnlineUserIds();
+      this.logger.log(
+        `[PRESENCE] annotate provider=${p.firstName ?? '?'} userId=${userId} isOnline=${annotated.isOnline} currentlyOnlineUserIds=${JSON.stringify(onlineIds)}`,
+      );
+      return annotated;
+    });
+  }
 
   async findAllCategories() {
     return this.categoryRepository.find({
@@ -535,7 +563,8 @@ export class ServicesService {
       query.andWhere('provider.user != :currentUserId', { currentUserId });
     }
 
-    return query.getMany();
+    const providers = await query.getMany();
+    return this.annotateProvidersWithPresence(providers);
   }
 
   async searchVerifiedProviders(dto: SearchProvidersDto, currentUserId?: string) {
@@ -640,7 +669,8 @@ export class ServicesService {
       }
     }
 
-    return query.getMany();
+    const providers = await query.getMany();
+    return this.annotateProvidersWithPresence(providers);
   }
 
   // ─── Busy Slot Management ────────────────────────────────────

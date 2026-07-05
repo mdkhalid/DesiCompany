@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/app_presence_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
 import '../l10n/strings.dart';
@@ -33,6 +34,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     _loadBookings();
     _loadProviderName();
     _loadUnreadCount();
+    AppPresenceService.connect();
   }
 
   Future<void> _loadProviderName() async {
@@ -166,12 +168,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                 const SizedBox(width: 8),
               ],
               _buildNotificationButton(),
-              const SizedBox(width: 8),
-              _buildIconButton(
-                Icons.person_outline,
-                () => Navigator.pushNamed(context, '/my-account'),
-                tooltipKey: 'nav_profile',
-              ),
             ],
           ),
         ],

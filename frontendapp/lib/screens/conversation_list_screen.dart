@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../services/api_service.dart';
@@ -16,6 +18,7 @@ class Conversation {
   final DateTime? lastMessageTime;
   final int unreadCount;
   final bool isDirect;
+  bool isOnline;
 
   Conversation({
     required this.id,
@@ -28,6 +31,7 @@ class Conversation {
     this.lastMessageTime,
     this.unreadCount = 0,
     this.isDirect = false,
+    this.isOnline = false,
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
@@ -46,6 +50,7 @@ class Conversation {
               : null),
       unreadCount: json['unreadCount'] ?? 0,
       isDirect: json['type'] == 'direct',
+      isOnline: json['isOnline'] == true,
     );
   }
 }
@@ -66,6 +71,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
   String _searchQuery = '';
   io.Socket? _socket;
   final _searchController = TextEditingController();
+  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -73,12 +79,16 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     WidgetsBinding.instance.addObserver(this);
     _loadConversations();
     _connectSocket();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _loadConversations();
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
+    _refreshTimer?.cancel();
     _disconnectSocket();
     super.dispose();
   }
@@ -114,6 +124,56 @@ class _ConversationListScreenState extends State<ConversationListScreen>
       debugPrint('[CONV_LIST] Socket connected');
     });
 
+    _socket!.on('online_status', (data) {
+      debugPrint('[CONV_LIST] online_status received: $data');
+      final raw = data is Map ? data['onlineUserIds'] : null;
+      if (raw is List && mounted) {
+        final onlineIds = raw.map((e) => e.toString()).toSet();
+        setState(() {
+          for (final c in _conversations) {
+            c.isOnline = onlineIds.contains(c.partnerId);
+          }
+          for (final c in _searchResults) {
+            c.isOnline = onlineIds.contains(c.partnerId);
+          }
+        });
+      }
+    });
+
+    _socket!.on('user_online', (data) {
+      debugPrint('[CONV_LIST] user_online received: $data');
+      final raw = data is Map ? data['userId'] : null;
+      if (raw == null) return;
+      final userId = raw.toString();
+      if (mounted) {
+        setState(() {
+          for (final c in _conversations) {
+            if (c.partnerId == userId) c.isOnline = true;
+          }
+          for (final c in _searchResults) {
+            if (c.partnerId == userId) c.isOnline = true;
+          }
+        });
+      }
+    });
+
+    _socket!.on('user_offline', (data) {
+      debugPrint('[CONV_LIST] user_offline received: $data');
+      final raw = data is Map ? data['userId'] : null;
+      if (raw == null) return;
+      final userId = raw.toString();
+      if (mounted) {
+        setState(() {
+          for (final c in _conversations) {
+            if (c.partnerId == userId) c.isOnline = false;
+          }
+          for (final c in _searchResults) {
+            if (c.partnerId == userId) c.isOnline = false;
+          }
+        });
+      }
+    });
+
     _socket!.on('new_message', (data) {
       debugPrint('[CONV_LIST] new_message received');
       _loadConversations();
@@ -129,8 +189,17 @@ class _ConversationListScreenState extends State<ConversationListScreen>
       _loadConversations();
     });
 
-    _socket!.onConnectError((err) {
+    _socket!.onConnectError((err) async {
       debugPrint('[CONV_LIST] Connect error: $err');
+      final msg = err.toString().toLowerCase();
+      if (msg.contains('unauthorized') || msg.contains('invalid token') || msg.contains('jwt expired')) {
+        final refreshed = await AuthService.refreshAccessToken();
+        if (refreshed != null && mounted) {
+          _socket?.disconnect();
+          _socket?.dispose();
+          _connectSocket();
+        }
+      }
     });
 
     _socket!.onDisconnect((_) {
@@ -142,6 +211,9 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     _socket?.off('new_message');
     _socket?.off('new_direct_message');
     _socket?.off('messages_read');
+    _socket?.off('online_status');
+    _socket?.off('user_online');
+    _socket?.off('user_offline');
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
@@ -359,6 +431,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                                           final conv = _searchResults[i];
                                           return _ConversationTile(
                                             conversation: conv,
+                                            isOnline: conv.isOnline,
                                             onTap: () => _openChat(conv),
                                             formatTime: _formatTime,
                                             getStatusLabel: _getStatusLabel,
@@ -400,6 +473,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                                       final conv = _conversations[i];
                                       return _ConversationTile(
                                         conversation: conv,
+                                        isOnline: conv.isOnline,
                                         onTap: () => _openChat(conv),
                                         formatTime: _formatTime,
                                         getStatusLabel: _getStatusLabel,
@@ -417,6 +491,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
 
 class _ConversationTile extends StatelessWidget {
   final Conversation conversation;
+  final bool isOnline;
   final VoidCallback onTap;
   final String Function(DateTime?) formatTime;
   final String Function(String?) getStatusLabel;
@@ -424,6 +499,7 @@ class _ConversationTile extends StatelessWidget {
 
   const _ConversationTile({
     required this.conversation,
+    required this.isOnline,
     required this.onTap,
     required this.formatTime,
     required this.getStatusLabel,
@@ -434,17 +510,40 @@ class _ConversationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      leading: CircleAvatar(
-        backgroundColor:
-            Theme.of(context).primaryColor.withValues(alpha: 0.1),
-        child: Text(
-          conversation.partnerName.isNotEmpty
-              ? conversation.partnerName[0].toUpperCase()
-              : '?',
-          style: TextStyle(
-            color: Theme.of(context).primaryColor,
-            fontWeight: FontWeight.bold,
-          ),
+      leading: SizedBox(
+        width: 40,
+        height: 40,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CircleAvatar(
+              backgroundColor:
+                  Theme.of(context).primaryColor.withValues(alpha: 0.1),
+              child: Text(
+                conversation.partnerName.isNotEmpty
+                    ? conversation.partnerName[0].toUpperCase()
+                    : '?',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (isOnline)
+              Positioned(
+                bottom: 2,
+                right: 2,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
       title: Row(

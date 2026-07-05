@@ -25,6 +25,7 @@ import { Customer } from '../users/entities/customer.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { sanitizeText } from '../common/utils/input-sanitizer';
+import { PresenceService } from './presence.service';
 
 interface AuthenticatedSocket extends Socket {
   data: {
@@ -89,7 +90,6 @@ export class ChatGateway
   server: Server;
 
   private readonly logger = new Logger(ChatGateway.name);
-  private readonly userSockets = new Map<string, Set<string>>();
   private readonly messageCounts = new Map<string, number[]>();
 
   private isRateLimited(userId: string): boolean {
@@ -105,20 +105,11 @@ export class ChatGateway
   }
 
   private registerSocket(userId: string, socketId: string) {
-    if (!this.userSockets.has(userId)) {
-      this.userSockets.set(userId, new Set());
-    }
-    this.userSockets.get(userId)!.add(socketId);
+    this.presenceService.registerSocket(userId, socketId);
   }
 
   private unregisterSocket(userId: string, socketId: string) {
-    const sockets = this.userSockets.get(userId);
-    if (sockets) {
-      sockets.delete(socketId);
-      if (sockets.size === 0) {
-        this.userSockets.delete(userId);
-      }
-    }
+    this.presenceService.unregisterSocket(userId, socketId);
   }
 
   private emitToUser(
@@ -126,17 +117,14 @@ export class ChatGateway
     event: string,
     data: Record<string, unknown>,
   ) {
-    const sockets = this.userSockets.get(userId);
-    if (sockets) {
-      for (const socketId of sockets) {
-        this.server.to(socketId).emit(event, data);
-      }
+    const socketIds = this.presenceService.getSocketIds(userId);
+    for (const socketId of socketIds) {
+      this.server.to(socketId).emit(event, data);
     }
   }
 
   private isUserOnline(userId: string): boolean {
-    const sockets = this.userSockets.get(userId);
-    return !!sockets && sockets.size > 0;
+    return this.presenceService.isUserOnline(userId);
   }
 
   private async sendPushIfOffline(
@@ -204,6 +192,7 @@ export class ChatGateway
     private readonly customerRepository: Repository<Customer>,
     private readonly jwtService: JwtService,
     private readonly pushNotificationsService: PushNotificationsService,
+    private readonly presenceService: PresenceService,
   ) {}
 
   /**
@@ -222,11 +211,18 @@ export class ChatGateway
         return next(new Error('No token provided'));
       }
 
-      const payload = this.jwtService.verify<{
-        sub: string;
-        phone: string;
-        role: string;
-      }>(token, { secret: process.env.JWT_SECRET });
+      let payload: { sub: string; phone: string; role: string };
+      try {
+        payload = this.jwtService.verify<{
+          sub: string;
+          phone: string;
+          role: string;
+        }>(token, { secret: process.env.JWT_SECRET });
+      } catch (err) {
+        return next(
+          new Error(`Invalid token: ${(err as Error)?.message || err}`),
+        );
+      }
 
       this.userRepository
         .findOne({
@@ -261,13 +257,85 @@ export class ChatGateway
     });
   }
 
+  private async getPartnerIds(userId: string): Promise<string[]> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: { customer: true, provider: true },
+    });
+    if (!user) return [];
+
+    const partnerIds = new Set<string>();
+
+    if (user.customer) {
+      const customerBookings = await this.bookingRepository.find({
+        where: { customer: { id: user.customer.id } },
+        relations: { provider: { user: true } },
+      });
+      for (const b of customerBookings) {
+        if (b.provider?.user?.id) partnerIds.add(b.provider.user.id);
+      }
+      const customerDms = await this.directMessageRepository.find({
+        where: { customer: { id: user.customer.id } },
+        relations: { provider: { user: true } },
+      });
+      for (const dm of customerDms) {
+        if (dm.provider?.user?.id) partnerIds.add(dm.provider.user.id);
+      }
+    }
+
+    if (user.provider) {
+      const providerBookings = await this.bookingRepository.find({
+        where: { provider: { id: user.provider.id } },
+        relations: { customer: { user: true } },
+      });
+      for (const b of providerBookings) {
+        if (b.customer?.user?.id) partnerIds.add(b.customer.user.id);
+      }
+      const providerDms = await this.directMessageRepository.find({
+        where: { provider: { id: user.provider.id } },
+        relations: { customer: { user: true } },
+      });
+      for (const dm of providerDms) {
+        if (dm.customer?.user?.id) partnerIds.add(dm.customer.user.id);
+      }
+    }
+
+    return Array.from(partnerIds);
+  }
+
   handleConnection(client: AuthenticatedSocket) {
-    // Auth already verified by middleware in afterInit — just register and log
     if (client.data.userId) {
-      this.registerSocket(client.data.userId, client.id);
+      const userId = client.data.userId;
+      const wasOffline = !this.isUserOnline(userId);
+
+      this.registerSocket(userId, client.id);
       this.logger.log(
-        `Client connected: ${client.id} (user: ${client.data.userId})`,
+        `[PRESENCE] Client connected: ${client.id} (user: ${userId}) wasOffline=${wasOffline}`,
       );
+
+      // Notify partners that this user is now online
+      this.getPartnerIds(userId)
+        .then((partnerIds) => {
+          for (const pid of partnerIds) {
+            this.emitToUser(pid, 'user_online', {
+              userId,
+            });
+          }
+          const onlinePartners = partnerIds.filter((pid) =>
+            this.isUserOnline(pid),
+          );
+          client.emit('online_status', { onlineUserIds: onlinePartners });
+        })
+        .catch((err) => {
+          this.logger.error(
+            `[PRESENCE] Failed to broadcast online status: ${(err as Error)?.message}`,
+          );
+        });
+
+      // Global broadcast — used by provider list, customer home, etc.
+      if (wasOffline) {
+        this.server.emit('presence_update', { userId, online: true });
+      }
     } else {
       this.logger.warn(
         `Client ${client.id} rejected: auth middleware did not set userId`,
@@ -278,7 +346,25 @@ export class ChatGateway
 
   handleDisconnect(client: AuthenticatedSocket) {
     if (client.data.userId) {
-      this.unregisterSocket(client.data.userId, client.id);
+      const userId = client.data.userId;
+      this.unregisterSocket(userId, client.id);
+
+      if (!this.isUserOnline(userId)) {
+        this.getPartnerIds(userId)
+          .then((partnerIds) => {
+            for (const pid of partnerIds) {
+              this.emitToUser(pid, 'user_offline', { userId });
+            }
+          })
+          .catch((err) => {
+            this.logger.error(
+              `[PRESENCE] Failed to broadcast offline status: ${(err as Error)?.message}`,
+            );
+          });
+
+        // Global broadcast
+        this.server.emit('presence_update', { userId, online: false });
+      }
     }
     this.logger.log(`Client disconnected: ${client.id}`);
   }

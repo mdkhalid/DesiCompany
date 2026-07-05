@@ -1,11 +1,13 @@
 ﻿import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/app_presence_service.dart';
 import '../services/location_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
 import '../l10n/strings.dart';
 import '../widgets/distance_badge.dart';
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,6 +35,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   double? _latitude;
   double? _longitude;
   double _radiusKm = 5;
+  StreamSubscription<PresenceUpdate>? _presenceSub;
 
   static const _categoryIcons = {
     'plumber': {'icon': Icons.plumbing, 'color': Color(0xFF2196F3)},
@@ -60,12 +63,46 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     super.initState();
     _loadData();
     _initLocation();
+    AppPresenceService.connect();
+    _presenceSub = AppPresenceService.updates.listen((evt) {
+      _applyPresenceUpdate(evt.userId, evt.online);
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _presenceSub?.cancel();
+    _presenceSub = null;
     super.dispose();
+  }
+
+  bool matchesProviderUser(Map<String, dynamic> p, String userId) {
+    if (p['userId'] == userId) return true;
+    final u = p['user'];
+    if (u is Map && u['id'] == userId) return true;
+    return false;
+  }
+
+  void _applyPresenceUpdate(String userId, bool online) {
+    if (!mounted) return;
+    debugPrint('[CUSTOMER_HOME] presence_update userId=$userId online=$online');
+    setState(() {
+      bool matched = false;
+      for (final p in _allProviders) {
+        if (matchesProviderUser(p, userId)) {
+          p['isOnline'] = online;
+          matched = true;
+        }
+      }
+      for (final p in _filteredProviders) {
+        if (matchesProviderUser(p, userId)) {
+          p['isOnline'] = online;
+          matched = true;
+        }
+      }
+      debugPrint('[CUSTOMER_HOME] presence_update matched=$matched');
+    });
   }
 
   Future<void> _loadData() async {
@@ -91,6 +128,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         provs = await ApiService.get(path);
       } else {
         provs = await ApiService.get('/services/providers');
+      }
+      debugPrint('[CUSTOMER_HOME] Loaded ${provs.length} providers');
+      for (final p in provs) {
+        debugPrint(
+          '[CUSTOMER_HOME] Provider ${p['firstName']} userId=${p['userId']} user.id=${(p['user'] is Map ? p['user']['id'] : 'n/a')} isOnline=${p['isOnline']}',
+        );
       }
       if (!mounted) return;
       setState(() {
@@ -767,7 +810,30 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                _buildProviderAvatar(p),
+                SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _buildProviderAvatar(p),
+                      if (p['isOnline'] == true)
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4CAF50),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/app_presence_service.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
 import '../l10n/strings.dart';
@@ -102,6 +103,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               _buildIconButton(
                 Icons.logout,
                 () async {
+                  AppPresenceService.disconnect();
                   await AuthService.logout();
                   if (mounted) Navigator.pushReplacementNamed(context, '/login');
                 },

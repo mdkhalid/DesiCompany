@@ -12,6 +12,7 @@ import { ProviderBusySlot } from './entities/provider-busy-slot.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { SettingsModule } from '../settings/settings.module';
+import { ChatModule } from '../chat/chat.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { SettingsModule } from '../settings/settings.module';
       Booking,
     ]),
     SettingsModule,
+    ChatModule,
   ],
   controllers: [ServicesController, ServiceAreaMapController],
   providers: [ServicesService, ServiceAreaMapService],

@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatGateway } from './chat.gateway';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
+import { PresenceService } from './presence.service';
 import { TranslationModule } from './translation.module';
 import { Message } from './entities/message.entity';
 import { DirectMessage } from './entities/direct-message.entity';
@@ -29,8 +30,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
     PushNotificationsModule,
     NotificationsModule,
   ],
-  providers: [ChatGateway, ChatService],
+  providers: [ChatGateway, ChatService, PresenceService],
   controllers: [ChatController],
-  exports: [ChatGateway, ChatService],
+  exports: [ChatGateway, ChatService, PresenceService],
 })
 export class ChatModule {}
