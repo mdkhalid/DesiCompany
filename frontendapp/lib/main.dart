@@ -192,12 +192,12 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
               );
             }
             if (settings.name == '/provider-customer-feedback') {
-              final args = settings.arguments as Map<String, String>;
+              final args = settings.arguments as Map<String, dynamic>;
               return MaterialPageRoute(
                 builder: (_) => ProviderCustomerFeedbackScreen(
-                  bookingId: args['bookingId']!,
-                  customerName: args['customerName']!,
-                  providerName: args['providerName']!,
+                  bookingId: args['bookingId'] as String,
+                  customerName: args['customerName'] as String,
+                  providerName: args['providerName'] as String,
                 ),
               );
             }
