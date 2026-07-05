@@ -6,6 +6,7 @@ import { Provider } from '../../users/entities/provider.entity';
 import { ProviderService } from '../../services/entities/provider-service.entity';
 import { BookingCharge } from './booking-charge.entity';
 import { BookingServiceItem } from './booking-service-item.entity';
+import { Quote } from '../../quotes/entities/quote.entity';
 
 @Entity('bookings')
 export class Booking extends BaseEntity {
@@ -24,6 +25,10 @@ export class Booking extends BaseEntity {
   @ManyToOne(() => ProviderService, { nullable: true })
   @JoinColumn({ name: 'provider_service_id' })
   providerService: ProviderService;
+
+  @ManyToOne(() => Quote, { nullable: true })
+  @JoinColumn({ name: 'quote_id' })
+  quote: Quote;
 
   @Column({ default: BookingStatus.REQUESTED })
   status: BookingStatus;

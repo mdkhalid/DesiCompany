@@ -25,6 +25,7 @@ export interface ConversationItem {
   bookingId?: string;
   bookingStatus?: string;
   isOnline?: boolean;
+  bookingIds?: string[];
 }
 
 @Injectable()
@@ -192,17 +193,47 @@ export class ChatService {
       );
     }
 
+    // === MERGE DUPLICATE PARTNERS ===
+    // Group conversations by partnerId so the same person shows only once.
+    // The most recent conversation is kept; all booking IDs are collected.
+    const merged = new Map<string, ConversationItem>();
+    for (const conv of conversations) {
+      const existing = merged.get(conv.partnerId);
+      if (!existing) {
+        conv.bookingIds = conv.type === 'booking' && conv.bookingId ? [conv.bookingId] : [];
+        merged.set(conv.partnerId, conv);
+      } else {
+        // Merge: keep the one with the most recent lastMessageAt
+        if (new Date(conv.lastMessageAt).getTime() > new Date(existing.lastMessageAt).getTime()) {
+          const bookingIds = existing.bookingIds || [];
+          merged.set(conv.partnerId, {
+            ...conv,
+            bookingIds: conv.type === 'booking' && conv.bookingId
+              ? [...bookingIds, conv.bookingId]
+              : bookingIds,
+            unreadCount: existing.unreadCount + conv.unreadCount,
+          });
+        } else {
+          existing.unreadCount += conv.unreadCount;
+          if (conv.type === 'booking' && conv.bookingId) {
+            existing.bookingIds = [...(existing.bookingIds || []), conv.bookingId];
+          }
+        }
+      }
+    }
+    const mergedConversations = Array.from(merged.values());
+
     // Sort by last message time descending
-    conversations.sort(
+    mergedConversations.sort(
       (a, b) =>
         new Date(b.lastMessageAt).getTime() -
         new Date(a.lastMessageAt).getTime(),
     );
 
     // Paginate
-    const total = conversations.length;
+    const total = mergedConversations.length;
     const start = (page - 1) * limit;
-    const paginated = conversations.slice(start, start + limit);
+    const paginated = mergedConversations.slice(start, start + limit);
 
     // Populate isOnline for each conversation based on presence
     for (const conv of paginated) {

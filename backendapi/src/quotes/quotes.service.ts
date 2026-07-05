@@ -413,6 +413,7 @@ export class QuotesService {
       customer: jobRequest.customer,
       provider: quote.provider,
       providerService: providerService ?? undefined,
+      quote: quote,
       scheduledDate: jobRequest.preferredDate ?? new Date(),
       description: jobRequest.description,
       estimatedHours: quote.estimatedHours ?? undefined,

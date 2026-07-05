@@ -18,6 +18,7 @@ import { ProviderDateOverride } from '../services/entities/provider-date-overrid
 import { ProviderBusySlot } from '../services/entities/provider-busy-slot.entity';
 import { Message } from '../chat/entities/message.entity';
 import { User } from '../users/entities/user.entity';
+import { JobRequest } from '../quotes/entities/job-request.entity';
 import { ChatModule } from '../chat/chat.module';
 import { CommissionsModule } from '../commissions/commissions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -40,6 +41,7 @@ import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
       ProviderBusySlot,
       Message,
       User,
+      JobRequest,
     ]),
     PlatformFeesModule,
     CommissionsModule,

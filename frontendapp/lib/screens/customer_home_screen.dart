@@ -2,6 +2,7 @@
 import '../services/api_service.dart';
 import '../services/app_presence_service.dart';
 import '../services/location_service.dart';
+import '../services/notification_websocket_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
 import '../l10n/strings.dart';
@@ -35,6 +36,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   double? _longitude;
   double _radiusKm = 5;
   StreamSubscription<PresenceUpdate>? _presenceSub;
+  StreamSubscription<int>? _unreadCountSub;
 
   static const _categoryIcons = {
     'plumber': {'icon': Icons.plumbing, 'color': Color(0xFF2196F3)},
@@ -66,6 +68,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     _presenceSub = AppPresenceService.updates.listen((evt) {
       _applyPresenceUpdate(evt.userId, evt.online);
     });
+    _unreadCountSub = NotificationWebSocketService.unreadCountStream.listen((count) {
+      if (mounted) setState(() => _unreadCount = count);
+    });
   }
 
   @override
@@ -73,6 +78,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     _searchController.dispose();
     _presenceSub?.cancel();
     _presenceSub = null;
+    _unreadCountSub?.cancel();
     super.dispose();
   }
 

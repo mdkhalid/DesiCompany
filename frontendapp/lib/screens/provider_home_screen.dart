@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../services/app_presence_service.dart';
+import '../services/notification_websocket_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
 import '../l10n/strings.dart';
 import '../utils/id_helpers.dart';
 import 'profile_picker_screen.dart';
 
+import 'dart:async';
 import 'package:desicompany/services/app_logger.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
@@ -27,6 +29,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   User? _currentUser;
   bool _loading = true;
   String _providerName = '';
+  StreamSubscription<int>? _unreadCountSub;
 
   @override
   void initState() {
@@ -35,6 +38,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     _loadProviderName();
     _loadUnreadCount();
     AppPresenceService.connect();
+    _unreadCountSub = NotificationWebSocketService.unreadCountStream.listen((count) {
+      if (mounted) setState(() => _unreadCount = count);
+    });
   }
 
   Future<void> _loadProviderName() async {
@@ -236,6 +242,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _unreadCountSub?.cancel();
+    super.dispose();
   }
 
   @override

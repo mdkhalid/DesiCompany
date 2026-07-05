@@ -19,6 +19,7 @@ class Conversation {
   final int unreadCount;
   final bool isDirect;
   bool isOnline;
+  final List<String> bookingIds;
 
   Conversation({
     required this.id,
@@ -32,6 +33,7 @@ class Conversation {
     this.unreadCount = 0,
     this.isDirect = false,
     this.isOnline = false,
+    this.bookingIds = const [],
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
@@ -51,6 +53,10 @@ class Conversation {
       unreadCount: json['unreadCount'] ?? 0,
       isDirect: json['type'] == 'direct',
       isOnline: json['isOnline'] == true,
+      bookingIds: (json['bookingIds'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 }
@@ -297,7 +303,15 @@ class _ConversationListScreenState extends State<ConversationListScreen>
     });
   }
 
-  void _openChat(Conversation conv) {
+  void _openChat(Conversation conv) async {
+    String? selectedBookingId = conv.bookingId;
+
+    if (conv.bookingIds.length > 1) {
+      selectedBookingId = await _showBookingSelector(conv);
+      if (selectedBookingId == null) return;
+    }
+
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -308,11 +322,40 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                 providerName: conv.partnerName,
               )
             : ChatScreen(
-                bookingId: conv.bookingId,
+                bookingId: selectedBookingId,
                 providerName: conv.partnerName,
               ),
       ),
     ).then((_) => _loadConversations());
+  }
+
+  Future<String?> _showBookingSelector(Conversation conv) async {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Select Booking'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: conv.bookingIds.length,
+            itemBuilder: (ctx, i) {
+              final bookingId = conv.bookingIds[i];
+              return ListTile(
+                title: Text('Booking ${bookingId.substring(0, 8)}'),
+                onTap: () => Navigator.pop(ctx, bookingId),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatTime(DateTime? dt) {

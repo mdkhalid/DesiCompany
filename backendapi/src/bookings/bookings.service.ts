@@ -26,6 +26,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PlatformFeesService } from '../platform-fees/platform-fees.service';
+import { JobRequest } from '../quotes/entities/job-request.entity';
+import { JobRequestStatus } from '../quotes/entities/job-request-status.enum';
 import {
   CreateBookingDto,
   UpdateBookingStatusDto,
@@ -60,6 +62,8 @@ export class BookingsService {
     private readonly dateOverrideRepository: Repository<ProviderDateOverride>,
     @InjectRepository(ProviderBusySlot)
     private readonly busySlotRepository: Repository<ProviderBusySlot>,
+    @InjectRepository(JobRequest)
+    private readonly jobRequestRepository: Repository<JobRequest>,
     private readonly chatGateway: ChatGateway,
     private readonly commissionService: CommissionService,
     private readonly notificationsService: NotificationsService,
@@ -219,6 +223,7 @@ export class BookingsService {
         provider: { user: true },
         providerService: { category: true },
         charges: true,
+        quote: true,
       },
     });
     if (!booking) {
@@ -259,6 +264,18 @@ export class BookingsService {
           Number(recalculated.totalAmount),
         )
         .catch((err) => console.error('Loyalty award failed:', err));
+
+      // Close the associated job request if this booking was created from a quote
+      if (saved.quote?.id) {
+        const jobRequest = await this.jobRequestRepository.findOne({
+          where: { acceptedQuoteId: saved.quote.id },
+        });
+        if (jobRequest && jobRequest.status !== JobRequestStatus.CLOSED && jobRequest.status !== JobRequestStatus.CANCELLED) {
+          jobRequest.status = JobRequestStatus.CLOSED;
+          await this.jobRequestRepository.save(jobRequest);
+        }
+      }
+
       return recalculated;
     }
 
@@ -663,6 +680,12 @@ export class BookingsService {
     });
     if (!booking) {
       throw new NotFoundException('Booking not found');
+    }
+
+    // If no providerService and no service items, preserve existing totalAmount
+    // This handles bookings created from quotes where amount is already set
+    if (!booking.providerService && (!booking.serviceItems || booking.serviceItems.length === 0)) {
+      return booking;
     }
 
     let baseAmount = 0;
