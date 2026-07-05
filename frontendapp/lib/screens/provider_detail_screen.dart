@@ -628,12 +628,28 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
 
   Widget _buildReviewCard(Map review) {
     final customer = review['customer'];
-    final user = customer?['user'] ?? {};
-    final name = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
-    final phone = user['phone'] ?? '';
     final rating = double.tryParse('${review['rating'] ?? '0'}') ?? 0.0;
     final comment = review['comment'] as String?;
     final createdAt = review['createdAt'] as String?;
+
+    String name = '';
+    if (customer is Map) {
+      String firstName = customer['firstName']?.toString() ?? '';
+      String lastName = customer['lastName']?.toString() ?? '';
+
+      if (firstName.isEmpty && lastName.isEmpty) {
+        final user = customer['user'];
+        if (user is Map) {
+          firstName = user['firstName']?.toString() ?? '';
+          lastName = user['lastName']?.toString() ?? '';
+        }
+      }
+
+      final fullName = '$firstName $lastName'.trim();
+      if (fullName.isNotEmpty && !_looksLikePhoneNumber(fullName)) {
+        name = fullName;
+      }
+    }
 
     String dateStr = '';
     if (createdAt != null) {
@@ -678,7 +694,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        name.isNotEmpty ? name : phone,
+                        name.isNotEmpty ? name : 'Customer',
                         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                       ),
                       if (dateStr.isNotEmpty)
@@ -722,5 +738,20 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
         return Icon(Icons.star_outline_rounded, size: 16, color: Colors.grey.shade300);
       }),
     );
+  }
+
+  bool _looksLikePhoneNumber(String text) {
+    final cleaned = text.replaceAll(RegExp(r'[\s\-\(\)\.]'), '');
+    final digitCount = RegExp(r'\d').allMatches(cleaned).length;
+    if (cleaned.length > 0 && digitCount / cleaned.length > 0.6) {
+      return true;
+    }
+    if (text.startsWith('+') && RegExp(r'\d').allMatches(text).length >= 7) {
+      return true;
+    }
+    if (cleaned.length >= 10 && digitCount >= 8) {
+      return true;
+    }
+    return false;
   }
 }
