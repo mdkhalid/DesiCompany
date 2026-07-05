@@ -451,9 +451,15 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                           child: OutlinedButton.icon(
                             onPressed: () {
                               final customer = b['customer'];
-                              final customerName = customer is Map
-                                  ? '${customer['firstName'] ?? ''} ${customer['lastName'] ?? ''}'.trim()
-                                  : 'Customer';
+                              String customerName = 'Customer';
+                              if (customer is Map) {
+                                final firstName = customer['firstName'] ?? '';
+                                final lastName = customer['lastName'] ?? '';
+                                final fullName = '$firstName $lastName'.trim();
+                                if (fullName.isNotEmpty) {
+                                  customerName = fullName;
+                                }
+                              }
                               Navigator.pushNamed(
                                 context,
                                 '/provider-customer-feedback',
