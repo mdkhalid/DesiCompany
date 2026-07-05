@@ -451,9 +451,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
                           child: OutlinedButton.icon(
                             onPressed: () {
                               final customer = b['customer'];
-                              final customerUser = customer is Map ? customer['user'] : null;
-                              final customerName = customerUser is Map
-                                  ? '${customerUser['firstName'] ?? ''} ${customerUser['lastName'] ?? ''}'.trim()
+                              final customerName = customer is Map
+                                  ? '${customer['firstName'] ?? ''} ${customer['lastName'] ?? ''}'.trim()
                                   : 'Customer';
                               Navigator.pushNamed(
                                 context,
