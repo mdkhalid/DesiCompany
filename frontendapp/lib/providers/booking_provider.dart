@@ -31,7 +31,7 @@ class Booking {
       providerName: json['provider']?['user']?['firstName'] as String?,
       customerName: json['customer']?['user']?['firstName'] as String?,
       scheduledAt: DateTime.parse(json['scheduledAt'] as String),
-      totalAmount: (json['totalAmount'] as num?)?.toDouble(),
+      totalAmount: double.tryParse('${json['totalAmount'] ?? ''}'),
       address: json['address'] as String?,
     );
   }

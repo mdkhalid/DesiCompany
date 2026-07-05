@@ -137,9 +137,7 @@ export class ChatGateway
     data?: Record<string, string>,
     recipientRole?: UserRole,
   ) {
-    if (!this.isUserOnline(userId)) {
-      await this.pushNotificationsService.sendToUser(userId, title, body, data, recipientRole);
-    }
+    await this.pushNotificationsService.sendToUser(userId, title, body, data, recipientRole);
   }
 
   private formatHistoryMessages(messages: HistoryMessage[]) {

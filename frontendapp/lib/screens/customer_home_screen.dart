@@ -308,8 +308,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     }
 
     results.sort((a, b) {
-      final da = a['distance'] as num?;
-      final db = b['distance'] as num?;
+      final da = double.tryParse('${a['distance'] ?? ''}');
+      final db = double.tryParse('${b['distance'] ?? ''}');
       if (da == null && db == null) return 0;
       if (da == null) return 1;
       if (db == null) return -1;
@@ -883,7 +883,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildProviderAvatar(Map<String, dynamic> p) {
-    final firstName = p['firstName'] ?? '?';
+    final firstName = (p['firstName'] ?? '').toString();
+    final initial = firstName.isNotEmpty ? firstName[0] : '?';
     return Container(
       width: 64,
       height: 64,
@@ -907,7 +908,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       ),
       child: Center(
         child: Text(
-          firstName[0].toUpperCase(),
+          initial.toUpperCase(),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 24,

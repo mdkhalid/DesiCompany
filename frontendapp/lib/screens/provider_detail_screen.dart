@@ -41,6 +41,10 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
 
   void _calculateDistance() {
     final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['distance'] != null) {
+      _distanceMeters = double.tryParse('${args['distance']}');
+      return;
+    }
     final customerLat = args is Map ? (args['customerLatitude'] as num?)?.toDouble() : null;
     final customerLng = args is Map ? (args['customerLongitude'] as num?)?.toDouble() : null;
     final providerLat = double.tryParse('${widget.provider['latitude'] ?? ''}');
@@ -93,7 +97,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
   Future<void> _loadReviews() async {
     try {
       final data = await ApiService.get('/reviews/provider/${widget.provider['id']}');
-      if (mounted) setState(() { _reviews = data as List; });
+      if (mounted) setState(() { _reviews = data is List ? data : []; });
     } catch (e, st) { AppLogger.e('provider_detail_screen', 'Operation failed', e, st); }
   }
 
@@ -463,7 +467,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Center(child: Text((p['firstName'] ?? '?')[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold))),
+                    child: Center(child: Text(('${p['firstName'] ?? ''}').isNotEmpty ? '${p['firstName']}'[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold))),
                   ),
                   const SizedBox(height: 12),
                   Text('${p['firstName'] ?? ''} ${p['lastName'] ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
@@ -627,7 +631,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
     final user = customer?['user'] ?? {};
     final name = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
     final phone = user['phone'] ?? '';
-    final rating = (review['rating'] as num).toDouble();
+    final rating = double.tryParse('${review['rating'] ?? '0'}') ?? 0.0;
     final comment = review['comment'] as String?;
     final createdAt = review['createdAt'] as String?;
 

@@ -173,7 +173,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               radius: 36,
               backgroundColor: _roleColor(role),
               child: Text(
-                ((user['firstName'] ?? '?')[0] as String).toUpperCase(),
+                ('${user['firstName'] ?? ''}').isNotEmpty ? '${user['firstName']}'[0].toUpperCase() : '?',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,

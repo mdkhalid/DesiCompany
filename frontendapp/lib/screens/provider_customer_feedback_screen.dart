@@ -386,7 +386,7 @@ class _ProviderCustomerFeedbackScreenState
   }
 
   Widget _buildFeedbackCard(Map feedback, LocalizationProvider loc) {
-    final rating = feedback['rating'];
+    final rating = double.tryParse('${feedback['rating'] ?? '0'}') ?? 0.0;
     final comment = feedback['comment'] as String?;
     final tags = (feedback['tags'] as List?)?.cast<String>() ?? [];
     final createdAt = feedback['createdAt'] as String?;
@@ -444,7 +444,7 @@ class _ProviderCustomerFeedbackScreenState
                 ),
             ],
           ),
-          if (rating is num && rating > 0) ...[
+              if (rating > 0) ...[
             const SizedBox(height: 6),
             Row(
               children: List.generate(5, (i) {
