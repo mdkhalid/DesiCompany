@@ -6,10 +6,13 @@ import { ServicesService } from './services.service';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
 import { ProviderDateOverride } from './entities/provider-date-override.entity';
+import { ProviderBusySlot } from './entities/provider-busy-slot.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
+import { SettingsService } from '../settings/settings.service';
+import { PresenceService } from '../chat/presence.service';
 
 type MockRepo = {
   find: jest.Mock;
@@ -37,6 +40,7 @@ describe('ServicesService', () => {
   let availabilityRepo: MockRepo;
   let overrideRepo: MockRepo;
   let bookingRepo: MockRepo;
+  let busySlotRepo: MockRepo;
 
   const providerId = 'prov-1';
 
@@ -47,6 +51,10 @@ describe('ServicesService', () => {
     availabilityRepo = makeRepoMock();
     overrideRepo = makeRepoMock();
     bookingRepo = makeRepoMock();
+    busySlotRepo = makeRepoMock();
+    // Default: no busy slots, no existing bookings
+    busySlotRepo.find.mockResolvedValue([]);
+    bookingRepo.find.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -69,6 +77,22 @@ describe('ServicesService', () => {
           useValue: makeRepoMock(),
         },
         { provide: getRepositoryToken(Booking), useValue: bookingRepo },
+        {
+          provide: getRepositoryToken(ProviderBusySlot),
+          useValue: busySlotRepo,
+        },
+        {
+          provide: SettingsService,
+          useValue: { get: jest.fn().mockResolvedValue(null) },
+        },
+        {
+          provide: PresenceService,
+          useValue: {
+            registerSocket: jest.fn(),
+            unregisterSocket: jest.fn(),
+            isUserOnline: jest.fn().mockReturnValue(false),
+          },
+        },
       ],
     }).compile();
 
@@ -136,20 +160,22 @@ describe('ServicesService', () => {
       availabilityRepo.find.mockResolvedValue([
         { startTime: '09:00', endTime: '12:00' },
       ]);
+      // Use a Date object with explicit local hours so getHours() = 10 on this machine.
+      // The service uses bDate.getHours() (local time), so we must match that.
+      const bookedAt = new Date('2026-07-01');
+      bookedAt.setHours(10, 0, 0, 0); // 10:00 local time
       bookingRepo.find.mockResolvedValue([
-        {
-          id: 'b-1',
-          scheduledDate: new Date('2026-07-01T10:00:00'),
-          estimatedHours: 1,
-        },
+        { id: 'b-1', scheduledDate: bookedAt, estimatedHours: 1 },
       ]);
 
       const result = await service.getAvailableSlots(providerId, wednesday);
       expect(result.available).toBe(true);
-      const starts = result.slots.map((s: { start: string }) => s.start);
-      expect(starts).toContain('09:00');
-      expect(starts).not.toContain('10:00');
-      expect(starts).toContain('11:00');
+      const slots: { start: string; booked: boolean }[] = result.slots;
+      const bookedSlot = slots.find((s) => s.start === '10:00');
+      expect(bookedSlot?.booked).toBe(true);
+      // 09:00 and 11:00 should be available (not booked)
+      expect(slots.find((s) => s.start === '09:00')?.booked).toBe(false);
+      expect(slots.find((s) => s.start === '11:00')?.booked).toBe(false);
     });
 
     it('should return available slots when no bookings conflict', async () => {

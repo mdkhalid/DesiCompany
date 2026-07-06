@@ -195,7 +195,7 @@ describe('CustomerFeedbacksService', () => {
       expect(result).toEqual([mockFeedback]);
       expect(feedbackRepository.find).toHaveBeenCalledWith({
         where: { provider: { id: providerId } },
-        relations: { booking: true, customer: { user: true } },
+        relations: { booking: { customer: { user: true } }, customer: { user: true } },
         order: { createdAt: 'DESC' },
       });
     });
@@ -216,7 +216,7 @@ describe('CustomerFeedbacksService', () => {
       expect(result).toEqual([mockFeedback]);
       expect(feedbackRepository.find).toHaveBeenCalledWith({
         where: { provider: { id: providerId } },
-        relations: { booking: true, customer: { user: true } },
+        relations: { booking: { customer: { user: true } }, customer: { user: true } },
         order: { createdAt: 'DESC' },
       });
     });
@@ -229,7 +229,7 @@ describe('CustomerFeedbacksService', () => {
       expect(result).toEqual([mockFeedback]);
       expect(feedbackRepository.find).toHaveBeenCalledWith({
         relations: {
-          booking: true,
+          booking: { customer: { user: true } },
           customer: { user: true },
           provider: { user: true },
         },

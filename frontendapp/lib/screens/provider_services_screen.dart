@@ -467,9 +467,12 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
     final amount = _computedServiceAmount();
     if (amount <= 0 && _allowedModels.isEmpty) return const SizedBox.shrink();
     final loc = DesiCompanyApp.localeProvider!;
-    final gst = amount * 0.18;
-    final commission = amount * 0.10;
-    final net = amount - gst - commission;
+    // GST is collected FROM the customer on top of the service amount.
+    // It is NOT deducted from the provider's earnings.
+    // Provider only loses the platform commission from their service amount.
+    final gst = amount * 0.18;         // informational only — paid by customer
+    final commission = amount * 0.10;  // deducted from provider
+    final net = amount - commission;   // provider earns service amount minus commission
     return Container(
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(12),
@@ -484,10 +487,21 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
         const SizedBox(height: 6),
         if (amount > 0) ...[
           _previewRow(loc.tr('subtotal'), amount, null),
-          _previewRow(loc.tr('gst_estimate', params: {'percent': '18'}), gst, const Color(0xFFDC2626)),
           _previewRow(loc.tr('commission_estimate', params: {'percent': '10'}), commission, const Color(0xFFDC2626)),
           const Divider(height: 16),
           _previewRow(loc.tr('provider_earns', params: {'amount': net.toStringAsFixed(0)}), net, const Color(0xFF16A34A)),
+          const SizedBox(height: 4),
+          // Show GST as info — it is added to the customer's total, not taken from provider
+          Row(children: [
+            const Icon(Icons.info_outline, size: 12, color: Color(0xFF6B7280)),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                'GST 18% (₹${gst.toStringAsFixed(0)}) is added to customer\'s total',
+                style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+              ),
+            ),
+          ]),
         ],
       ]),
     );

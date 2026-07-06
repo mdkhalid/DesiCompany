@@ -10,6 +10,7 @@ import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
+import { PresenceService } from './presence.service';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
@@ -66,11 +67,26 @@ describe('ChatGateway', () => {
         },
         { provide: JwtService, useValue: mockJwtService },
         { provide: PushNotificationsService, useValue: mockPushNotificationsService },
+        {
+          provide: PresenceService,
+          useValue: {
+            registerSocket: jest.fn(),
+            unregisterSocket: jest.fn(),
+            isUserOnline: jest.fn().mockReturnValue(false),
+            isAnySocketOnline: jest.fn().mockReturnValue(false),
+            getSocketIds: jest.fn().mockReturnValue([]),
+            getOnlineUserIds: jest.fn().mockReturnValue([]),
+          },
+        },
       ],
     }).compile();
 
     gateway = module.get(ChatGateway);
+    // Assign a mock Socket.IO server — the gateway emits presence_update on connect/disconnect
+    gateway.server = { emit: jest.fn(), to: jest.fn().mockReturnThis() } as unknown as Server;
     jest.clearAllMocks();
+    // Re-assign after clearAllMocks so server mock functions are fresh for each test
+    gateway.server = { emit: jest.fn(), to: jest.fn().mockReturnThis() } as unknown as Server;
   });
 
   it('should be defined', () => {
@@ -132,22 +148,24 @@ describe('ChatGateway', () => {
     });
 
     it('accepts client with valid token and sets user data', async () => {
-      const mockUser = { id: 'user-1', phone: '123', role: 'customer' };
-
+      // handleConnection is called AFTER auth middleware sets client.data.userId.
+      // Simulate that by pre-setting userId on client.data.
       const mockDisconnect = jest.fn();
       const client = {
         id: 'socket-1',
         handshake: { auth: { token: 'valid-token' }, headers: {} },
         disconnect: mockDisconnect,
-        data: { userId: 'user-1', user: mockUser },
+        data: { userId: 'user-1' },
+        emit: jest.fn(),
       } as unknown as Socket;
 
-      await gateway.handleConnection(client as never);
+      gateway.handleConnection(client as never);
 
       expect(mockDisconnect).not.toHaveBeenCalled();
     });
 
     it('extracts token from authorization header', async () => {
+      // Same: middleware sets userId before handleConnection fires.
       const client = {
         id: 'socket-1',
         handshake: {
@@ -156,9 +174,10 @@ describe('ChatGateway', () => {
         },
         disconnect: jest.fn(),
         data: { userId: 'user-1' },
+        emit: jest.fn(),
       } as unknown as Socket;
 
-      await gateway.handleConnection(client as never);
+      gateway.handleConnection(client as never);
 
       expect((client.data as Record<string, unknown>).userId).toBe('user-1');
     });
@@ -333,9 +352,11 @@ describe('ChatGateway', () => {
 
   describe('handleDisconnect', () => {
     it('logs disconnect without error', () => {
+      mockMessageRepo.find.mockResolvedValue([]);
       const client = {
         id: 'socket-1',
         data: { userId: 'user-1' },
+        emit: jest.fn(),
       } as unknown as Socket;
       expect(() => gateway.handleDisconnect(client as never)).not.toThrow();
     });

@@ -93,7 +93,16 @@ export class InvoicesService {
     const convenienceFee = Number(booking.convenienceFee ?? 0);
     const gstAmount = Number(booking.gstAmount ?? 0);
     const totalAmount = Number(booking.totalAmount);
-    const serviceAmount = totalAmount - convenienceFee - gstAmount;
+    // Derive serviceAmount from stored providerAmount + commissionAmount.
+    // This is always correct regardless of how extra charges or GST columns were set.
+    // Fallback to totalAmount - fees for legacy bookings where both amounts are 0.
+    const derivedFromComponents =
+      Number(booking.providerAmount ?? 0) +
+      Number(booking.commissionAmount ?? 0);
+    const serviceAmount =
+      derivedFromComponents > 0
+        ? derivedFromComponents
+        : totalAmount - convenienceFee - gstAmount;
     const commissionRate =
       booking.commissionAmount > 0 && serviceAmount > 0
         ? (Number(booking.commissionAmount) / serviceAmount) * 100
