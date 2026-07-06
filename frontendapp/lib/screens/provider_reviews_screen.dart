@@ -176,7 +176,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
   Widget _buildReviewCard(Map review) {
     final customer = review['customer'];
     final user = customer?['user'] ?? {};
-    final name = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
+    final name = '${customer?['firstName'] ?? ''} ${customer?['lastName'] ?? ''}'.trim();
     final phone = user['phone'] ?? '';
     final rating = (review['rating'] is num)
         ? (review['rating'] as num).toDouble()

@@ -120,6 +120,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (_stateController.text.isNotEmpty) 'state': _stateController.text,
         if (_pincodeController.text.isNotEmpty) 'pincode': _pincodeController.text,
         'language': _selectedLanguage,
+        if (_latitude != null) 'latitude': _latitude,
+        if (_longitude != null) 'longitude': _longitude,
+        if (_profile?['role'] == 'provider' && _serviceRadius != null)
+          'serviceRadiusKm': _serviceRadius,
       });
 
       if (!mounted) return;
@@ -469,38 +473,132 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _detectLocation() async {
+    final cityController = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Set Location'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx, 'gps'),
+                icon: const Icon(Icons.my_location),
+                label: const Text('Use Current Location (GPS)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Row(children: [
+              Expanded(child: Divider()),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('OR', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ),
+              Expanded(child: Divider()),
+            ]),
+            const SizedBox(height: 16),
+            TextField(
+              controller: cityController,
+              decoration: InputDecoration(
+                hintText: 'Enter city name (e.g. Lucknow)',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (cityController.text.trim().isNotEmpty) {
+                    Navigator.pop(ctx, cityController.text.trim());
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Search in this city'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    cityController.dispose();
+
+    if (result == null) return;
+
     setState(() => _locating = true);
     try {
-      final pos = await LocationService.getCurrentLocation();
-      if (pos == null) {
-        // Check if there's a useful hint about why it failed
-        final hint = await LocationService.locationHint();
+      if (result == 'gps') {
+        final pos = await LocationService.getCurrentLocation();
+        if (pos == null) {
+          final hint = await LocationService.locationHint();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(hint ?? 'Could not detect location'),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+          return;
+        }
+        setState(() {
+          _latitude = pos.latitude;
+          _longitude = pos.longitude;
+        });
+        // Reverse geocode to fill address/city
+        LocationService.getAddressFromCoordinates(pos.latitude, pos.longitude).then((addr) {
+          if (mounted && addr.isNotEmpty) {
+            setState(() => _addressController.text = addr);
+          }
+        });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(hint ?? 'Could not detect location'),
-              duration: const Duration(seconds: 5),
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Location set: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
+            duration: const Duration(seconds: 2),
+          ));
         }
-        setState(() => _locating = false);
-        return;
-      }
-      setState(() {
-        _latitude = pos.latitude;
-        _longitude = pos.longitude;
-      });
-      // Reverse geocode to fill address
-      LocationService.getAddressFromCoordinates(pos.latitude, pos.longitude).then((addr) {
-        if (mounted && addr.isNotEmpty) {
-          setState(() => _addressController.text = addr);
+      } else {
+        // City name search via Nominatim
+        final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(result)}&limit=1&countrycodes=in',
+        );
+        final response = await http.get(url, headers: {'User-Agent': 'DesiCompanyApp/1.0'});
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data is List && data.isNotEmpty) {
+            final lat = double.parse(data[0]['lat']);
+            final lon = double.parse(data[0]['lon']);
+            setState(() {
+              _latitude = lat;
+              _longitude = lon;
+              _cityController.text = result;
+            });
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('Location set to $result (${lat.toStringAsFixed(4)}, ${lon.toStringAsFixed(4)})'),
+                duration: const Duration(seconds: 2),
+              ));
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('City not found. Please try a different name.')),
+              );
+            }
+          }
         }
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Location set: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
-          duration: const Duration(seconds: 2),
-        ));
       }
     } catch (e) {
       if (mounted) {
@@ -530,15 +628,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: _locating ? null : _detectLocation,
               icon: _locating
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.my_location, size: 18),
+                  : const Icon(Icons.location_on, size: 18),
               label: Text(
                 _latitude != null
                     ? 'Location: ${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)}'
-                    : 'Detect Current Location',
+                    : 'Set Location (GPS or City)',
                 style: const TextStyle(fontSize: 13),
               ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primary,
+                foregroundColor: _latitude != null ? Colors.green : AppTheme.primary,
                 side: BorderSide(color: _latitude != null ? Colors.green : AppTheme.primary),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -964,9 +964,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(Icons.home_rounded, loc.tr('nav_home'), true, () {}),
-              _navItem(Icons.assignment_outlined, 'Requests', false, () => Navigator.pushNamed(context, '/customer-requests')),
+              _navItem(Icons.assignment_outlined, loc.tr('nav_requests'), false, () => Navigator.pushNamed(context, '/customer-requests')),
               _navItem(Icons.chat_bubble_outline, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/conversations')),
-              _navItem(Icons.person_outline, 'My Account', false, () => Navigator.pushNamed(context, '/my-account')),
+              _navItem(Icons.person_outline, loc.tr('my_account'), false, () => Navigator.pushNamed(context, '/my-account')),
             ],
           ),
         ),

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../main.dart';
 import '../services/api_service.dart';
 import '../services/app_presence_service.dart';
+import '../services/location_service.dart';
 import '../services/notification_websocket_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
@@ -29,6 +33,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   User? _currentUser;
   bool _loading = true;
   String _providerName = '';
+  double? _latitude;
+  double? _longitude;
+  String _locationText = 'Set location';
+  bool _locating = false;
   StreamSubscription<int>? _unreadCountSub;
 
   @override
@@ -52,8 +60,18 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         final first = (provider['firstName'] ?? '').toString();
         final last = (provider['lastName'] ?? '').toString();
         final name = '$first $last'.trim();
-        if (name.isNotEmpty) {
-          setState(() => _providerName = name);
+        final lat = provider['latitude'];
+        final lng = provider['longitude'];
+        setState(() {
+          if (name.isNotEmpty) _providerName = name;
+          _latitude = lat is num ? lat.toDouble() : double.tryParse('${lat ?? ''}');
+          _longitude = lng is num ? lng.toDouble() : double.tryParse('${lng ?? ''}');
+        });
+        // Reverse geocode to get location text
+        if (_latitude != null && _longitude != null) {
+          LocationService.getAddressFromCoordinates(_latitude!, _longitude!).then((addr) {
+            if (mounted && addr.isNotEmpty) setState(() => _locationText = addr);
+          });
         }
       }
       final roles = profile['roles'];
@@ -116,22 +134,46 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                loc.tr('provider_dashboard'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+          GestureDetector(
+            onTap: _showLocationPicker,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _locationText == 'Set location' ? loc.tr('set_location') : _locationText,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          loc.tr('provider_dashboard'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              Text(
-                loc.tr('manage_bookings'),
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
+              ],
+            ),
           ),
           Row(
             children: [
@@ -242,6 +284,149 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showLocationPicker() async {
+    final cityController = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Set Your Location'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx, 'gps'),
+                icon: const Icon(Icons.my_location),
+                label: const Text('Use Current Location (GPS)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Row(children: [
+              Expanded(child: Divider()),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('OR', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ),
+              Expanded(child: Divider()),
+            ]),
+            const SizedBox(height: 16),
+            TextField(
+              controller: cityController,
+              decoration: InputDecoration(
+                hintText: 'Enter city name (e.g. Lucknow)',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (cityController.text.trim().isNotEmpty) {
+                    Navigator.pop(ctx, cityController.text.trim());
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Search in this city'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    cityController.dispose();
+
+    if (result == null) return;
+
+    setState(() => _locating = true);
+    try {
+      if (result == 'gps') {
+        final pos = await LocationService.getCurrentLocation();
+        if (pos == null) {
+          final hint = await LocationService.locationHint();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(hint ?? 'Could not detect location'),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+          return;
+        }
+        await ApiService.patch('/users/profile', body: {
+          'latitude': pos.latitude,
+          'longitude': pos.longitude,
+        });
+        if (mounted) {
+          setState(() {
+            _latitude = pos.latitude;
+            _longitude = pos.longitude;
+            _locationText = 'Current location';
+          });
+          // Reverse geocode in background
+          LocationService.getAddressFromCoordinates(pos.latitude, pos.longitude).then((addr) {
+            if (mounted) setState(() => _locationText = addr);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Location saved successfully!'),
+            backgroundColor: Colors.green,
+          ));
+        }
+      } else {
+        final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(result)}&limit=1&countrycodes=in',
+        );
+        final response = await http.get(url, headers: {'User-Agent': 'DesiCompanyApp/1.0'});
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data is List && data.isNotEmpty) {
+            final lat = double.parse(data[0]['lat']);
+            final lon = double.parse(data[0]['lon']);
+            await ApiService.patch('/users/profile', body: {
+              'latitude': lat,
+              'longitude': lon,
+            });
+            if (mounted) {
+              setState(() {
+                _latitude = lat;
+                _longitude = lon;
+                _locationText = result;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('Location set to $result'),
+                backgroundColor: Colors.green,
+              ));
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('City not found. Please try a different name.')),
+              );
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
   }
 
   @override
@@ -521,10 +706,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _navItem(Icons.assignment_outlined, 'Requests', true, () {}),
-              _navItem(Icons.wallet, loc.tr('nav_wallet'), false, () => Navigator.pushNamed(context, '/wallet')),
+              _navItem(Icons.assignment_outlined, loc.tr('nav_requests'), true, () {}),
+              _navItem(Icons.work_outline, loc.tr('open_jobs'), false, () => Navigator.pushNamed(context, '/provider-open-jobs')),
               _navItem(Icons.chat, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/conversations')),
-              _navItem(Icons.person, 'My Account', false, () => Navigator.pushNamed(context, '/my-account')),
+              _navItem(Icons.person, loc.tr('my_account'), false, () => Navigator.pushNamed(context, '/my-account')),
             ],
           ),
         ),
