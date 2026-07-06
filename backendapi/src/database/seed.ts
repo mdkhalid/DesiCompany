@@ -10,6 +10,7 @@ import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
+import { PricingModel } from '../common/enums/pricing-model.enum';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -45,10 +46,17 @@ async function seed() {
       status: UserStatus.ACTIVE,
     });
     await userRepository.save(admin);
-    console.log('Admin user created with phone: ' + (process.env.ADMIN_PHONE || '9999999999'));
+    console.log(
+      'Admin user created with phone: ' +
+        (process.env.ADMIN_PHONE || '9999999999'),
+    );
     console.log('  → Login OTP:');
-    console.log('     - In mock mode (OTP_MOCK=true in .env): Use "123456" for any phone');
-    console.log('     - In production: Check backend terminal logs for the OTP');
+    console.log(
+      '     - In mock mode (OTP_MOCK=true in .env): Use "123456" for any phone',
+    );
+    console.log(
+      '     - In production: Check backend terminal logs for the OTP',
+    );
     console.log('     - Or set OTP_MOCK=true in backend/.env for development');
   }
 
@@ -407,6 +415,12 @@ async function seed() {
       icon: 'plumbing',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [
+        PricingModel.HOURLY,
+        PricingModel.DAILY,
+        PricingModel.FIXED,
+      ],
+      defaultPricingModel: PricingModel.HOURLY,
     },
     {
       nameEn: 'Electrician',
@@ -414,6 +428,8 @@ async function seed() {
       icon: 'electrical',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.HOURLY, PricingModel.FIXED],
+      defaultPricingModel: PricingModel.HOURLY,
     },
     {
       nameEn: 'Carpenter',
@@ -421,6 +437,12 @@ async function seed() {
       icon: 'carpentry',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [
+        PricingModel.HOURLY,
+        PricingModel.DAILY,
+        PricingModel.FIXED,
+      ],
+      defaultPricingModel: PricingModel.DAILY,
     },
     {
       nameEn: 'Painter',
@@ -428,6 +450,8 @@ async function seed() {
       icon: 'painting',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.DAILY, PricingModel.FIXED],
+      defaultPricingModel: PricingModel.DAILY,
     },
     {
       nameEn: 'Cleaning',
@@ -435,6 +459,12 @@ async function seed() {
       icon: 'cleaning',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [
+        PricingModel.HOURLY,
+        PricingModel.FIXED,
+        PricingModel.PER_UNIT,
+      ],
+      defaultPricingModel: PricingModel.HOURLY,
     },
     {
       nameEn: 'Driver',
@@ -442,6 +472,8 @@ async function seed() {
       icon: 'driving',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.HOURLY, PricingModel.DAILY],
+      defaultPricingModel: PricingModel.HOURLY,
     },
     {
       nameEn: 'AC Repair',
@@ -449,6 +481,8 @@ async function seed() {
       icon: 'ac repair',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.FIXED, PricingModel.HOURLY],
+      defaultPricingModel: PricingModel.FIXED,
     },
     {
       nameEn: 'Pest Control',
@@ -456,6 +490,8 @@ async function seed() {
       icon: 'pest control',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.QUOTE_BASED, PricingModel.FIXED],
+      defaultPricingModel: PricingModel.QUOTE_BASED,
     },
     {
       nameEn: 'Shifting',
@@ -463,6 +499,8 @@ async function seed() {
       icon: 'shifting',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.QUOTE_BASED],
+      defaultPricingModel: PricingModel.QUOTE_BASED,
     },
     {
       nameEn: 'Laundry',
@@ -470,6 +508,8 @@ async function seed() {
       icon: 'laundry',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.PER_UNIT, PricingModel.FIXED],
+      defaultPricingModel: PricingModel.PER_UNIT,
     },
     {
       nameEn: 'Appliance Repair',
@@ -477,6 +517,8 @@ async function seed() {
       icon: 'appliance',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.FIXED, PricingModel.HOURLY],
+      defaultPricingModel: PricingModel.FIXED,
     },
     {
       nameEn: 'Salon',
@@ -484,6 +526,8 @@ async function seed() {
       icon: 'salon',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.FIXED, PricingModel.HOURLY],
+      defaultPricingModel: PricingModel.FIXED,
     },
     {
       nameEn: 'Photography',
@@ -491,6 +535,12 @@ async function seed() {
       icon: 'photography',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [
+        PricingModel.HOURLY,
+        PricingModel.FIXED,
+        PricingModel.DAILY,
+      ],
+      defaultPricingModel: PricingModel.HOURLY,
     },
     {
       nameEn: 'Tutoring',
@@ -498,6 +548,8 @@ async function seed() {
       icon: 'tutoring',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.HOURLY, PricingModel.FIXED],
+      defaultPricingModel: PricingModel.HOURLY,
     },
     {
       nameEn: 'Fitness Trainer',
@@ -505,6 +557,8 @@ async function seed() {
       icon: 'fitness',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.HOURLY, PricingModel.FIXED],
+      defaultPricingModel: PricingModel.HOURLY,
     },
     {
       nameEn: 'Computer Repair',
@@ -512,6 +566,17 @@ async function seed() {
       icon: 'computer',
       commissionType: CommissionType.PERCENTAGE,
       commissionValue: 10,
+      pricingModels: [PricingModel.FIXED, PricingModel.HOURLY],
+      defaultPricingModel: PricingModel.FIXED,
+    },
+    {
+      nameEn: 'Transporter',
+      nameHi: 'ट्रांसपोर्टर',
+      icon: 'transport',
+      commissionType: CommissionType.PERCENTAGE,
+      commissionValue: 10,
+      pricingModels: [PricingModel.QUOTE_BASED],
+      defaultPricingModel: PricingModel.QUOTE_BASED,
     },
   ];
 

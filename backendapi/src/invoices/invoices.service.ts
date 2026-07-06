@@ -37,6 +37,8 @@ export interface InvoiceData {
   charges: InvoiceCharge[];
   financials: {
     subtotal: number;
+    serviceAmount: number;
+    convenienceFee: number;
     taxRate: number;
     taxAmount: number;
     totalAmount: number;
@@ -88,12 +90,13 @@ export class InvoicesService {
       order: { createdAt: 'DESC' },
     });
 
-    const subtotal =
-      Number(booking.totalAmount) - this.getTaxAmount(booking.totalAmount);
-    const taxAmount = this.getTaxAmount(booking.totalAmount);
+    const convenienceFee = Number(booking.convenienceFee ?? 0);
+    const gstAmount = Number(booking.gstAmount ?? 0);
+    const totalAmount = Number(booking.totalAmount);
+    const serviceAmount = totalAmount - convenienceFee - gstAmount;
     const commissionRate =
-      booking.commissionAmount > 0
-        ? (Number(booking.commissionAmount) / Number(booking.totalAmount)) * 100
+      booking.commissionAmount > 0 && serviceAmount > 0
+        ? (Number(booking.commissionAmount) / serviceAmount) * 100
         : 0;
 
     return {
@@ -132,10 +135,12 @@ export class InvoicesService {
         amount: Number(charge.amount),
       })),
       financials: {
-        subtotal: Number(subtotal.toFixed(2)),
+        subtotal: Number(serviceAmount.toFixed(2)),
+        serviceAmount: Number(serviceAmount.toFixed(2)),
+        convenienceFee: Number(convenienceFee.toFixed(2)),
         taxRate: 18,
-        taxAmount: Number(taxAmount.toFixed(2)),
-        totalAmount: Number(booking.totalAmount),
+        taxAmount: Number(gstAmount.toFixed(2)),
+        totalAmount: Number(totalAmount.toFixed(2)),
         commissionRate: Number(commissionRate.toFixed(2)),
         commissionAmount: Number(booking.commissionAmount),
         providerEarnings: Number(booking.providerAmount),
@@ -193,19 +198,15 @@ td{padding:10px;border-bottom:1px solid #eee}
 <div class="party"><h3>Service Provider</h3><p><strong>${invoice.provider.name}</strong></p><p>${invoice.provider.phone}</p><p>${invoice.provider.email || ''}</p></div></div>
 <h3>Service Details</h3><table>
 <thead><tr><th>Type</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
-<tbody><tr><td>${invoice.service.category || 'Service'}</td><td>${invoice.service.description || '-'}</td><td style="text-align:right">Rs. ${(invoice.financials.subtotal - invoice.charges.reduce((s: number, c) => s + c.amount, 0)).toFixed(2)}</td></tr>
+<tbody><tr><td>${invoice.service.category || 'Service'}</td><td>${invoice.service.description || '-'}</td><td style="text-align:right">Rs. ${invoice.financials.serviceAmount.toFixed(2)}</td></tr>
 ${chargesHTML}</tbody></table>
-<div class="totals"><div class="total-row"><span>Subtotal:</span><span>Rs. ${invoice.financials.subtotal.toFixed(2)}</span></div>
+<div class="totals"><div class="total-row"><span>Service Amount:</span><span>Rs. ${invoice.financials.serviceAmount.toFixed(2)}</span></div>
+${invoice.financials.convenienceFee > 0 ? `<div class="total-row"><span>Convenience Fee:</span><span>Rs. ${invoice.financials.convenienceFee.toFixed(2)}</span></div>` : ''}
 <div class="total-row"><span>GST (${invoice.financials.taxRate}%):</span><span>Rs. ${invoice.financials.taxAmount.toFixed(2)}</span></div>
 <div class="total-row total-final"><span>Total:</span><span>Rs. ${invoice.financials.totalAmount.toFixed(2)}</span></div>
 <div class="total-row" style="color:#666;margin-top:15px"><span>Platform Commission (${invoice.financials.commissionRate}%):</span><span>Rs. ${invoice.financials.commissionAmount.toFixed(2)}</span></div>
 <div class="total-row" style="color:#16a34a"><span>Provider Earnings:</span><span>Rs. ${invoice.financials.providerEarnings.toFixed(2)}</span></div></div>
 ${invoice.payment ? `<div style="margin-top:30px;padding:15px;background:#f0f9ff;border-radius:8px"><h3>Payment Information</h3><p><strong>Method:</strong> ${invoice.payment.method} | <strong>Status:</strong> ${invoice.payment.status} | <strong>Amount:</strong> Rs. ${invoice.payment.amount.toFixed(2)}</p></div>` : ''}
 </body></html>`;
-  }
-
-  private getTaxAmount(totalAmount: number): number {
-    const taxRate = 0.18 / 1.18;
-    return Number(totalAmount) * taxRate;
   }
 }

@@ -7,6 +7,7 @@ import { ProviderService } from '../../services/entities/provider-service.entity
 import { BookingCharge } from './booking-charge.entity';
 import { BookingServiceItem } from './booking-service-item.entity';
 import { Quote } from '../../quotes/entities/quote.entity';
+import { PricingModel } from '../../common/enums/pricing-model.enum';
 
 @Entity('bookings')
 export class Booking extends BaseEntity {
@@ -63,11 +64,26 @@ export class Booking extends BaseEntity {
   })
   convenienceFee: number;
 
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    name: 'gst_amount',
+  })
+  gstAmount: number;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   estimatedHours: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   estimatedDays: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  unitCount: number;
+
+  @Column({ type: 'varchar', nullable: true })
+  pricingModel: PricingModel;
 
   @Column({ type: 'timestamp', nullable: true })
   proposedDate: Date | null;

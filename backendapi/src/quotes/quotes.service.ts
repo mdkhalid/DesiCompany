@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { Booking } from '../bookings/entities/booking.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
+import { PricingModel } from '../common/enums/pricing-model.enum';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { ServiceCategory } from '../services/entities/service-category.entity';
@@ -414,6 +415,7 @@ export class QuotesService {
       provider: quote.provider,
       providerService: providerService ?? undefined,
       quote: quote,
+      pricingModel: PricingModel.QUOTE_BASED,
       scheduledDate: jobRequest.preferredDate ?? new Date(),
       description: jobRequest.description,
       estimatedHours: quote.estimatedHours ?? undefined,
@@ -429,12 +431,14 @@ export class QuotesService {
       promoCode,
       userId,
     );
-    if (feeResult.finalFee > 0) {
-      savedBooking.totalAmount =
-        Number(savedBooking.totalAmount) + feeResult.finalFee;
-      savedBooking.convenienceFee = feeResult.finalFee;
-      await this.bookingRepository.save(savedBooking);
-    }
+    // Calculate GST on service amount
+    const gstRate = parseFloat(process.env.GST_RATE || '0.18');
+    const gstAmount = Math.round(serviceAmount * gstRate * 100) / 100;
+
+    savedBooking.totalAmount = serviceAmount + feeResult.finalFee + gstAmount;
+    savedBooking.convenienceFee = feeResult.finalFee;
+    savedBooking.gstAmount = gstAmount;
+    await this.bookingRepository.save(savedBooking);
 
     // Send role-specific booking confirmation messages to the chat
     const providerName =

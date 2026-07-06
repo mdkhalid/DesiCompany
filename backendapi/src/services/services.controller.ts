@@ -23,6 +23,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
+import { PricingModel } from '../common/enums/pricing-model.enum';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
 import { UpdateProviderServiceDto } from './dto/update-provider-service.dto';
 import { CreateProviderAvailabilityDto } from './dto/create-provider-availability.dto';
@@ -77,6 +78,8 @@ export class ServicesController {
     @Body('commissionType') commissionType?: CommissionType,
     @Body('commissionValue') commissionValue?: number,
     @Body('parentId') parentId?: string,
+    @Body('pricingModels') pricingModels?: PricingModel[],
+    @Body('defaultPricingModel') defaultPricingModel?: PricingModel,
   ) {
     return this.servicesService.createCategory({
       nameEn,
@@ -85,6 +88,8 @@ export class ServicesController {
       commissionType: commissionType || CommissionType.PERCENTAGE,
       commissionValue: commissionValue || 10,
       parentId,
+      pricingModels,
+      defaultPricingModel,
     });
   }
 
@@ -99,6 +104,8 @@ export class ServicesController {
     @Body('commissionType') commissionType?: CommissionType,
     @Body('commissionValue') commissionValue?: number,
     @Body('isActive') isActive?: boolean,
+    @Body('pricingModels') pricingModels?: PricingModel[],
+    @Body('defaultPricingModel') defaultPricingModel?: PricingModel,
   ) {
     return this.servicesService.updateCategory(id, {
       nameEn,
@@ -107,6 +114,8 @@ export class ServicesController {
       commissionType,
       commissionValue,
       isActive,
+      pricingModels,
+      defaultPricingModel,
     });
   }
 
@@ -248,7 +257,9 @@ export class ServicesController {
 
   @Get('busy-slots')
   @Roles(UserRole.PROVIDER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get busy slots for a provider, optionally filtered by date' })
+  @ApiOperation({
+    summary: 'Get busy slots for a provider, optionally filtered by date',
+  })
   getBusySlots(
     @Query('providerId') providerId: string,
     @Query('date') date?: string,
@@ -260,7 +271,14 @@ export class ServicesController {
   @Roles(UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a busy time slot (unavailable block)' })
   createBusySlot(
-    @Body() body: { providerId: string; busyDate: string; startTime: string; endTime: string; reason?: string },
+    @Body()
+    body: {
+      providerId: string;
+      busyDate: string;
+      startTime: string;
+      endTime: string;
+      reason?: string;
+    },
   ) {
     return this.servicesService.createBusySlot(body.providerId, {
       busyDate: body.busyDate,

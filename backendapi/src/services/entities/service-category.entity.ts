@@ -1,6 +1,7 @@
 import { Column, Entity, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { CommissionType } from '../../common/enums/commission-type.enum';
+import { PricingModel } from '../../common/enums/pricing-model.enum';
 import { ProviderService } from './provider-service.entity';
 
 @Entity('service_categories')
@@ -22,6 +23,15 @@ export class ServiceCategory extends BaseEntity {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({
+    type: 'simple-array',
+    default: `${PricingModel.FIXED},${PricingModel.HOURLY},${PricingModel.DAILY}`,
+  })
+  pricingModels: PricingModel[];
+
+  @Column({ type: 'varchar', nullable: true })
+  defaultPricingModel?: PricingModel;
 
   @ManyToOne(() => ServiceCategory, (category) => category.children, {
     nullable: true,

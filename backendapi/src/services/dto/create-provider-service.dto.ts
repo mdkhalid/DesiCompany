@@ -1,4 +1,5 @@
-import { IsUUID, IsOptional, IsNumber, Min } from 'class-validator';
+import { IsUUID, IsOptional, IsNumber, Min, IsIn } from 'class-validator';
+import { PricingModel } from '../../common/enums/pricing-model.enum';
 
 export class CreateProviderServiceDto {
   @IsUUID()
@@ -6,6 +7,10 @@ export class CreateProviderServiceDto {
 
   @IsUUID()
   categoryId: string;
+
+  @IsOptional()
+  @IsIn(Object.values(PricingModel))
+  pricingModel?: PricingModel;
 
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -21,4 +26,9 @@ export class CreateProviderServiceDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   fixedRate?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  unitRate?: number;
 }

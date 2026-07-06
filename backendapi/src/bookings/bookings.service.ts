@@ -17,7 +17,7 @@ import { ChatGateway } from '../chat/chat.gateway';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { getStatusChatTemplate, formatTemplate } from './chat-templates';
 import { UserRole } from '../common/enums/user-role.enum';
-import { CommissionType } from '../common/enums/commission-type.enum';
+import { PricingModel } from '../common/enums/pricing-model.enum';
 import { ProviderAvailability } from '../services/entities/provider-availability.entity';
 import { ProviderDateOverride } from '../services/entities/provider-date-override.entity';
 import { ProviderBusySlot } from '../services/entities/provider-busy-slot.entity';
@@ -126,6 +126,7 @@ export class BookingsService {
       customer,
       provider,
       providerService,
+      pricingModel: providerService?.pricingModel ?? undefined,
       scheduledDate: new Date(dto.scheduledDate),
       description: dto.description,
       serviceAddress: dto.serviceAddress,
@@ -272,7 +273,11 @@ export class BookingsService {
         const jobRequest = await this.jobRequestRepository.findOne({
           where: { acceptedQuoteId: saved.quote.id },
         });
-        if (jobRequest && jobRequest.status !== JobRequestStatus.CLOSED && jobRequest.status !== JobRequestStatus.CANCELLED) {
+        if (
+          jobRequest &&
+          jobRequest.status !== JobRequestStatus.CLOSED &&
+          jobRequest.status !== JobRequestStatus.CANCELLED
+        ) {
           jobRequest.status = JobRequestStatus.CLOSED;
           await this.jobRequestRepository.save(jobRequest);
         }
@@ -332,9 +337,10 @@ export class BookingsService {
       // In-app notification
       // Tag the notification with the recipient's role context so dual-role
       // users only see it in the correct role's view.
-      const recipientRole: UserRole = notification.userId === booking.provider.user.id
-        ? UserRole.PROVIDER
-        : UserRole.CUSTOMER;
+      const recipientRole: UserRole =
+        notification.userId === booking.provider.user.id
+          ? UserRole.PROVIDER
+          : UserRole.CUSTOMER;
       await this.notificationsService.create(
         notification.userId,
         notification.title,
@@ -652,7 +658,9 @@ export class BookingsService {
       return bookingMinutes < busyEnd && bookingEnd > busyStart;
     });
     if (inBusySlot) {
-      throw new BadRequestException('Provider is not available during this time');
+      throw new BadRequestException(
+        'Provider is not available during this time',
+      );
     }
 
     const hasConflict = conflictingBookings.some((b) => {
@@ -678,32 +686,63 @@ export class BookingsService {
         provider: true,
         charges: true,
         serviceItems: { providerService: { category: true } },
+        quote: true,
       },
     });
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
 
-    // If no providerService and no service items, preserve existing totalAmount
-    // This handles bookings created from quotes where amount is already set
-    if (!booking.providerService && (!booking.serviceItems || booking.serviceItems.length === 0)) {
+    const hasQuote = !!booking.quote;
+    const hasService = !!booking.providerService;
+    const hasItems = booking.serviceItems && booking.serviceItems.length > 0;
+
+    // Nothing to compute — nothing has been set yet or booking is quoted-only.
+    if (!hasService && !hasItems && !hasQuote) {
       return booking;
     }
 
+    // ── Determine base service amount ──
     let baseAmount = 0;
-    const service = booking.providerService;
-    if (service) {
-      if (service.fixedRate) {
-        baseAmount = Number(service.fixedRate);
-      } else if (service.hourlyRate && booking.estimatedHours) {
-        baseAmount =
-          Number(service.hourlyRate) * Number(booking.estimatedHours);
-      } else if (service.dailyRate && booking.estimatedDays) {
-        baseAmount = Number(service.dailyRate) * Number(booking.estimatedDays);
+    if (hasQuote) {
+      // For quote-accepted bookings, the agreed quote amount is the base.
+      baseAmount = Number(booking.quote.amount);
+    } else if (hasService) {
+      const service = booking.providerService;
+      const model =
+        service.pricingModel ??
+        booking.pricingModel ??
+        this.inferPricingModelFromRates(service);
+      switch (model) {
+        case PricingModel.HOURLY: {
+          baseAmount =
+            Number(service.hourlyRate ?? 0) *
+            Number(booking.estimatedHours ?? 0);
+          break;
+        }
+        case PricingModel.DAILY: {
+          baseAmount =
+            Number(service.dailyRate ?? 0) * Number(booking.estimatedDays ?? 0);
+          break;
+        }
+        case PricingModel.PER_UNIT: {
+          baseAmount =
+            Number(service.unitRate ?? 0) * Number(booking.unitCount ?? 0);
+          break;
+        }
+        case PricingModel.FIXED: {
+          baseAmount = Number(service.fixedRate ?? 0);
+          break;
+        }
+        case PricingModel.QUOTE_BASED:
+        default: {
+          baseAmount = 0;
+          break;
+        }
       }
     }
 
-    // Add additional services to base amount
+    // Add additional service items to base amount
     const additionalServiceTotal = (booking.serviceItems || []).reduce(
       (sum, item) => {
         if (item.estimatedHours) {
@@ -735,85 +774,84 @@ export class BookingsService {
       baseAmount = baseAmount * emergencyMultiplier;
     }
 
+    // ── Service amount = base + extra charges (excluding fee & gst) ──
     const serviceAmount =
       baseAmount +
       (booking.charges || []).reduce(
         (sum, charge) =>
-          charge.chargeType === 'convenience_fee'
+          charge.chargeType === 'convenience_fee' || charge.chargeType === 'gst'
             ? sum
             : sum + Number(charge.amount),
         0,
       );
 
-    // Calculate convenience fee
+    // ── Convenience fee ──
     const fee = await this.platformFeesService.getConvenienceFee(serviceAmount);
     booking.convenienceFee = fee.finalFee;
-
-    // Create or update the convenience fee charge for audit trail
-    const existingFeeCharge = (booking.charges || []).find(
-      (c) => c.chargeType === 'convenience_fee',
+    await this.upsertCharge(
+      'convenience_fee',
+      'Platform convenience fee',
+      fee.finalFee,
+      booking,
     );
-    if (fee.finalFee > 0) {
-      if (existingFeeCharge) {
-        existingFeeCharge.amount = fee.finalFee;
-        await this.chargeRepository.save(existingFeeCharge);
-      } else {
-        const feeCharge = this.chargeRepository.create({
-          booking: { id: booking.id },
-          chargeType: 'convenience_fee',
-          amount: fee.finalFee,
-          description: 'Platform convenience fee',
-        });
-        await this.chargeRepository.save(feeCharge);
-      }
-    } else if (existingFeeCharge) {
-      await this.chargeRepository.remove(existingFeeCharge);
-    }
 
-    // Total = service amount + convenience fee (commission is on service amount only)
-    const totalAmount = serviceAmount + fee.finalFee;
+    // ── GST on service amount ──
+    const gstRate = parseFloat(process.env.GST_RATE || '0.18');
+    const gstAmount = Math.round(serviceAmount * gstRate * 100) / 100;
+    booking.gstAmount = gstAmount;
+    await this.upsertCharge('gst', 'GST', gstAmount, booking);
 
-    // Commission lookup: provider scope → category scope → global fallback
+    // ── Commission (provider → category → global → default) ──
     const providerId = booking.provider?.id;
-    const categoryId = service?.category?.id;
+    const categoryId = booking.providerService?.category?.id;
+    const commission = await this.commissionService.resolveCommission(
+      serviceAmount,
+      providerId,
+      categoryId,
+    );
 
-    let commission;
-    if (providerId) {
-      commission = await this.commissionService.getCommission(
-        serviceAmount,
-        'provider',
-        providerId,
-      );
-    }
-    if (!commission || commission.amount === serviceAmount * 0.1) {
-      // No provider-specific config found (fell through to default 10%), try category
-      if (categoryId) {
-        const categoryCommission = await this.commissionService.getCommission(
-          serviceAmount,
-          'category',
-          categoryId,
-        );
-        // Only use category commission if it differs from the default fallback
-        if (
-          categoryCommission.type !== CommissionType.PERCENTAGE ||
-          categoryCommission.value !== 10 ||
-          categoryId
-        ) {
-          commission = categoryCommission;
-        }
-      }
-    }
-
-    if (!commission) {
-      // If no commission found, default to 0
-      commission = { amount: 0, type: CommissionType.PERCENTAGE, value: 0 };
-    }
-
+    // ── Final totals ──
+    const totalAmount = serviceAmount + fee.finalFee + gstAmount;
     booking.totalAmount = totalAmount;
     booking.commissionAmount = commission.amount;
     booking.providerAmount = serviceAmount - commission.amount;
 
     return this.bookingRepository.save(booking);
+  }
+
+  private async upsertCharge(
+    chargeType: string,
+    description: string,
+    amount: number,
+    booking: Booking,
+  ) {
+    const existing = (booking.charges || []).find(
+      (c) => c.chargeType === chargeType,
+    );
+    if (amount > 0) {
+      if (existing) {
+        existing.amount = amount;
+        await this.chargeRepository.save(existing);
+      } else {
+        const charge = this.chargeRepository.create({
+          booking: { id: booking.id },
+          chargeType,
+          amount,
+          description,
+        });
+        await this.chargeRepository.save(charge);
+      }
+    } else if (existing) {
+      await this.chargeRepository.remove(existing);
+    }
+  }
+
+  private inferPricingModelFromRates(service: ProviderService): PricingModel {
+    if (service.fixedRate) return PricingModel.FIXED;
+    if (service.hourlyRate) return PricingModel.HOURLY;
+    if (service.dailyRate) return PricingModel.DAILY;
+    if (service.unitRate) return PricingModel.PER_UNIT;
+    return PricingModel.FIXED;
   }
 
   private validateStatusTransition(

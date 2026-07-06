@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, MoreThan, LessThan, Raw } from 'typeorm';
+import { Repository, In, MoreThan } from 'typeorm';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
@@ -15,6 +15,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
+import { PricingModel } from '../common/enums/pricing-model.enum';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
 import { UpdateProviderServiceDto } from './dto/update-provider-service.dto';
 import { CreateProviderAvailabilityDto } from './dto/create-provider-availability.dto';
@@ -31,6 +32,8 @@ interface CategoryInput {
   commissionValue?: number;
   isActive?: boolean;
   parentId?: string;
+  pricingModels?: PricingModel[];
+  defaultPricingModel?: PricingModel;
 }
 
 @Injectable()
@@ -57,10 +60,12 @@ export class ServicesService {
   ) {}
 
   private annotateProvidersWithPresence<
-    T extends { user?: { id?: string } | null; id?: string; firstName?: string },
-  >(
-    providers: T[],
-  ): (T & { isOnline?: boolean; userId?: string })[] {
+    T extends {
+      user?: { id?: string } | null;
+      id?: string;
+      firstName?: string;
+    },
+  >(providers: T[]): (T & { isOnline?: boolean; userId?: string })[] {
     return providers.map((p) => {
       const userId = p.user?.id;
       const annotated = { ...p } as T & {
@@ -94,9 +99,34 @@ export class ServicesService {
     });
   }
 
+  private validatePricingModels(
+    pricingModels: PricingModel[] | undefined,
+    defaultPricingModel: PricingModel | undefined,
+  ): void {
+    if (pricingModels) {
+      const valid = pricingModels.every((m) =>
+        Object.values(PricingModel).includes(m),
+      );
+      if (!valid || pricingModels.length === 0) {
+        throw new BadRequestException('Invalid pricingModels provided');
+      }
+      if (defaultPricingModel && !pricingModels.includes(defaultPricingModel)) {
+        throw new BadRequestException(
+          'defaultPricingModel must be one of pricingModels',
+        );
+      }
+    } else if (defaultPricingModel) {
+      throw new BadRequestException(
+        'defaultPricingModel requires pricingModels to be set',
+      );
+    }
+  }
+
   async createCategory(
     input: Required<Pick<CategoryInput, 'nameEn' | 'nameHi'>> & CategoryInput,
   ) {
+    this.validatePricingModels(input.pricingModels, input.defaultPricingModel);
+
     let parent: ServiceCategory | undefined;
     if (input.parentId) {
       const parentCategory = await this.categoryRepository.findOne({
@@ -115,6 +145,8 @@ export class ServicesService {
       commissionType: input.commissionType,
       commissionValue: input.commissionValue,
       parent: parent || undefined,
+      pricingModels: input.pricingModels,
+      defaultPricingModel: input.defaultPricingModel,
     });
     return this.categoryRepository.save(category);
   }
@@ -123,6 +155,13 @@ export class ServicesService {
     const category = await this.categoryRepository.findOne({ where: { id } });
     if (!category) {
       throw new NotFoundException('Category not found');
+    }
+
+    if (input.pricingModels || input.defaultPricingModel) {
+      this.validatePricingModels(
+        input.pricingModels ?? category.pricingModels,
+        input.defaultPricingModel ?? category.defaultPricingModel,
+      );
     }
 
     Object.assign(category, input);
@@ -172,8 +211,12 @@ export class ServicesService {
       throw new NotFoundException('Category not found');
     }
 
-    if (!dto.hourlyRate && !dto.dailyRate && !dto.fixedRate) {
+    if (!dto.hourlyRate && !dto.dailyRate && !dto.fixedRate && !dto.unitRate) {
       throw new BadRequestException('At least one pricing rate is required');
+    }
+
+    if (dto.pricingModel) {
+      this.validateProviderServicePricing(dto.pricingModel, dto, category);
     }
 
     const service = this.providerServiceRepository.create({
@@ -182,8 +225,50 @@ export class ServicesService {
       hourlyRate: dto.hourlyRate,
       dailyRate: dto.dailyRate,
       fixedRate: dto.fixedRate,
+      unitRate: dto.unitRate,
+      pricingModel: dto.pricingModel,
     });
     return this.providerServiceRepository.save(service);
+  }
+
+  private validateProviderServicePricing(
+    pricingModel: PricingModel,
+    dto: CreateProviderServiceDto | UpdateProviderServiceDto,
+    category: ServiceCategory,
+  ): void {
+    if (!category.pricingModels?.includes(pricingModel)) {
+      throw new BadRequestException(
+        `Pricing model ${pricingModel} is not allowed for category ${category.nameEn}`,
+      );
+    }
+    switch (pricingModel) {
+      case PricingModel.HOURLY:
+        if (dto.hourlyRate == null)
+          throw new BadRequestException(
+            'hourlyRate is required for HOURLY pricing',
+          );
+        break;
+      case PricingModel.DAILY:
+        if (dto.dailyRate == null)
+          throw new BadRequestException(
+            'dailyRate is required for DAILY pricing',
+          );
+        break;
+      case PricingModel.FIXED:
+        if (dto.fixedRate == null)
+          throw new BadRequestException(
+            'fixedRate is required for FIXED pricing',
+          );
+        break;
+      case PricingModel.PER_UNIT:
+        if (dto.unitRate == null)
+          throw new BadRequestException(
+            'unitRate is required for PER_UNIT pricing',
+          );
+        break;
+      case PricingModel.QUOTE_BASED:
+        break;
+    }
   }
 
   async updateProviderService(id: string, dto: UpdateProviderServiceDto) {
@@ -205,10 +290,20 @@ export class ServicesService {
       service.category = category;
     }
 
+    if (dto.pricingModel) {
+      this.validateProviderServicePricing(
+        dto.pricingModel,
+        dto,
+        service.category,
+      );
+    }
+
     Object.assign(service, {
       hourlyRate: dto.hourlyRate,
       dailyRate: dto.dailyRate,
       fixedRate: dto.fixedRate,
+      unitRate: dto.unitRate,
+      pricingModel: dto.pricingModel,
       isActive: dto.isActive,
     });
     return this.providerServiceRepository.save(service);
@@ -459,7 +554,9 @@ export class ServicesService {
       });
 
       const isOverlapping = (slotStart: number, slotEnd: number) =>
-        bookedRanges.some((b) => slotStart < b.endMin && slotEnd > b.startMin) ||
+        bookedRanges.some(
+          (b) => slotStart < b.endMin && slotEnd > b.startMin,
+        ) ||
         busySlots.some((bs) => {
           const [bsH, bsM] = bs.startTime.split(':').map(Number);
           const [beH, beM] = bs.endTime.split(':').map(Number);
@@ -538,8 +635,10 @@ export class ServicesService {
   }
 
   async findAllVerifiedProviders(currentUserId?: string) {
-    const gracePeriodDays = await this.settingsService.getProviderGracePeriodDays();
-    const gracePeriodEnabled = await this.settingsService.isProviderGracePeriodEnabled();
+    const gracePeriodDays =
+      await this.settingsService.getProviderGracePeriodDays();
+    const gracePeriodEnabled =
+      await this.settingsService.isProviderGracePeriodEnabled();
     const gracePeriodDate = new Date();
     gracePeriodDate.setDate(gracePeriodDate.getDate() - gracePeriodDays);
 
@@ -549,11 +648,14 @@ export class ServicesService {
       .leftJoinAndSelect('provider.services', 'service')
       .leftJoinAndSelect('service.category', 'category')
       .leftJoinAndSelect('provider.availabilities', 'availability')
-      .where('(provider.isVerified = :isVerified OR (:graceEnabled = true AND provider.providerCreatedAt > :gracePeriodDate))', { 
-        isVerified: true, 
-        graceEnabled: gracePeriodEnabled,
-        gracePeriodDate 
-      })
+      .where(
+        '(provider.isVerified = :isVerified OR (:graceEnabled = true AND provider.providerCreatedAt > :gracePeriodDate))',
+        {
+          isVerified: true,
+          graceEnabled: gracePeriodEnabled,
+          gracePeriodDate,
+        },
+      )
       .andWhere('provider.latitude IS NOT NULL')
       .andWhere('provider.longitude IS NOT NULL');
 
@@ -567,9 +669,14 @@ export class ServicesService {
     return this.annotateProvidersWithPresence(providers);
   }
 
-  async searchVerifiedProviders(dto: SearchProvidersDto, currentUserId?: string) {
-    const gracePeriodDays = await this.settingsService.getProviderGracePeriodDays();
-    const gracePeriodEnabled = await this.settingsService.isProviderGracePeriodEnabled();
+  async searchVerifiedProviders(
+    dto: SearchProvidersDto,
+    currentUserId?: string,
+  ) {
+    const gracePeriodDays =
+      await this.settingsService.getProviderGracePeriodDays();
+    const gracePeriodEnabled =
+      await this.settingsService.isProviderGracePeriodEnabled();
     const gracePeriodDate = new Date();
     gracePeriodDate.setDate(gracePeriodDate.getDate() - gracePeriodDays);
 
@@ -579,11 +686,14 @@ export class ServicesService {
       .leftJoinAndSelect('provider.services', 'service')
       .leftJoinAndSelect('service.category', 'category')
       .leftJoinAndSelect('provider.availabilities', 'availability')
-      .where('(provider.isVerified = :isVerified OR (:graceEnabled = true AND provider.providerCreatedAt > :gracePeriodDate))', { 
-        isVerified: true, 
-        graceEnabled: gracePeriodEnabled,
-        gracePeriodDate 
-      });
+      .where(
+        '(provider.isVerified = :isVerified OR (:graceEnabled = true AND provider.providerCreatedAt > :gracePeriodDate))',
+        {
+          isVerified: true,
+          graceEnabled: gracePeriodEnabled,
+          gracePeriodDate,
+        },
+      );
 
     // Exclude the current user from search results (so a dual-role user
     // doesn't see themselves when browsing providers as a customer).
@@ -619,7 +729,7 @@ export class ServicesService {
       // Only include providers with valid location data
       query.andWhere('provider.latitude IS NOT NULL');
       query.andWhere('provider.longitude IS NOT NULL');
-      
+
       // Haversine distance in meters
       const haversine = `6371000 * acos(
         cos(radians(:lat)) * cos(radians(provider.latitude)) *
@@ -689,7 +799,12 @@ export class ServicesService {
 
   async createBusySlot(
     providerId: string,
-    dto: { busyDate: string; startTime: string; endTime: string; reason?: string },
+    dto: {
+      busyDate: string;
+      startTime: string;
+      endTime: string;
+      reason?: string;
+    },
   ): Promise<ProviderBusySlot> {
     const provider = await this.providerRepository.findOne({
       where: { id: providerId },

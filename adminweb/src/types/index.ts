@@ -13,9 +13,13 @@ export interface ProviderProfile {
 
 export interface ProviderService {
   id: string;
-  category?: { id: string; nameEn: string; nameHi: string };
-  pricingType: string;
-  basePrice: number;
+  category?: { id: string; nameEn: string; nameHi: string; pricingModels?: string[] };
+  hourlyRate?: number;
+  dailyRate?: number;
+  fixedRate?: number;
+  unitRate?: number;
+  pricingModel?: string;
+  isActive?: boolean;
 }
 
 export interface User {
@@ -44,6 +48,13 @@ export interface Booking {
   id: string;
   status: string;
   totalAmount: number;
+  commissionAmount?: number;
+  providerAmount?: number;
+  convenienceFee?: number;
+  gstAmount?: number;
+  estimatedHours?: number;
+  estimatedDays?: number;
+  pricingModel?: string;
   scheduledDate: string;
   description?: string;
   customer?: BookingCustomer;
