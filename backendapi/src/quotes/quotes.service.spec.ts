@@ -8,6 +8,7 @@ import {
 import { QuotesService } from './quotes.service';
 import { JobRequest } from './entities/job-request.entity';
 import { Quote } from './entities/quote.entity';
+import { QuoteItem } from './entities/quote-item.entity';
 import { JobRequestStatus } from './entities/job-request-status.enum';
 import { QuoteStatus } from './entities/quote-status.enum';
 import { Customer } from '../users/entities/customer.entity';
@@ -130,6 +131,7 @@ describe('QuotesService', () => {
           useValue: providerServiceRepository,
         },
         { provide: getRepositoryToken(Booking), useValue: bookingRepository },
+        { provide: getRepositoryToken(QuoteItem), useValue: makeRepoMock() },
         { provide: getRepositoryToken(Message), useValue: makeRepoMock() },
         {
           provide: ChatGateway,
@@ -305,7 +307,9 @@ describe('QuotesService', () => {
     it('creates a quote for an open job request', async () => {
       providerRepository.findOne.mockResolvedValue(mockProvider);
       jobRequestRepository.findOne.mockResolvedValue(mockJobRequest);
-      quoteRepository.findOne.mockResolvedValue(null);
+      quoteRepository.findOne
+        .mockResolvedValueOnce(null) // first call: no existing quote
+        .mockResolvedValue({ id: 'q-new', amount: 500, message: 'Can do' }); // second call: return saved quote
 
       const result = await service.createQuote(
         jobRequestId,
