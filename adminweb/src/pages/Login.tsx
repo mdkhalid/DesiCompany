@@ -54,8 +54,9 @@ export default function Login() {
         {step === 'phone' ? (
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium block mb-1">Phone number</label>
+              <label htmlFor="phone" className="text-sm font-medium block mb-1">Phone number</label>
               <input
+                id="phone"
                 className="w-full border rounded-lg px-3 py-2"
                 placeholder="9999999999"
                 type="tel"
@@ -84,8 +85,9 @@ export default function Login() {
           <div className="space-y-4">
             <p className="text-sm text-gray-500">OTP sent to <span className="font-medium">{phone}</span></p>
             <div>
-              <label className="text-sm font-medium block mb-1">Enter OTP</label>
+              <label htmlFor="otp" className="text-sm font-medium block mb-1">Enter OTP</label>
               <input
+                id="otp"
                 className="w-full border rounded-lg px-3 py-2"
                 placeholder="123456"
                 type="tel"

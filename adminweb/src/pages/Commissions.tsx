@@ -40,7 +40,7 @@ export default function Commissions() {
       )}
 
       {!loading && !error && (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
+        <div className="bg-white rounded-xl shadow overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50"><tr><th className="text-left p-3">Scope</th><th className="text-left p-3">Type</th><th className="text-left p-3">Value</th><th className="text-left p-3">Status</th></tr></thead>
             <tbody>

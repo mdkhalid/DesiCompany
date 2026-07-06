@@ -227,7 +227,7 @@ export default function Grievances() {
       )}
 
       {!loading && !error && (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
+        <div className="bg-white rounded-xl shadow overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -351,7 +351,7 @@ export default function Grievances() {
                         }`}
                       >
                         <p className="text-xs font-medium mb-1 capitalize">{msg.sender}</p>
-                        <p>{msg.content}</p>
+                        <p className="break-words">{msg.content}</p>
                         {Array.isArray(msg.metadata?.options) && (
                           <div className="mt-2 space-y-1">
                             {(msg.metadata.options as Array<Record<string, unknown>>).map((opt, i) => (

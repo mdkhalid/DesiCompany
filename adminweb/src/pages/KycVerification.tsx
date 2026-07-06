@@ -253,7 +253,7 @@ export default function KycVerification() {
     return (
       <div
         key={group.provider?.id}
-        className="bg-white rounded-xl shadow overflow-hidden"
+        className="bg-white rounded-xl shadow overflow-x-auto"
       >
         <div className="flex items-center justify-between p-4 border-b bg-gray-50">
           <div className="flex items-center gap-3">

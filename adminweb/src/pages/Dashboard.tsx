@@ -262,7 +262,7 @@ export default function Dashboard() {
 
           {/* Top Providers Table */}
           {topProviders.length > 0 && (
-            <div className="bg-white rounded-xl shadow overflow-hidden">
+            <div className="bg-white rounded-xl shadow overflow-x-auto">
               <div className="p-4 border-b">
                 <h3 className="text-lg font-semibold">Top Providers</h3>
               </div>

@@ -6,7 +6,7 @@ interface LoadingSkeletonProps {
 export default function LoadingSkeleton({ lines = 3, type = 'card' }: LoadingSkeletonProps) {
   if (type === 'table') {
     return (
-      <div className="bg-white rounded-xl shadow overflow-hidden animate-pulse">
+      <div className="bg-white rounded-xl shadow overflow-x-auto animate-pulse">
         <div className="bg-gray-50 p-4">
           <div className="grid grid-cols-6 gap-4">
             {[...Array(6)].map((_, i) => (
@@ -60,7 +60,7 @@ export function CardSkeleton() {
 
 export function TableSkeleton({ rows = 5, cols = 6 }: { rows?: number; cols?: number }) {
   return (
-    <div className="bg-white rounded-xl shadow overflow-hidden animate-pulse">
+    <div className="bg-white rounded-xl shadow overflow-x-auto animate-pulse">
       <div className="bg-gray-50 p-4">
         <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
           {[...Array(cols)].map((_, i) => (

@@ -26,7 +26,7 @@ describe('Login Page', () => {
     renderLogin();
 
     expect(screen.getByText('DesiCompany Admin')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Phone number')).toBeInTheDocument();
+    expect(screen.getByLabelText('Phone number')).toBeInTheDocument();
     expect(screen.getByText('Send OTP')).toBeInTheDocument();
   });
 
@@ -36,7 +36,7 @@ describe('Login Page', () => {
 
     renderLogin();
 
-    await user.type(screen.getByPlaceholderText('Phone number'), '1234567890');
+    await user.type(screen.getByLabelText('Phone number'), '1234567890');
     await user.click(screen.getByText('Send OTP'));
 
     await waitFor(() => {
@@ -50,7 +50,7 @@ describe('Login Page', () => {
 
     renderLogin();
 
-    await user.type(screen.getByPlaceholderText('Phone number'), '9999999999');
+    await user.type(screen.getByLabelText('Phone number'), '9999999999');
     await user.click(screen.getByText('Send OTP'));
 
     await waitFor(() => {
@@ -64,11 +64,11 @@ describe('Login Page', () => {
 
     renderLogin();
 
-    await user.type(screen.getByPlaceholderText('Phone number'), '9999999999');
+    await user.type(screen.getByLabelText('Phone number'), '9999999999');
     await user.click(screen.getByText('Send OTP'));
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Enter OTP')).toBeInTheDocument();
+      expect(screen.getByLabelText('Enter OTP')).toBeInTheDocument();
       expect(screen.getByText('Verify & Login')).toBeInTheDocument();
     });
   });
@@ -76,7 +76,7 @@ describe('Login Page', () => {
   it('limits phone input to 10 digits and strips non-digits', async () => {
     const user = userEvent.setup();
     renderLogin();
-    const phoneInput = screen.getByPlaceholderText('Phone number') as HTMLInputElement;
+    const phoneInput = screen.getByLabelText('Phone number') as HTMLInputElement;
 
     await user.type(phoneInput, '12345abc67890def');
     expect(phoneInput.value).toBe('1234567890');
@@ -86,7 +86,7 @@ describe('Login Page', () => {
   it('disables Send OTP button when phone is not 10 digits', async () => {
     const user = userEvent.setup();
     renderLogin();
-    const phoneInput = screen.getByPlaceholderText('Phone number');
+    const phoneInput = screen.getByLabelText('Phone number');
     const sendButton = screen.getByText('Send OTP');
 
     await user.type(phoneInput, '12345');
@@ -101,11 +101,11 @@ describe('Login Page', () => {
     mockAuthService.sendOtp.mockResolvedValue({ message: 'OTP sent' });
     renderLogin();
 
-    await user.type(screen.getByPlaceholderText('Phone number'), '9999999999');
+    await user.type(screen.getByLabelText('Phone number'), '9999999999');
     await user.click(screen.getByText('Send OTP'));
 
-    await waitFor(() => screen.getByPlaceholderText('Enter OTP'));
-    const otpInput = screen.getByPlaceholderText('Enter OTP') as HTMLInputElement;
+    await waitFor(() => screen.getByLabelText('Enter OTP'));
+    const otpInput = screen.getByLabelText('Enter OTP') as HTMLInputElement;
 
     await user.type(otpInput, '123abc4567890');
     expect(otpInput.value).toHaveLength(6);
