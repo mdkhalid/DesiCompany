@@ -159,9 +159,16 @@ blocking Phase 1. Category is simply seeded with `pricingModels: [QUOTE_BASED]`.
 - [x] `types/index.ts` updated: `Booking` gains `commissionAmount`, `providerAmount`, `convenienceFee`, `gstAmount`, `pricingModel`. `ProviderService` updated to match entity (nullable rates + `pricingModel`).
 - [x] Build + all 49 tests pass.
 
-### Phase 3 — Quote itemization (backend + Flutter)
-- [ ] `QuoteItem` entity + DTO + service wiring.
-- [ ] Flutter itemized quote UI for `QUOTE_BASED`.
+### Phase 3 — Quote itemization (backend done, Flutter deferred)
+- [x] `QuoteItem` entity (`quote_items` table: description, quantity, unitPrice, totalPrice, quote FK).
+- [x] `CreateQuoteItemDto` / `UpdateQuoteItemDto` with class-validator.
+- [x] `items: QuoteItem[]` OneToMany on `Quote` entity.
+- [x] `createQuote` optionally accepts items array; auto-computes `totalPrice = quantity × unitPrice`.
+- [x] `QuoteItemsController` (`POST/GET /quotes/:quoteId/items`, `PATCH/DELETE :itemId`) with provider ownership guard.
+- [x] `QuoteItemsService` with full CRUD + auto-recompute totalPrice on update.
+- [x] `findQuotesForJobRequest` / `findMyQuotes` load items relation.
+- [x] Registered in `QuotesModule`.
+- [ ] *Deferred:* Flutter itemized quote UI for `QUOTE_BASED`.
 
 ### Phase 4 — Flutter provider UX
 - [ ] Category-aware rate fields in `provider_services_screen.dart`.

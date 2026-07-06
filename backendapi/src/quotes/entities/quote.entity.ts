@@ -1,8 +1,16 @@
-import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  Unique,
+} from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { Provider } from '../../users/entities/provider.entity';
 import { JobRequest } from './job-request.entity';
 import { QuoteStatus } from './quote-status.enum';
+import { QuoteItem } from './quote-item.entity';
 
 @Entity('quotes')
 @Unique(['jobRequest', 'provider'])
@@ -31,4 +39,7 @@ export class Quote extends BaseEntity {
 
   @Column({ type: 'timestamp', nullable: true })
   validUntil: Date;
+
+  @OneToMany(() => QuoteItem, (item) => item.quote)
+  items?: QuoteItem[];
 }

@@ -4,7 +4,11 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
+  ArrayMinSize,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateQuoteItemDto } from './create-quote-item.dto';
 
 export class CreateQuoteDto {
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -23,4 +27,10 @@ export class CreateQuoteDto {
   @IsOptional()
   @IsDateString()
   validUntil?: string;
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateQuoteItemDto)
+  @ArrayMinSize(1)
+  items?: CreateQuoteItemDto[];
 }

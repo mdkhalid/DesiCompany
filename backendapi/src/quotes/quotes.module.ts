@@ -10,8 +10,11 @@ import { Message } from '../chat/entities/message.entity';
 import { ChatModule } from '../chat/chat.module';
 import { JobRequest } from './entities/job-request.entity';
 import { Quote } from './entities/quote.entity';
+import { QuoteItem } from './entities/quote-item.entity';
 import { QuotesController } from './quotes.controller';
 import { QuotesService } from './quotes.service';
+import { QuoteItemsController } from './quote-items.controller';
+import { QuoteItemsService } from './quote-items.service';
 import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 
 @Module({
@@ -19,6 +22,7 @@ import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
     TypeOrmModule.forFeature([
       JobRequest,
       Quote,
+      QuoteItem,
       Customer,
       Provider,
       ServiceCategory,
@@ -30,8 +34,8 @@ import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
     PlatformFeesModule,
     ChatModule,
   ],
-  controllers: [QuotesController],
-  providers: [QuotesService],
+  controllers: [QuotesController, QuoteItemsController],
+  providers: [QuotesService, QuoteItemsService],
   exports: [QuotesService],
 })
 export class QuotesModule {}

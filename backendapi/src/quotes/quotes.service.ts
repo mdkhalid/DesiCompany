@@ -24,6 +24,7 @@ import { JobRequest } from './entities/job-request.entity';
 import { JobRequestStatus } from './entities/job-request-status.enum';
 import { Quote } from './entities/quote.entity';
 import { QuoteStatus } from './entities/quote-status.enum';
+import { QuoteItem } from './entities/quote-item.entity';
 import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 @Injectable()
@@ -47,6 +48,8 @@ export class QuotesService {
     private readonly bookingRepository: Repository<Booking>,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
+    @InjectRepository(QuoteItem)
+    private readonly quoteItemRepository: Repository<QuoteItem>,
     private readonly platformFeesService: PlatformFeesService,
     private readonly chatGateway: ChatGateway,
   ) {}
@@ -258,6 +261,21 @@ export class QuotesService {
 
     const saved = await this.quoteRepository.save(quote);
 
+    if (dto.items?.length) {
+      const items = dto.items.map((item) => {
+        const quantity = item.quantity ?? 1;
+        const totalPrice = Math.round(quantity * item.unitPrice * 100) / 100;
+        return this.quoteItemRepository.create({
+          quote: { id: saved.id },
+          description: item.description,
+          quantity,
+          unitPrice: item.unitPrice,
+          totalPrice,
+        });
+      });
+      await this.quoteItemRepository.save(items);
+    }
+
     if (jobRequest.status === JobRequestStatus.OPEN) {
       jobRequest.status = JobRequestStatus.QUOTED;
       await this.jobRequestRepository.save(jobRequest);
@@ -270,13 +288,24 @@ export class QuotesService {
       ),
     );
 
-    return saved;
+    return this.quoteRepository.findOne({
+      where: { id: saved.id },
+      relations: {
+        items: true,
+        provider: { user: true },
+        jobRequest: { category: true },
+      },
+    });
   }
 
   async findQuotesForJobRequest(jobRequestId: string) {
     return this.quoteRepository.find({
       where: { jobRequest: { id: jobRequestId } },
-      relations: { provider: { user: true }, jobRequest: { category: true } },
+      relations: {
+        provider: { user: true },
+        jobRequest: { category: true },
+        items: true,
+      },
       order: { createdAt: 'DESC' },
     });
   }
@@ -289,7 +318,10 @@ export class QuotesService {
 
     return this.quoteRepository.find({
       where: { provider: { id: provider.id } },
-      relations: { jobRequest: { category: true, customer: { user: true } } },
+      relations: {
+        jobRequest: { category: true, customer: { user: true } },
+        items: true,
+      },
       order: { createdAt: 'DESC' },
     });
   }
