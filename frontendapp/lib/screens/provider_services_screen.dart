@@ -194,6 +194,27 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
     );
   }
 
+  Widget _buildModelChip(String? model, LocalizationProvider loc) {
+    if (model == null || model.isEmpty) return const SizedBox.shrink();
+    final labels = {
+      'FIXED': loc.tr('fixed_rate'),
+      'HOURLY': loc.tr('hourly_rate'),
+      'DAILY': loc.tr('daily_rate'),
+      'PER_UNIT': loc.tr('per_unit'),
+      'QUOTE_BASED': loc.tr('quote_based'),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Text(labels[model] ?? model,
+          style: const TextStyle(color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.w700)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = DesiCompanyApp.localeProvider!;
@@ -331,10 +352,12 @@ class _ProviderServicesScreenState extends State<ProviderServicesScreen> {
             ),
           ]),
           const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: [
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            _buildModelChip(service['pricingModel']?.toString(), loc),
             _buildRateChip(loc.tr('fixed_rate'), service['fixedRate'], Icons.payments),
             _buildRateChip(loc.tr('hourly_rate'), service['hourlyRate'], Icons.schedule),
             _buildRateChip(loc.tr('daily_rate'), service['dailyRate'], Icons.calendar_today),
+            _buildRateChip(loc.tr('per_unit'), service['unitRate'], Icons.square_foot),
           ]),
         ]),
       ),
@@ -364,7 +387,10 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
   final _fixedCtrl = TextEditingController();
   final _hourlyCtrl = TextEditingController();
   final _dailyCtrl = TextEditingController();
+  final _unitCtrl = TextEditingController();
   String? _selectedCategoryId;
+  String? _selectedPricingModel;
+  List<String> _allowedModels = [];
   bool _saving = false;
 
   @override
@@ -372,9 +398,12 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
     super.initState();
     if (widget.existing != null) {
       _selectedCategoryId = widget.existing!['categoryId']?.toString();
+      _selectedPricingModel = widget.existing!['pricingModel']?.toString();
       _fixedCtrl.text = widget.existing!['fixedRate']?.toString() ?? '';
       _hourlyCtrl.text = widget.existing!['hourlyRate']?.toString() ?? '';
       _dailyCtrl.text = widget.existing!['dailyRate']?.toString() ?? '';
+      _unitCtrl.text = widget.existing!['unitRate']?.toString() ?? '';
+      _updateAllowedModels();
     }
   }
 
@@ -383,7 +412,33 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
     _fixedCtrl.dispose();
     _hourlyCtrl.dispose();
     _dailyCtrl.dispose();
+    _unitCtrl.dispose();
     super.dispose();
+  }
+
+  Map? _findCategory(String? id) {
+    if (id == null) return null;
+    for (final c in widget.categories) {
+      if (c['id']?.toString() == id) return c as Map;
+    }
+    return null;
+  }
+
+  void _updateAllowedModels() {
+    final cat = _findCategory(_selectedCategoryId);
+    if (cat != null) {
+      final raw = cat['pricingModels'];
+      _allowedModels = (raw is List) ? raw.cast<String>() : [];
+      if (!_allowedModels.contains(_selectedPricingModel)) {
+        _selectedPricingModel = null;
+      }
+      // Auto-select if only one model
+      if (_allowedModels.length == 1 && _selectedPricingModel == null) {
+        _selectedPricingModel = _allowedModels.first;
+      }
+    } else {
+      _allowedModels = [];
+    }
   }
 
   String _categoryLabel(Map c) {
@@ -391,15 +446,88 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
     return isHindi ? (c['nameHi'] ?? c['nameEn'] ?? '') : (c['nameEn'] ?? c['nameHi'] ?? '');
   }
 
+  double? _parseRate(String v) => v.trim().isEmpty ? null : double.tryParse(v.trim());
+
+  double _computedServiceAmount() {
+    final model = _selectedPricingModel;
+    if (model == 'FIXED') return _parseRate(_fixedCtrl.text) ?? 0;
+    if (model == 'HOURLY') {
+      final rate = _parseRate(_hourlyCtrl.text) ?? 0;
+      return rate * 1; // default 1 hour for preview
+    }
+    if (model == 'DAILY') {
+      final rate = _parseRate(_dailyCtrl.text) ?? 0;
+      return rate * 1; // default 1 day for preview
+    }
+    if (model == 'PER_UNIT') return _parseRate(_unitCtrl.text) ?? 0;
+    return 0;
+  }
+
+  Widget _buildNetPayoutPreview() {
+    final amount = _computedServiceAmount();
+    if (amount <= 0 && _allowedModels.isEmpty) return const SizedBox.shrink();
+    final loc = DesiCompanyApp.localeProvider!;
+    final gst = amount * 0.18;
+    final commission = amount * 0.10;
+    final net = amount - gst - commission;
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(loc.tr('net_payout_preview'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF166534))),
+        const SizedBox(height: 6),
+        if (amount > 0) ...[
+          _previewRow(loc.tr('subtotal'), amount, null),
+          _previewRow(loc.tr('gst_estimate', params: {'percent': '18'}), gst, const Color(0xFFDC2626)),
+          _previewRow(loc.tr('commission_estimate', params: {'percent': '10'}), commission, const Color(0xFFDC2626)),
+          const Divider(height: 16),
+          _previewRow(loc.tr('provider_earns', params: {'amount': net.toStringAsFixed(0)}), net, const Color(0xFF16A34A)),
+        ],
+      ]),
+    );
+  }
+
+  Widget _previewRow(String label, double amount, Color? amountColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+        Text('₹${amount.toStringAsFixed(0)}',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: amountColor ?? AppTheme.textPrimary)),
+      ]),
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final loc = DesiCompanyApp.localeProvider!;
     final fixed = _fixedCtrl.text.trim();
     final hourly = _hourlyCtrl.text.trim();
     final daily = _dailyCtrl.text.trim();
-    if (fixed.isEmpty && hourly.isEmpty && daily.isEmpty) {
+    final unit = _unitCtrl.text.trim();
+
+    // Validate at least the required rate for the selected model is filled
+    if (_selectedPricingModel != null) {
+      final requiredEmpty = _selectedPricingModel == 'FIXED' && fixed.isEmpty ||
+          _selectedPricingModel == 'HOURLY' && hourly.isEmpty ||
+          _selectedPricingModel == 'DAILY' && daily.isEmpty ||
+          _selectedPricingModel == 'PER_UNIT' && unit.isEmpty;
+      if (requiredEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${loc.tr('error')}: rate required for ${_selectedPricingModel}')),
+        );
+        return;
+      }
+    } else if (fixed.isEmpty && hourly.isEmpty && daily.isEmpty && unit.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${DesiCompanyApp.localeProvider!.tr('error')}: rate required')),
+        SnackBar(content: Text('${loc.tr('error')}: rate required')),
       );
       return;
     }
@@ -408,14 +536,16 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
     try {
       if (widget.existing != null) {
         final body = <String, dynamic>{};
-        if (fixed.isNotEmpty) body['fixedRate'] = double.tryParse(fixed);
-        if (hourly.isNotEmpty) body['hourlyRate'] = double.tryParse(hourly);
-        if (daily.isNotEmpty) body['dailyRate'] = double.tryParse(daily);
+        if (fixed.isNotEmpty) body['fixedRate'] = _parseRate(fixed);
+        if (hourly.isNotEmpty) body['hourlyRate'] = _parseRate(hourly);
+        if (daily.isNotEmpty) body['dailyRate'] = _parseRate(daily);
+        if (unit.isNotEmpty) body['unitRate'] = _parseRate(unit);
+        if (_selectedPricingModel != null) body['pricingModel'] = _selectedPricingModel;
         if (body.isEmpty) body['isActive'] = true;
         await ApiService.patch('/services/provider-services/${widget.existing!['id']}', body: body);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(DesiCompanyApp.localeProvider!.tr('service_updated'))),
+            SnackBar(content: Text(loc.tr('service_updated'))),
           );
         }
       } else {
@@ -423,13 +553,15 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
           'providerId': widget.providerId,
           'categoryId': _selectedCategoryId,
         };
-        if (fixed.isNotEmpty) body['fixedRate'] = double.tryParse(fixed);
-        if (hourly.isNotEmpty) body['hourlyRate'] = double.tryParse(hourly);
-        if (daily.isNotEmpty) body['dailyRate'] = double.tryParse(daily);
+        if (fixed.isNotEmpty) body['fixedRate'] = _parseRate(fixed);
+        if (hourly.isNotEmpty) body['hourlyRate'] = _parseRate(hourly);
+        if (daily.isNotEmpty) body['dailyRate'] = _parseRate(daily);
+        if (unit.isNotEmpty) body['unitRate'] = _parseRate(unit);
+        if (_selectedPricingModel != null) body['pricingModel'] = _selectedPricingModel;
         await ApiService.post('/services/provider-services', body: body);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(DesiCompanyApp.localeProvider!.tr('service_created'))),
+            SnackBar(content: Text(loc.tr('service_created'))),
           );
         }
       }
@@ -438,10 +570,29 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${DesiCompanyApp.localeProvider!.tr('error')}: $e')),
+          SnackBar(content: Text('${loc.tr('error')}: $e')),
         );
       }
     }
+  }
+
+  Widget _buildRateField(String label, IconData icon, TextEditingController ctrl) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: ctrl,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: AppTheme.primary),
+        ),
+        validator: (v) {
+          if (v == null || v.trim().isEmpty) return null;
+          if (double.tryParse(v.trim()) == null) return 'invalid';
+          return null;
+        },
+      ),
+    );
   }
 
   @override
@@ -462,6 +613,7 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
         child: Form(
           key: _formKey,
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Category selector / display
             Text(loc.tr('service_category'),
                 style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
             const SizedBox(height: 6),
@@ -474,12 +626,7 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  _categoryLabel(
-                    (widget.categories.firstWhere(
-                      (c) => c['id']?.toString() == _selectedCategoryId,
-                      orElse: () => <String, dynamic>{},
-                    ) as Map).cast<String, dynamic>(),
-                  ),
+                  _categoryLabel(_findCategory(_selectedCategoryId) ?? <String, dynamic>{}),
                   style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
                 ),
               )
@@ -504,51 +651,53 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
                           child: Text(_categoryLabel((c as Map).cast<String, dynamic>())),
                         ))
                     .toList(),
-                onChanged: (v) => setState(() => _selectedCategoryId = v),
+                onChanged: (v) {
+                  setState(() {
+                    _selectedCategoryId = v;
+                    _updateAllowedModels();
+                    // Clear rate fields when category changes
+                    _fixedCtrl.clear();
+                    _hourlyCtrl.clear();
+                    _dailyCtrl.clear();
+                    _unitCtrl.clear();
+                  });
+                },
                 validator: (v) => v == null ? loc.tr('select_category') : null,
               ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _fixedCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: loc.tr('fixed_rate'),
-                prefixIcon: const Icon(Icons.payments, color: AppTheme.primary),
+
+            // Pricing model selector (if multiple models available)
+            if (_allowedModels.length > 1) ...[
+              DropdownButtonFormField<String>(
+                initialValue: _selectedPricingModel,
+                decoration: InputDecoration(
+                  labelText: loc.tr('pricing_model'),
+                  prefixIcon: const Icon(Icons.category, color: AppTheme.primary),
+                ),
+                items: _allowedModels
+                    .map<DropdownMenuItem<String>>((m) => DropdownMenuItem<String>(
+                          value: m,
+                          child: Text(m.replaceAll('_', ' ')),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedPricingModel = v),
+                validator: (v) => v == null ? loc.tr('select_pricing_model') : null,
               ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return null;
-                if (double.tryParse(v.trim()) == null) return 'invalid';
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _hourlyCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: loc.tr('hourly_rate'),
-                prefixIcon: const Icon(Icons.schedule, color: AppTheme.primary),
-              ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return null;
-                if (double.tryParse(v.trim()) == null) return 'invalid';
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _dailyCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: loc.tr('daily_rate'),
-                prefixIcon: const Icon(Icons.calendar_today, color: AppTheme.primary),
-              ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return null;
-                if (double.tryParse(v.trim()) == null) return 'invalid';
-                return null;
-              },
-            ),
+              const SizedBox(height: 16),
+            ],
+
+            // Dynamic rate fields based on selected pricing model
+            if (_allowedModels.contains('FIXED') || (_selectedPricingModel == null && _allowedModels.isEmpty))
+              _buildRateField(loc.tr('fixed_rate'), Icons.payments, _fixedCtrl),
+            if (_allowedModels.contains('HOURLY') || (_selectedPricingModel == null && _allowedModels.isEmpty))
+              _buildRateField(loc.tr('hourly_rate'), Icons.schedule, _hourlyCtrl),
+            if (_allowedModels.contains('DAILY') || (_selectedPricingModel == null && _allowedModels.isEmpty))
+              _buildRateField(loc.tr('daily_rate'), Icons.calendar_today, _dailyCtrl),
+            if (_allowedModels.contains('PER_UNIT') || (_selectedPricingModel == null && _allowedModels.isEmpty))
+              _buildRateField(loc.tr('unit_rate_field'), Icons.square_foot, _unitCtrl),
+
+            // Net payout preview
+            _buildNetPayoutPreview(),
           ]),
         ),
       ),

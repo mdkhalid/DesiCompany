@@ -12,6 +12,7 @@ import 'screens/customer_home_screen.dart';
 import 'screens/provider_home_screen.dart';
 import 'screens/provider_detail_screen.dart';
 import 'screens/provider_services_screen.dart';
+import 'screens/provider_charges_screen.dart';
 import 'screens/wallet_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/conversation_list_screen.dart';
@@ -223,6 +224,14 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
               return MaterialPageRoute(
                 builder: (_) => ProviderSubmitQuoteScreen(
                   jobRequestId: args['jobRequestId'] as String,
+                ),
+              );
+            }
+            if (settings.name == '/provider-charges') {
+              final args = settings.arguments as Map<String, dynamic>;
+              return MaterialPageRoute(
+                builder: (_) => ProviderChargesScreen(
+                  bookingId: args['bookingId'] as String,
                 ),
               );
             }

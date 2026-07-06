@@ -170,10 +170,14 @@ blocking Phase 1. Category is simply seeded with `pricingModels: [QUOTE_BASED]`.
 - [x] Registered in `QuotesModule`.
 - [ ] *Deferred:* Flutter itemized quote UI for `QUOTE_BASED`.
 
-### Phase 4 — Flutter provider UX
-- [ ] Category-aware rate fields in `provider_services_screen.dart`.
-- [ ] `provider_charges_screen.dart` extra-charge editor.
-- [ ] Live net-payout preview.
+### Phase 4 — Flutter provider UX (DONE)
+- [x] Category-aware rate fields in `provider_services_screen.dart` — form dialog dynamically shows only rate fields matching category's `pricingModels` (FIXED/HOURLY/DAILY/PER_UNIT), with pricing model dropdown when multiple models exist.
+- [x] `provider_charges_screen.dart` — extra-charge add/remove screen with POST/DELETE `/bookings/charges` endpoints; route registered in `main.dart`.
+- [x] Live net-payout preview — shows subtotal, GST (18%), commission (10%), and provider earnings estimate in real-time as rates are entered.
+- [x] `ServiceCategory` model now includes `pricingModels`, `defaultPricingModel`, `nameHi`.
+- [x] `ProviderService` model now includes `pricingModel`, `unitRate`, `category`.
+- [x] Service cards show pricing model chip + unit rate + existing rates.
+- [x] `flutter analyze` — 0 new issues (all 23 pre-existing).
 
 ### Phase 5 — Verification
 - [ ] Flutter `flutter test` + `flutter analyze`.
