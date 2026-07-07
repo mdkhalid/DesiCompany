@@ -5,17 +5,34 @@ import Redis from 'ioredis';
 
 @Controller('health')
 export class HealthController {
-  private readonly redis: Redis;
-
   constructor(
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) {
-    this.redis = new Redis({
+  ) {}
+
+  /** Create a short-lived Redis client for a single probe, then disconnect. */
+  private async probeRedis(): Promise<{ ok: boolean; responseTime: number }> {
+    const client = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
       lazyConnect: true,
+      connectTimeout: 3000,
+      maxRetriesPerRequest: 0,
+      retryStrategy: () => null,
     });
+    // Suppress the unhandled-error event that ioredis emits on connection failure.
+    client.on('error', () => {});
+
+    const start = Date.now();
+    try {
+      await client.connect();
+      await client.ping();
+      return { ok: true, responseTime: Date.now() - start };
+    } catch {
+      return { ok: false, responseTime: Date.now() - start };
+    } finally {
+      client.disconnect();
+    }
   }
 
   @Get()
@@ -51,20 +68,17 @@ export class HealthController {
     }
 
     // Check Redis
-    try {
-      const redisStart = Date.now();
-      await this.redis.connect();
-      await this.redis.ping();
-      await this.redis.quit();
+    const redisProbe = await this.probeRedis();
+    if (redisProbe.ok) {
       checks.services.redis = {
         status: 'connected',
-        responseTime: Date.now() - redisStart,
+        responseTime: redisProbe.responseTime,
       };
-    } catch {
+    } else {
       hasError = true;
       checks.services.redis = {
         status: 'disconnected',
-        responseTime: 0,
+        responseTime: redisProbe.responseTime,
       };
     }
 
@@ -79,16 +93,22 @@ export class HealthController {
   async ready() {
     try {
       await this.dataSource.query('SELECT 1');
-      await this.redis.connect();
-      await this.redis.ping();
-      await this.redis.quit();
-      return { status: 'ready' };
     } catch {
       throw new HttpException(
         { status: 'not ready' },
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
+
+    const redisProbe = await this.probeRedis();
+    if (!redisProbe.ok) {
+      throw new HttpException(
+        { status: 'not ready' },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    return { status: 'ready' };
   }
 
   @Get('live')

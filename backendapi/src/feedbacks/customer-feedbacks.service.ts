@@ -16,7 +16,7 @@ import { CustomerFeedback } from './entities/customer-feedback.entity';
 @Injectable()
 export class CustomerFeedbacksService {
   private readonly logger = new Logger(CustomerFeedbacksService.name);
-  
+
   constructor(
     @InjectRepository(CustomerFeedback)
     private readonly feedbackRepository: Repository<CustomerFeedback>,
@@ -27,13 +27,15 @@ export class CustomerFeedbacksService {
   ) {}
 
   async create(dto: CreateCustomerFeedbackDto, providerUserId: string) {
-    this.logger.log(`Creating feedback for booking ${dto.bookingId} by provider user ${providerUserId}`);
-    
+    this.logger.log(
+      `Creating feedback for booking ${dto.bookingId} by provider user ${providerUserId}`,
+    );
+
     const provider = await this.providerRepository.findOne({
       where: { user: { id: providerUserId } },
     });
     this.logger.log(`Provider found: ${provider ? provider.id : 'null'}`);
-    
+
     if (!provider) {
       throw new NotFoundException('Provider profile not found');
     }
@@ -42,14 +44,18 @@ export class CustomerFeedbacksService {
       where: { id: dto.bookingId },
       relations: { provider: { user: true }, customer: true },
     });
-    this.logger.log(`Booking found: ${booking ? booking.id : 'null'}, status: ${booking?.status}, provider.id: ${booking?.provider?.id}`);
-    
+    this.logger.log(
+      `Booking found: ${booking ? booking.id : 'null'}, status: ${booking?.status}, provider.id: ${booking?.provider?.id}`,
+    );
+
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
 
     if (booking.provider.id !== provider.id) {
-      this.logger.warn(`Provider ID mismatch: booking.provider.id=${booking.provider.id}, provider.id=${provider.id}`);
+      this.logger.warn(
+        `Provider ID mismatch: booking.provider.id=${booking.provider.id}, provider.id=${provider.id}`,
+      );
       throw new ForbiddenException(
         'You can only leave feedback for your own bookings',
       );
@@ -85,7 +91,10 @@ export class CustomerFeedbacksService {
   findByProvider(providerId: string) {
     return this.feedbackRepository.find({
       where: { provider: { id: providerId } },
-      relations: { booking: { customer: { user: true } }, customer: { user: true } },
+      relations: {
+        booking: { customer: { user: true } },
+        customer: { user: true },
+      },
       order: { createdAt: 'DESC' },
     });
   }

@@ -67,6 +67,8 @@ async function bootstrap() {
             'blob:',
             'http://localhost:3000',
             'http://192.168.*:*',
+            'http://172.20.*:*',
+            'http://172.28.*:*',
           ],
           connectSrc: [
             "'self'",
@@ -76,6 +78,10 @@ async function bootstrap() {
             'wss://localhost:*',
             'http://192.168.*:*',
             'ws://192.168.*:*',
+            'http://172.20.*:*',
+            'ws://172.20.*:*',
+            'http://172.28.*:*',
+            'ws://172.28.*:*',
           ],
         },
       },
@@ -121,7 +127,9 @@ async function bootstrap() {
           if (
             host === 'localhost' ||
             host === '127.0.0.1' ||
-            host.startsWith('192.168.')
+            host.startsWith('192.168.') ||
+            host.startsWith('172.20.') ||
+            host.startsWith('172.28.')
           ) {
             return callback(null, true);
           }
@@ -133,14 +141,22 @@ async function bootstrap() {
       callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Cache-Control', 'Pragma'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Cache-Control',
+      'Pragma',
+    ],
     credentials: true,
   });
 
   if (isDev && allowedOrigins.length === 0) {
-    app.get(Logger).warn(
-      'CORS_ALLOWED_ORIGINS is not set. All localhost and LAN origins are allowed in development.',
-    );
+    app
+      .get(Logger)
+      .warn(
+        'CORS_ALLOWED_ORIGINS is not set. All localhost and LAN origins are allowed in development.',
+      );
   }
 
   const config = new DocumentBuilder()

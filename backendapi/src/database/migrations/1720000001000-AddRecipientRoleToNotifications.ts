@@ -1,4 +1,9 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableIndex } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  TableColumn,
+  TableIndex,
+} from 'typeorm';
 
 export class AddRecipientRoleToNotifications1720000001000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -23,8 +28,13 @@ export class AddRecipientRoleToNotifications1720000001000 implements MigrationIn
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropIndex('notifications', 'IDX_notifications_user_recipient_role');
+    await queryRunner.dropIndex(
+      'notifications',
+      'IDX_notifications_user_recipient_role',
+    );
     await queryRunner.dropColumn('notifications', 'recipient_role');
-    await queryRunner.query('DROP TYPE IF EXISTS notifications_recipient_role_enum');
+    await queryRunner.query(
+      'DROP TYPE IF EXISTS notifications_recipient_role_enum',
+    );
   }
 }

@@ -52,7 +52,10 @@ export class AddSettingsAndProviderCreatedAt1720000000000 implements MigrationIn
 
     // Add provider_created_at column to providers table
     const providersTable = await queryRunner.getTable('providers');
-    if (providersTable && !providersTable.findColumnByName('provider_created_at')) {
+    if (
+      providersTable &&
+      !providersTable.findColumnByName('provider_created_at')
+    ) {
       await queryRunner.addColumn(
         'providers',
         new TableColumn({

@@ -28,6 +28,11 @@ export class Notification extends BaseEntity {
   // The role context this notification belongs to (customer or provider).
   // For dual-role users, this ensures notifications only show in the correct
   // role's view (e.g., provider booking messages only show in provider view).
-  @Column({ type: 'enum', enum: UserRole, nullable: true, name: 'recipient_role' })
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    nullable: true,
+    name: 'recipient_role',
+  })
   recipientRole: UserRole;
 }

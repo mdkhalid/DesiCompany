@@ -1,4 +1,11 @@
-import { Column, Entity, JoinColumn, OneToMany, OneToOne, CreateDateColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  OneToMany,
+  OneToOne,
+  CreateDateColumn,
+} from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from './user.entity';
 import { KycDocument } from '../../kyc/entities/kyc-document.entity';

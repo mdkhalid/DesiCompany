@@ -91,10 +91,7 @@ export class NotificationsService {
     return { success: true };
   }
 
-  async getUnreadCount(
-    userId: string,
-    activeRole?: UserRole,
-  ): Promise<number> {
+  async getUnreadCount(userId: string, activeRole?: UserRole): Promise<number> {
     const where: Record<string, unknown> = {
       user: { id: userId },
       isRead: false,

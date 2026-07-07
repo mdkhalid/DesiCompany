@@ -84,14 +84,21 @@ interface QuickReplyPayload {
 })
 @Injectable()
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
+  implements
+    OnGatewayInit,
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnModuleDestroy
 {
   @WebSocketServer()
   server: Server;
 
   private readonly logger = new Logger(ChatGateway.name);
   private readonly messageCounts = new Map<string, number[]>();
-  private readonly partnerIdCache = new Map<string, { ids: string[]; expiry: number }>();
+  private readonly partnerIdCache = new Map<
+    string,
+    { ids: string[]; expiry: number }
+  >();
   private static readonly PARTNER_CACHE_TTL = 60_000; // 60 seconds
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -137,7 +144,13 @@ export class ChatGateway
     data?: Record<string, string>,
     recipientRole?: UserRole,
   ) {
-    await this.pushNotificationsService.sendToUser(userId, title, body, data, recipientRole);
+    await this.pushNotificationsService.sendToUser(
+      userId,
+      title,
+      body,
+      data,
+      recipientRole,
+    );
   }
 
   private formatHistoryMessages(messages: HistoryMessage[]) {
@@ -325,7 +338,10 @@ export class ChatGateway
     }
 
     const ids = Array.from(partnerIds);
-    this.partnerIdCache.set(userId, { ids, expiry: now + ChatGateway.PARTNER_CACHE_TTL });
+    this.partnerIdCache.set(userId, {
+      ids,
+      expiry: now + ChatGateway.PARTNER_CACHE_TTL,
+    });
     return ids;
   }
 
@@ -555,14 +571,21 @@ export class ChatGateway
         : booking.customer?.user?.id;
     if (otherUserId) {
       this.emitToUser(otherUserId, 'new_message', messageData);
-      const recipientRole: UserRole = booking.customer?.user?.id === otherUserId
-        ? UserRole.CUSTOMER
-        : UserRole.PROVIDER;
-      await this.sendPushIfOffline(otherUserId, 'New message', content, {
-        bookingId,
-        roomId: `booking_${bookingId}`,
-        type: 'chat_message',
-      }, recipientRole);
+      const recipientRole: UserRole =
+        booking.customer?.user?.id === otherUserId
+          ? UserRole.CUSTOMER
+          : UserRole.PROVIDER;
+      await this.sendPushIfOffline(
+        otherUserId,
+        'New message',
+        content,
+        {
+          bookingId,
+          roomId: `booking_${bookingId}`,
+          type: 'chat_message',
+        },
+        recipientRole,
+      );
     }
   }
 
@@ -627,14 +650,21 @@ export class ChatGateway
         ? booking.provider?.user?.id
         : booking.customer?.user?.id;
     if (otherUserId) {
-      const recipientRole: UserRole = booking.customer?.user?.id === otherUserId
-        ? UserRole.CUSTOMER
-        : UserRole.PROVIDER;
-      await this.sendPushIfOffline(otherUserId, 'New image', 'Sent an image', {
-        bookingId: payload.bookingId,
-        roomId: `booking_${payload.bookingId}`,
-        type: 'chat_image',
-      }, recipientRole);
+      const recipientRole: UserRole =
+        booking.customer?.user?.id === otherUserId
+          ? UserRole.CUSTOMER
+          : UserRole.PROVIDER;
+      await this.sendPushIfOffline(
+        otherUserId,
+        'New image',
+        'Sent an image',
+        {
+          bookingId: payload.bookingId,
+          roomId: `booking_${payload.bookingId}`,
+          type: 'chat_image',
+        },
+        recipientRole,
+      );
     }
   }
 
@@ -712,14 +742,21 @@ export class ChatGateway
         ? booking.provider?.user?.id
         : booking.customer?.user?.id;
     if (otherUserId) {
-      const recipientRole: UserRole = booking.customer?.user?.id === otherUserId
-        ? UserRole.CUSTOMER
-        : UserRole.PROVIDER;
-      await this.sendPushIfOffline(otherUserId, 'New file', content, {
-        bookingId: payload.bookingId,
-        roomId: `booking_${payload.bookingId}`,
-        type: 'chat_file',
-      }, recipientRole);
+      const recipientRole: UserRole =
+        booking.customer?.user?.id === otherUserId
+          ? UserRole.CUSTOMER
+          : UserRole.PROVIDER;
+      await this.sendPushIfOffline(
+        otherUserId,
+        'New file',
+        content,
+        {
+          bookingId: payload.bookingId,
+          roomId: `booking_${payload.bookingId}`,
+          type: 'chat_file',
+        },
+        recipientRole,
+      );
     }
   }
 
@@ -789,14 +826,21 @@ export class ChatGateway
       }
       if (directNotifyUserId) {
         // For direct messages, the recipient role is opposite of the sender
-        const recipientRole: UserRole = client.data.userId === customerUserId
-          ? UserRole.PROVIDER
-          : UserRole.CUSTOMER;
-        await this.sendPushIfOffline(directNotifyUserId, 'New quote', content, {
-          roomId: targetId,
-          providerId,
-          type: 'chat_quote',
-        }, recipientRole);
+        const recipientRole: UserRole =
+          client.data.userId === customerUserId
+            ? UserRole.PROVIDER
+            : UserRole.CUSTOMER;
+        await this.sendPushIfOffline(
+          directNotifyUserId,
+          'New quote',
+          content,
+          {
+            roomId: targetId,
+            providerId,
+            type: 'chat_quote',
+          },
+          recipientRole,
+        );
       }
     } else {
       const message = this.messageRepository.create({
@@ -831,14 +875,21 @@ export class ChatGateway
             ? quoteBooking.provider?.user?.id
             : quoteBooking.customer?.user?.id;
         if (quoteOtherUserId) {
-          const recipientRole: UserRole = quoteBooking.customer?.user?.id === quoteOtherUserId
-            ? UserRole.CUSTOMER
-            : UserRole.PROVIDER;
-          await this.sendPushIfOffline(quoteOtherUserId, 'New quote', content, {
-            bookingId: targetId,
-            roomId: `booking_${targetId}`,
-            type: 'chat_quote',
-          }, recipientRole);
+          const recipientRole: UserRole =
+            quoteBooking.customer?.user?.id === quoteOtherUserId
+              ? UserRole.CUSTOMER
+              : UserRole.PROVIDER;
+          await this.sendPushIfOffline(
+            quoteOtherUserId,
+            'New quote',
+            content,
+            {
+              bookingId: targetId,
+              roomId: `booking_${targetId}`,
+              type: 'chat_quote',
+            },
+            recipientRole,
+          );
         }
       }
     }
@@ -862,23 +913,58 @@ export class ChatGateway
 
     const senderRole = client.data.user?.role;
 
-    const quickReplyMessages: Record<string, { customer: string; provider: string }> = {
-      accept_quote: { customer: 'I accept this quote', provider: 'Quote accepted' },
-      decline_quote: { customer: 'I decline this quote', provider: 'Quote declined' },
-      need_discount: { customer: 'Can you give a discount?', provider: 'Discount not available' },
-      confirm_booking: { customer: 'Please confirm my booking', provider: 'Please confirm the booking' },
-      need_more_info: { customer: 'I need more information', provider: 'Let me know if you need more info' },
-      price_negotiate: { customer: 'Can we negotiate on price?', provider: 'Feel free to discuss pricing' },
-      reschedule: { customer: 'Can we reschedule?', provider: 'Can we reschedule?' },
-      on_my_way: { customer: 'The provider is on the way', provider: "I'm on my way" },
-      work_started: { customer: 'Work has been started', provider: 'Work has started' },
-      when_available: { customer: 'When are you available?', provider: 'I am available now' },
+    const quickReplyMessages: Record<
+      string,
+      { customer: string; provider: string }
+    > = {
+      accept_quote: {
+        customer: 'I accept this quote',
+        provider: 'Quote accepted',
+      },
+      decline_quote: {
+        customer: 'I decline this quote',
+        provider: 'Quote declined',
+      },
+      need_discount: {
+        customer: 'Can you give a discount?',
+        provider: 'Discount not available',
+      },
+      confirm_booking: {
+        customer: 'Please confirm my booking',
+        provider: 'Please confirm the booking',
+      },
+      need_more_info: {
+        customer: 'I need more information',
+        provider: 'Let me know if you need more info',
+      },
+      price_negotiate: {
+        customer: 'Can we negotiate on price?',
+        provider: 'Feel free to discuss pricing',
+      },
+      reschedule: {
+        customer: 'Can we reschedule?',
+        provider: 'Can we reschedule?',
+      },
+      on_my_way: {
+        customer: 'The provider is on the way',
+        provider: "I'm on my way",
+      },
+      work_started: {
+        customer: 'Work has been started',
+        provider: 'Work has started',
+      },
+      when_available: {
+        customer: 'When are you available?',
+        provider: 'I am available now',
+      },
     };
 
     const templates = quickReplyMessages[payload.quickReplyType];
     const content = templates
-      ? (senderRole === 'provider' ? templates.provider : templates.customer)
-      : (payload.value || payload.quickReplyType);
+      ? senderRole === 'provider'
+        ? templates.provider
+        : templates.customer
+      : payload.value || payload.quickReplyType;
     const isDirect = targetId.startsWith('direct_');
 
     if (isDirect) {
@@ -926,7 +1012,9 @@ export class ChatGateway
           { metadata: { ...(saved.metadata || {}), accepted: true } },
         );
         // Re-emit the updated quote so both sides see the change
-        const updatedQuote = await this.directMessageRepository.findOne({ where: { id: payload.quoteId } });
+        const updatedQuote = await this.directMessageRepository.findOne({
+          where: { id: payload.quoteId },
+        });
         if (updatedQuote) {
           this.server.to(targetId).emit('message_updated', {
             id: updatedQuote.id,
@@ -946,14 +1034,21 @@ export class ChatGateway
         qrNotifyUserId = customerUserId;
       }
       if (qrNotifyUserId) {
-        const recipientRole: UserRole = client.data.userId === customerUserId
-          ? UserRole.PROVIDER
-          : UserRole.CUSTOMER;
-        await this.sendPushIfOffline(qrNotifyUserId, 'Quick reply', content, {
-          roomId: targetId,
-          providerId: providerId,
-          type: 'chat_quick_reply',
-        }, recipientRole);
+        const recipientRole: UserRole =
+          client.data.userId === customerUserId
+            ? UserRole.PROVIDER
+            : UserRole.CUSTOMER;
+        await this.sendPushIfOffline(
+          qrNotifyUserId,
+          'Quick reply',
+          content,
+          {
+            roomId: targetId,
+            providerId: providerId,
+            type: 'chat_quick_reply',
+          },
+          recipientRole,
+        );
       }
     } else {
       const message = this.messageRepository.create({
@@ -987,7 +1082,9 @@ export class ChatGateway
           { id: payload.quoteId },
           { metadata: { ...(saved.metadata || {}), accepted: true } },
         );
-        const updatedQuote = await this.messageRepository.findOne({ where: { id: payload.quoteId } });
+        const updatedQuote = await this.messageRepository.findOne({
+          where: { id: payload.quoteId },
+        });
         if (updatedQuote) {
           this.server.to(room).emit('message_updated', {
             id: updatedQuote.id,
@@ -1006,14 +1103,21 @@ export class ChatGateway
             ? qrBooking.provider?.user?.id
             : qrBooking.customer?.user?.id;
         if (qrOtherUserId) {
-          const recipientRole: UserRole = qrBooking.customer?.user?.id === qrOtherUserId
-            ? UserRole.CUSTOMER
-            : UserRole.PROVIDER;
-          await this.sendPushIfOffline(qrOtherUserId, 'Quick reply', content, {
-            bookingId: targetId,
-            roomId: `booking_${targetId}`,
-            type: 'chat_quick_reply',
-          }, recipientRole);
+          const recipientRole: UserRole =
+            qrBooking.customer?.user?.id === qrOtherUserId
+              ? UserRole.CUSTOMER
+              : UserRole.PROVIDER;
+          await this.sendPushIfOffline(
+            qrOtherUserId,
+            'Quick reply',
+            content,
+            {
+              bookingId: targetId,
+              roomId: `booking_${targetId}`,
+              type: 'chat_quick_reply',
+            },
+            recipientRole,
+          );
         }
       }
     }
@@ -1339,14 +1443,21 @@ export class ChatGateway
       dmNotifyUserId = customerUserId;
     }
     if (dmNotifyUserId) {
-      const recipientRole: UserRole = client.data.userId === customerUserId
-        ? UserRole.PROVIDER
-        : UserRole.CUSTOMER;
-      await this.sendPushIfOffline(dmNotifyUserId, 'New message', content, {
-        roomId,
-        providerId,
-        type: 'direct_message',
-      }, recipientRole);
+      const recipientRole: UserRole =
+        client.data.userId === customerUserId
+          ? UserRole.PROVIDER
+          : UserRole.CUSTOMER;
+      await this.sendPushIfOffline(
+        dmNotifyUserId,
+        'New message',
+        content,
+        {
+          roomId,
+          providerId,
+          type: 'direct_message',
+        },
+        recipientRole,
+      );
     }
   }
 
@@ -1410,9 +1521,10 @@ export class ChatGateway
       imgNotifyUserId = customerUserId;
     }
     if (imgNotifyUserId) {
-      const recipientRole: UserRole = client.data.userId === customerUserId
-        ? UserRole.PROVIDER
-        : UserRole.CUSTOMER;
+      const recipientRole: UserRole =
+        client.data.userId === customerUserId
+          ? UserRole.PROVIDER
+          : UserRole.CUSTOMER;
       await this.sendPushIfOffline(
         imgNotifyUserId,
         'New image',
@@ -1495,14 +1607,21 @@ export class ChatGateway
       fileNotifyUserId = customerUserId;
     }
     if (fileNotifyUserId) {
-      const recipientRole: UserRole = client.data.userId === customerUserId
-        ? UserRole.PROVIDER
-        : UserRole.CUSTOMER;
-      await this.sendPushIfOffline(fileNotifyUserId, 'New file', content, {
-        roomId: payload.roomId,
-        providerId,
-        type: 'direct_file',
-      }, recipientRole);
+      const recipientRole: UserRole =
+        client.data.userId === customerUserId
+          ? UserRole.PROVIDER
+          : UserRole.CUSTOMER;
+      await this.sendPushIfOffline(
+        fileNotifyUserId,
+        'New file',
+        content,
+        {
+          roomId: payload.roomId,
+          providerId,
+          type: 'direct_file',
+        },
+        recipientRole,
+      );
     }
   }
 
@@ -1566,9 +1685,10 @@ export class ChatGateway
       quoteNotifyUserId = customerUserId;
     }
     if (quoteNotifyUserId) {
-      const recipientRole: UserRole = client.data.userId === customerUserId
-        ? UserRole.PROVIDER
-        : UserRole.CUSTOMER;
+      const recipientRole: UserRole =
+        client.data.userId === customerUserId
+          ? UserRole.PROVIDER
+          : UserRole.CUSTOMER;
       await this.sendPushIfOffline(
         quoteNotifyUserId,
         'New quote',
@@ -1631,7 +1751,9 @@ export class ChatGateway
     }
 
     const messages = await this.directMessageRepository.find({
-      where: [{ customer: { id: customerEntity.id }, provider: { id: providerId } }],
+      where: [
+        { customer: { id: customerEntity.id }, provider: { id: providerId } },
+      ],
       relations: { sender: true },
       order: { createdAt: 'ASC' },
       take: 50,

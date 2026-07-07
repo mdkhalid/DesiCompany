@@ -19,6 +19,16 @@ export class OtpStoreService {
         maxRetriesPerRequest: 1,
         retryStrategy: () => null,
       });
+      // Suppress unhandled 'error' events (e.g. ECONNRESET) so Node doesn't crash.
+      // Errors are handled gracefully via the fallback map.
+      this.redis.on('error', () => {
+        if (this.redis) {
+          this.logger.warn(
+            'Redis connection error — falling back to in-memory',
+          );
+          this.redis = null;
+        }
+      });
       this.redis.connect().catch(() => {
         this.logger.warn(
           'Redis unavailable — OTP storage falling back to in-memory',

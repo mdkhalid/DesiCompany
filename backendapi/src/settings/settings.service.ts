@@ -26,7 +26,11 @@ export class SettingsService {
     return value === 'true' || value === '1';
   }
 
-  async set(key: string, value: string, description?: string): Promise<Setting> {
+  async set(
+    key: string,
+    value: string,
+    description?: string,
+  ): Promise<Setting> {
     const existing = await this.settingRepository.findOne({ where: { key } });
     if (existing) {
       existing.value = value;

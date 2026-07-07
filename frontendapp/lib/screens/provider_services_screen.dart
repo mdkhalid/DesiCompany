@@ -382,37 +382,65 @@ class _ServiceFormDialog extends StatefulWidget {
   State<_ServiceFormDialog> createState() => _ServiceFormDialogState();
 }
 
+// Holds config for one pricing model: its l10n label key, icon, and rate controller.
+class _ModelConfig {
+  final String labelKey;
+  final IconData icon;
+  final TextEditingController? ctrl; // null for models with no fixed rate (e.g. QUOTE_BASED)
+  const _ModelConfig(this.labelKey, this.icon, this.ctrl);
+}
+
 class _ServiceFormDialogState extends State<_ServiceFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _fixedCtrl = TextEditingController();
+  final _fixedCtrl  = TextEditingController();
   final _hourlyCtrl = TextEditingController();
-  final _dailyCtrl = TextEditingController();
-  final _unitCtrl = TextEditingController();
+  final _dailyCtrl  = TextEditingController();
+  final _unitCtrl   = TextEditingController();
   String? _selectedCategoryId;
   String? _selectedPricingModel;
   List<String> _allowedModels = [];
   bool _saving = false;
 
+  // Central config: maps each backend pricing model key to its
+  // localization key, icon, and rate controller. All model-specific
+  // logic is derived from this map — nothing is hardcoded elsewhere.
+  late final Map<String, _ModelConfig> _modelConfig = {
+    'FIXED':       _ModelConfig('pricing_model_fixed',       Icons.payments,       _fixedCtrl),
+    'HOURLY':      _ModelConfig('pricing_model_hourly',      Icons.schedule,       _hourlyCtrl),
+    'DAILY':       _ModelConfig('pricing_model_daily',       Icons.calendar_today, _dailyCtrl),
+    'PER_UNIT':    _ModelConfig('pricing_model_per_unit',    Icons.square_foot,    _unitCtrl),
+    'QUOTE_BASED': _ModelConfig('pricing_model_quote_based', Icons.request_quote,  null),
+  };
+
+  // Maps model key -> API body field name.
+  static const _fieldMap = {
+    'FIXED':    'fixedRate',
+    'HOURLY':   'hourlyRate',
+    'DAILY':    'dailyRate',
+    'PER_UNIT': 'unitRate',
+  };
+
+  // FLEXIBLE is a frontend-only virtual key meaning "show all rate fields".
+  static const _flexibleKey = 'FLEXIBLE';
+
   @override
   void initState() {
     super.initState();
     if (widget.existing != null) {
-      _selectedCategoryId = widget.existing!['categoryId']?.toString();
+      _selectedCategoryId  = widget.existing!['categoryId']?.toString();
       _selectedPricingModel = widget.existing!['pricingModel']?.toString();
-      _fixedCtrl.text = widget.existing!['fixedRate']?.toString() ?? '';
-      _hourlyCtrl.text = widget.existing!['hourlyRate']?.toString() ?? '';
-      _dailyCtrl.text = widget.existing!['dailyRate']?.toString() ?? '';
-      _unitCtrl.text = widget.existing!['unitRate']?.toString() ?? '';
+      // Populate rate fields dynamically via _fieldMap so no model names are hardcoded
+      _fieldMap.forEach((modelKey, apiField) {
+        final ctrl = _modelConfig[modelKey]?.ctrl;
+        if (ctrl != null) ctrl.text = widget.existing![apiField]?.toString() ?? '';
+      });
       _updateAllowedModels();
     }
   }
 
   @override
   void dispose() {
-    _fixedCtrl.dispose();
-    _hourlyCtrl.dispose();
-    _dailyCtrl.dispose();
-    _unitCtrl.dispose();
+    for (final cfg in _modelConfig.values) cfg.ctrl?.dispose();
     super.dispose();
   }
 
@@ -429,10 +457,11 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
     if (cat != null) {
       final raw = cat['pricingModels'];
       _allowedModels = (raw is List) ? raw.cast<String>() : [];
-      if (!_allowedModels.contains(_selectedPricingModel)) {
+      if (_selectedPricingModel != _flexibleKey &&
+          !_allowedModels.contains(_selectedPricingModel)) {
         _selectedPricingModel = null;
       }
-      // Auto-select if only one model
+      // Auto-select when only one model is available
       if (_allowedModels.length == 1 && _selectedPricingModel == null) {
         _selectedPricingModel = _allowedModels.first;
       }
@@ -446,20 +475,39 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
     return isHindi ? (c['nameHi'] ?? c['nameEn'] ?? '') : (c['nameEn'] ?? c['nameHi'] ?? '');
   }
 
+  // Returns the localized label for any pricing model key (including FLEXIBLE).
+  String _modelLabel(String modelKey, LocalizationProvider loc) {
+    if (modelKey == _flexibleKey) return loc.tr('all_pricing_models');
+    final cfgKey = _modelConfig[modelKey]?.labelKey;
+    return cfgKey != null ? loc.tr(cfgKey) : modelKey.replaceAll('_', ' ');
+  }
+
+  // Which model keys should show a rate field right now.
+  List<String> get _visibleFields {
+    // FLEXIBLE → all rate-bearing models the category allows
+    if (_selectedPricingModel == _flexibleKey) {
+      return _allowedModels.where((m) => _modelConfig[m]?.ctrl != null).toList();
+    }
+    // A specific model is selected → show only its field
+    if (_selectedPricingModel != null) {
+      return (_modelConfig[_selectedPricingModel!]?.ctrl != null)
+          ? [_selectedPricingModel!]
+          : [];
+    }
+    // Nothing selected yet → show all available rate fields
+    return _allowedModels.where((m) => _modelConfig[m]?.ctrl != null).toList();
+  }
+
   double? _parseRate(String v) => v.trim().isEmpty ? null : double.tryParse(v.trim());
 
+  // For the payout preview use the first non-zero rate among visible fields.
   double _computedServiceAmount() {
-    final model = _selectedPricingModel;
-    if (model == 'FIXED') return _parseRate(_fixedCtrl.text) ?? 0;
-    if (model == 'HOURLY') {
-      final rate = _parseRate(_hourlyCtrl.text) ?? 0;
-      return rate * 1; // default 1 hour for preview
+    for (final key in _visibleFields) {
+      final ctrl = _modelConfig[key]?.ctrl;
+      if (ctrl == null) continue;
+      final v = _parseRate(ctrl.text) ?? 0;
+      if (v > 0) return v;
     }
-    if (model == 'DAILY') {
-      final rate = _parseRate(_dailyCtrl.text) ?? 0;
-      return rate * 1; // default 1 day for preview
-    }
-    if (model == 'PER_UNIT') return _parseRate(_unitCtrl.text) ?? 0;
     return 0;
   }
 
@@ -520,26 +568,16 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-
     final loc = DesiCompanyApp.localeProvider!;
-    final fixed = _fixedCtrl.text.trim();
-    final hourly = _hourlyCtrl.text.trim();
-    final daily = _dailyCtrl.text.trim();
-    final unit = _unitCtrl.text.trim();
 
-    // Validate at least the required rate for the selected model is filled
-    if (_selectedPricingModel != null) {
-      final requiredEmpty = _selectedPricingModel == 'FIXED' && fixed.isEmpty ||
-          _selectedPricingModel == 'HOURLY' && hourly.isEmpty ||
-          _selectedPricingModel == 'DAILY' && daily.isEmpty ||
-          _selectedPricingModel == 'PER_UNIT' && unit.isEmpty;
-      if (requiredEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${loc.tr('error')}: rate required for ${_selectedPricingModel}')),
-        );
-        return;
-      }
-    } else if (fixed.isEmpty && hourly.isEmpty && daily.isEmpty && unit.isEmpty) {
+    // Validate: at least one rate field must be filled for visible fields
+    final anyFilled = _visibleFields.any((key) {
+      final ctrl = _modelConfig[key]?.ctrl;
+      return ctrl != null && ctrl.text.trim().isNotEmpty;
+    });
+    final isQuoteBased = _selectedPricingModel == 'QUOTE_BASED';
+
+    if (!anyFilled && !isQuoteBased) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${loc.tr('error')}: rate required')),
       );
@@ -548,37 +586,35 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
 
     setState(() => _saving = true);
     try {
+      final body = <String, dynamic>{};
+
+      // Build rate fields dynamically from _fieldMap — only send filled controllers
+      _fieldMap.forEach((modelKey, apiField) {
+        final ctrl = _modelConfig[modelKey]?.ctrl;
+        if (ctrl == null) return;
+        final v = ctrl.text.trim();
+        if (v.isEmpty) return;
+        final parsed = double.tryParse(v);
+        if (parsed != null) body[apiField] = parsed;
+      });
+
+      // FLEXIBLE is frontend-only; don't send it to backend. Send null or an actual model.
+      final backendModel = (_selectedPricingModel == _flexibleKey)
+          ? null
+          : _selectedPricingModel;
+      if (backendModel != null) body['pricingModel'] = backendModel;
+
       if (widget.existing != null) {
-        final body = <String, dynamic>{};
-        if (fixed.isNotEmpty) body['fixedRate'] = _parseRate(fixed);
-        if (hourly.isNotEmpty) body['hourlyRate'] = _parseRate(hourly);
-        if (daily.isNotEmpty) body['dailyRate'] = _parseRate(daily);
-        if (unit.isNotEmpty) body['unitRate'] = _parseRate(unit);
-        if (_selectedPricingModel != null) body['pricingModel'] = _selectedPricingModel;
         if (body.isEmpty) body['isActive'] = true;
         await ApiService.patch('/services/provider-services/${widget.existing!['id']}', body: body);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(loc.tr('service_updated'))),
-          );
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.tr('service_updated'))));
       } else {
-        final body = <String, dynamic>{
-          'providerId': widget.providerId,
-          'categoryId': _selectedCategoryId,
-        };
-        if (fixed.isNotEmpty) body['fixedRate'] = _parseRate(fixed);
-        if (hourly.isNotEmpty) body['hourlyRate'] = _parseRate(hourly);
-        if (daily.isNotEmpty) body['dailyRate'] = _parseRate(daily);
-        if (unit.isNotEmpty) body['unitRate'] = _parseRate(unit);
-        if (_selectedPricingModel != null) body['pricingModel'] = _selectedPricingModel;
+        body['providerId'] = widget.providerId;
+        body['categoryId'] = _selectedCategoryId;
         await ApiService.post('/services/provider-services', body: body);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(loc.tr('service_created'))),
-          );
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(loc.tr('service_created'))));
       }
+
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
@@ -590,19 +626,21 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
     }
   }
 
-  Widget _buildRateField(String label, IconData icon, TextEditingController ctrl) {
+  Widget _buildRateField(String modelKey, LocalizationProvider loc) {
+    final cfg = _modelConfig[modelKey];
+    if (cfg == null || cfg.ctrl == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
-        controller: ctrl,
+        controller: cfg.ctrl,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: AppTheme.primary),
+          labelText: loc.tr(cfg.labelKey),
+          prefixIcon: Icon(cfg.icon, color: AppTheme.primary),
         ),
         validator: (v) {
           if (v == null || v.trim().isEmpty) return null;
-          if (double.tryParse(v.trim()) == null) return 'invalid';
+          if (double.tryParse(v.trim()) == null) return loc.tr('invalid_amount');
           return null;
         },
       ),
@@ -669,46 +707,57 @@ class _ServiceFormDialogState extends State<_ServiceFormDialog> {
                   setState(() {
                     _selectedCategoryId = v;
                     _updateAllowedModels();
-                    // Clear rate fields when category changes
-                    _fixedCtrl.clear();
-                    _hourlyCtrl.clear();
-                    _dailyCtrl.clear();
-                    _unitCtrl.clear();
+                    // Clear all rate fields when category changes
+                    for (final cfg in _modelConfig.values) cfg.ctrl?.clear();
                   });
                 },
                 validator: (v) => v == null ? loc.tr('select_category') : null,
               ),
             const SizedBox(height: 16),
 
-            // Pricing model selector (if multiple models available)
+            // Pricing model dropdown — built entirely from _allowedModels.
+            // Only shown when the category supports more than one model.
             if (_allowedModels.length > 1) ...[
               DropdownButtonFormField<String>(
-                initialValue: _selectedPricingModel,
+                value: _selectedPricingModel,
                 decoration: InputDecoration(
                   labelText: loc.tr('pricing_model'),
                   prefixIcon: const Icon(Icons.category, color: AppTheme.primary),
                 ),
-                items: _allowedModels
-                    .map<DropdownMenuItem<String>>((m) => DropdownMenuItem<String>(
-                          value: m,
-                          child: Text(m.replaceAll('_', ' ')),
-                        ))
-                    .toList(),
-                onChanged: (v) => setState(() => _selectedPricingModel = v),
+                items: [
+                  // FLEXIBLE option — shown only when category has multiple rate-bearing models
+                  if (_allowedModels.where((m) => _modelConfig[m]?.ctrl != null).length > 1)
+                    DropdownMenuItem<String>(
+                      value: _flexibleKey,
+                      child: Row(children: [
+                        const Icon(Icons.all_inclusive, size: 18, color: AppTheme.primary),
+                        const SizedBox(width: 8),
+                        Text(loc.tr('all_pricing_models')),
+                      ]),
+                    ),
+                  // One item per model — label from localization via _modelLabel
+                  ..._allowedModels.map<DropdownMenuItem<String>>((m) => DropdownMenuItem<String>(
+                        value: m,
+                        child: Text(_modelLabel(m, loc)),
+                      )),
+                ],
+                onChanged: (v) => setState(() {
+                  _selectedPricingModel = v;
+                  // FLEXIBLE keeps all fields; switching to a specific model clears the others
+                  if (v != _flexibleKey) {
+                    for (final entry in _modelConfig.entries) {
+                      if (entry.key != v) entry.value.ctrl?.clear();
+                    }
+                  }
+                }),
                 validator: (v) => v == null ? loc.tr('select_pricing_model') : null,
               ),
               const SizedBox(height: 16),
             ],
 
-            // Dynamic rate fields based on selected pricing model
-            if (_allowedModels.contains('FIXED') || (_selectedPricingModel == null && _allowedModels.isEmpty))
-              _buildRateField(loc.tr('fixed_rate'), Icons.payments, _fixedCtrl),
-            if (_allowedModels.contains('HOURLY') || (_selectedPricingModel == null && _allowedModels.isEmpty))
-              _buildRateField(loc.tr('hourly_rate'), Icons.schedule, _hourlyCtrl),
-            if (_allowedModels.contains('DAILY') || (_selectedPricingModel == null && _allowedModels.isEmpty))
-              _buildRateField(loc.tr('daily_rate'), Icons.calendar_today, _dailyCtrl),
-            if (_allowedModels.contains('PER_UNIT') || (_selectedPricingModel == null && _allowedModels.isEmpty))
-              _buildRateField(loc.tr('unit_rate_field'), Icons.square_foot, _unitCtrl),
+            // Rate input fields — driven entirely by _visibleFields (computed from
+            // _selectedPricingModel + _allowedModels). No model names hardcoded here.
+            ..._visibleFields.map((key) => _buildRateField(key, loc)),
 
             // Net payout preview
             _buildNetPayoutPreview(),

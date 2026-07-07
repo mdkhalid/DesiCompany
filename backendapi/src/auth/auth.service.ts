@@ -171,7 +171,9 @@ export class AuthService {
     return { user: this.toUserResponse(fullUser || savedUser), tokens };
   }
 
-  async login(loginDto: LoginDto): Promise<{ user: Record<string, unknown> | User; tokens: AuthTokens }> {
+  async login(
+    loginDto: LoginDto,
+  ): Promise<{ user: Record<string, unknown> | User; tokens: AuthTokens }> {
     const user = await this.userRepository.findOne({
       where: { phone: loginDto.phone },
       relations: { customer: true, provider: true },
@@ -308,10 +310,12 @@ export class AuthService {
     // Build available roles from both the roles array and sub-entity presence
     const availableRoles: UserRole[] = [];
     if (user.customer || user.roles?.includes(UserRole.CUSTOMER)) {
-      if (!availableRoles.includes(UserRole.CUSTOMER)) availableRoles.push(UserRole.CUSTOMER);
+      if (!availableRoles.includes(UserRole.CUSTOMER))
+        availableRoles.push(UserRole.CUSTOMER);
     }
     if (user.provider || user.roles?.includes(UserRole.PROVIDER)) {
-      if (!availableRoles.includes(UserRole.PROVIDER)) availableRoles.push(UserRole.PROVIDER);
+      if (!availableRoles.includes(UserRole.PROVIDER))
+        availableRoles.push(UserRole.PROVIDER);
     }
     if (availableRoles.length === 0) {
       availableRoles.push(user.role);

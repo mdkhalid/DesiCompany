@@ -31,16 +31,18 @@ export class KycController {
 
   @Post('upload')
   @Roles(UserRole.PROVIDER)
-  @UseInterceptors(FilesInterceptor('documents', 10, {
-    storage: diskStorage({
-      destination: './uploads/kyc',
-      filename: (req, file, cb) => {
-        const uniqueSuffix = randomBytes(16).toString('hex');
-        const ext = extname(file.originalname);
-        cb(null, `${uniqueSuffix}${ext}`);
-      },
+  @UseInterceptors(
+    FilesInterceptor('documents', 10, {
+      storage: diskStorage({
+        destination: './uploads/kyc',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = randomBytes(16).toString('hex');
+          const ext = extname(file.originalname);
+          cb(null, `${uniqueSuffix}${ext}`);
+        },
+      }),
     }),
-  }))
+  )
   async uploadDocuments(
     @Body('providerId') providerId: string,
     @Body('documentType') documentType: string,
