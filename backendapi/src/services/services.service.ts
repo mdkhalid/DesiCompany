@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, MoreThan } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ProviderService } from './entities/provider-service.entity';
 import { ProviderAvailability } from './entities/provider-availability.entity';
@@ -483,8 +483,6 @@ export class ServicesService {
 
     const dateObj = new Date(date + 'T00:00:00');
     const dayOfWeek = dateObj.getDay();
-    const nextDay = new Date(dateObj);
-    nextDay.setDate(nextDay.getDate() + 1);
 
     const override = await this.dateOverrideRepository.findOne({
       where: { provider: { id: providerId }, overrideDate: date },
@@ -530,22 +528,20 @@ export class ServicesService {
       const existingBookings = await this.bookingRepository.find({
         where: {
           provider: { id: providerId },
-          scheduledDate: MoreThan(dateObj),
           status: In(activeStatuses),
         },
         select: { id: true, scheduledDate: true, estimatedHours: true },
       });
 
       const bookedRanges = existingBookings
-        .filter((b) => {
-          const bDate = new Date(b.scheduledDate);
-          return bDate >= dateObj && bDate < nextDay;
-        })
+        .filter((b) => (b.scheduledDate as Date).toISOString().slice(0, 10) === date)
         .map((b) => {
-          const bDate = new Date(b.scheduledDate);
-          const startMinutes = bDate.getHours() * 60 + bDate.getMinutes();
-          const duration = (b.estimatedHours || 1) * 60;
-          return { startMin: startMinutes, endMin: startMinutes + duration };
+          const iso = (b.scheduledDate as Date).toISOString();
+          const [bh, bm] = iso.slice(11, 16).split(':').map(Number);
+          const startMinutes = bh * 60 + bm;
+          const duration =
+            b.estimatedHours && b.estimatedHours > 0 ? b.estimatedHours : 1;
+          return { startMin: startMinutes, endMin: startMinutes + duration * 60 };
         });
 
       // Busy slots (provider-marked unavailable times for this date)

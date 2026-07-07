@@ -7,6 +7,36 @@ import '../services/auth_service.dart';
 import '../l10n/strings.dart';
 import 'chat_screen.dart';
 
+class ConversationBooking {
+  final String id;
+  final String status;
+  final String? serviceName;
+  final DateTime? scheduledDate;
+  final double? totalAmount;
+
+  ConversationBooking({
+    required this.id,
+    required this.status,
+    this.serviceName,
+    this.scheduledDate,
+    this.totalAmount,
+  });
+
+  factory ConversationBooking.fromJson(Map<String, dynamic> json) {
+    return ConversationBooking(
+      id: json['id'] ?? '',
+      status: json['status'] ?? '',
+      serviceName: json['serviceName'],
+      scheduledDate: json['scheduledDate'] != null
+          ? DateTime.tryParse(json['scheduledDate'].toString())
+          : null,
+      totalAmount: json['totalAmount'] != null
+          ? double.tryParse('${json['totalAmount']}')
+          : null,
+    );
+  }
+}
+
 class Conversation {
   final String id;
   final String partnerId;
@@ -14,12 +44,14 @@ class Conversation {
   final String? partnerImage;
   final String? bookingId;
   final String? bookingStatus;
+  final String? serviceName;
   final String? lastMessage;
   final DateTime? lastMessageTime;
   final int unreadCount;
   final bool isDirect;
   bool isOnline;
   final List<String> bookingIds;
+  final List<ConversationBooking> bookings;
 
   Conversation({
     required this.id,
@@ -28,12 +60,14 @@ class Conversation {
     this.partnerImage,
     this.bookingId,
     this.bookingStatus,
+    this.serviceName,
     this.lastMessage,
     this.lastMessageTime,
     this.unreadCount = 0,
     this.isDirect = false,
     this.isOnline = false,
     this.bookingIds = const [],
+    this.bookings = const [],
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
@@ -44,6 +78,7 @@ class Conversation {
       partnerImage: json['partnerImage'],
       bookingId: json['bookingId'],
       bookingStatus: json['bookingStatus'],
+      serviceName: json['serviceName'],
       lastMessage: json['lastMessage'],
       lastMessageTime: json['lastMessageTime'] != null
           ? DateTime.tryParse(json['lastMessageTime'].toString())
@@ -55,6 +90,10 @@ class Conversation {
       isOnline: json['isOnline'] == true,
       bookingIds: (json['bookingIds'] as List<dynamic>?)
               ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      bookings: (json['bookings'] as List<dynamic>?)
+              ?.map((e) => ConversationBooking.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
     );
@@ -304,7 +343,8 @@ class _ConversationListScreenState extends State<ConversationListScreen>
   }
 
   void _openChat(Conversation conv) async {
-    String? selectedBookingId = conv.bookingId;
+    String? selectedBookingId = conv.bookingId ??
+        (conv.bookings.isNotEmpty ? conv.bookings.first.id : null);
 
     if (conv.bookingIds.length > 1) {
       selectedBookingId = await _showBookingSelector(conv);
@@ -330,22 +370,87 @@ class _ConversationListScreenState extends State<ConversationListScreen>
   }
 
   Future<String?> _showBookingSelector(Conversation conv) async {
+    // Split bookings into active (not finished) and completed for a logical
+    // view, each sorted most-recent-first.
+    const activeStatuses = {
+      'requested',
+      'accepted',
+      'confirmed',
+      'on_the_way',
+      'working',
+      'in_progress',
+    };
+    final active = conv.bookings
+        .where((b) => activeStatuses.contains(b.status))
+        .toList();
+    final completed = conv.bookings
+        .where((b) => !activeStatuses.contains(b.status))
+        .toList();
+
+    Widget section(
+      BuildContext ctx,
+      String title,
+      List<ConversationBooking> items,
+    ) {
+      if (items.isEmpty) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
+            child: Text(
+              '$title (${items.length})',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          ...items.map((b) => ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                title: Text(
+                  b.serviceName?.isNotEmpty == true
+                      ? b.serviceName!
+                      : 'Booking ${b.id.substring(0, 8)}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                subtitle: Text(
+                  [
+                    _getStatusLabel(b.status),
+                    if (b.scheduledDate != null) _formatDate(b.scheduledDate),
+                    if (b.totalAmount != null)
+                      '₹${b.totalAmount!.toStringAsFixed(0)}',
+                  ].join('  ·  '),
+                  style: TextStyle(
+                    color: _getStatusColor(b.status),
+                    fontSize: 12,
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pop(ctx, b.id),
+              )),
+          const Divider(height: 8),
+        ],
+      );
+    }
+
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Select Booking'),
+        title: Text('${conv.partnerName} — Services'),
         content: SizedBox(
           width: double.maxFinite,
-          child: ListView.builder(
+          child: ListView(
             shrinkWrap: true,
-            itemCount: conv.bookingIds.length,
-            itemBuilder: (ctx, i) {
-              final bookingId = conv.bookingIds[i];
-              return ListTile(
-                title: Text('Booking ${bookingId.substring(0, 8)}'),
-                onTap: () => Navigator.pop(ctx, bookingId),
-              );
-            },
+            children: [
+              section(ctx, 'Active', active),
+              section(ctx, 'Completed', completed),
+            ],
           ),
         ),
         actions: [
@@ -356,6 +461,11 @@ class _ConversationListScreenState extends State<ConversationListScreen>
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   String _formatTime(DateTime? dt) {
@@ -566,6 +676,30 @@ class _ConversationTile extends StatelessWidget {
     required this.getStatusColor,
   });
 
+  String _bookingSummary(Conversation c) {
+    const active = {
+      'requested',
+      'accepted',
+      'confirmed',
+      'on_the_way',
+      'working',
+      'in_progress',
+    };
+    int a = 0;
+    int d = 0;
+    for (final b in c.bookings) {
+      if (active.contains(b.status)) {
+        a++;
+      } else {
+        d++;
+      }
+    }
+    final parts = <String>[];
+    if (a > 0) parts.add('$a active');
+    if (d > 0) parts.add('$d done');
+    return parts.isEmpty ? '${c.bookings.length} services' : parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
@@ -624,7 +758,24 @@ class _ConversationTile extends StatelessWidget {
       ),
       subtitle: Row(
         children: [
-          if (!conversation.isDirect && conversation.bookingStatus != null)
+          if (!conversation.isDirect && conversation.bookings.length > 1)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                _bookingSummary(conversation),
+                style: const TextStyle(
+                  color: Colors.blue,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          else if (!conversation.isDirect && conversation.bookingStatus != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               margin: const EdgeInsets.only(right: 6),
@@ -657,7 +808,9 @@ class _ConversationTile extends StatelessWidget {
             ),
           Expanded(
             child: Text(
-              conversation.lastMessage ?? 'No messages',
+              conversation.serviceName?.isNotEmpty == true
+                  ? conversation.serviceName!
+                  : (conversation.lastMessage ?? 'No messages'),
               style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),

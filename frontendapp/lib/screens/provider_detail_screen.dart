@@ -4,6 +4,7 @@ import '../l10n/strings.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
 import '../widgets/distance_badge.dart';
+import '../widgets/price_breakdown_card.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class ProviderDetailScreen extends StatefulWidget {
@@ -133,6 +134,17 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
       return 'Price quoted by provider';
     }
 
+    // Base amount used for the live price preview
+    final double basePrice = (service['fixedRate'] != null)
+        ? (double.tryParse('${service['fixedRate']}') ?? 0)
+        : (service['hourlyRate'] != null)
+            ? (double.tryParse('${service['hourlyRate']}') ?? 0)
+            : (service['dailyRate'] != null)
+                ? (double.tryParse('${service['dailyRate']}') ?? 0)
+                : 0;
+    final bool variablePricing =
+        service['hourlyRate'] != null || service['dailyRate'] != null;
+
     Future<void> refreshSlotsNow(DateTime picked, StateSetter setState, BuildContext dialogCtx) async {
       setState(() {
         selectedSlot = null;
@@ -166,7 +178,11 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text(loc.tr('book_service')),
+          title: Text(
+            service['category']?['nameEn']?.toString().isNotEmpty == true
+                ? service['category']['nameEn'].toString()
+                : loc.tr('book_service'),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -203,6 +219,14 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                     Expanded(child: Text(_estimateText(service), style: const TextStyle(color: Colors.blue, fontSize: 13))),
                   ]),
                 ),
+                if (basePrice > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: QuotePriceBreakdown(
+                      amount: basePrice,
+                      variablePricing: variablePricing,
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: descriptionController,

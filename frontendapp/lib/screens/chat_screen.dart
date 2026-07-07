@@ -15,6 +15,7 @@ import '../models/hive_chat_message.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
+import '../widgets/price_breakdown_card.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class ChatScreen extends StatefulWidget {
@@ -937,7 +938,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8, left: 4),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisSize: MainAxisSize.max,
                           mainAxisAlignment: MainAxisAlignment.start,
                           children: [
                             _buildTypingDots(),
@@ -1138,27 +1139,32 @@ class _ChatScreenState extends State<ChatScreen> {
           bottomRight: Radius.circular(isMe ? 4 : 16),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            msg.content,
-            style: const TextStyle(fontSize: 15),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (msg.edited)
-                Text(
-                  'edited',
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
-                ),
-              if (msg.edited) const SizedBox(width: 4),
-              _buildReadStatusIcon(msg),
-            ],
-          ),
-        ],
+      child: IntrinsicWidth(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              msg.content,
+              style: const TextStyle(fontSize: 15),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (msg.edited)
+                    Text(
+                      'edited',
+                      style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
+                    ),
+                  if (msg.edited) const SizedBox(width: 4),
+                  _buildReadStatusIcon(msg),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1507,6 +1513,11 @@ class _ChatScreenState extends State<ChatScreen> {
           Text('Quote', style: TextStyle(fontSize: 11, color: isMe ? Colors.green.shade700 : Colors.orange.shade700, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text('₹$amount', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          if (msg.quoteAmount != null && msg.quoteAmount! > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: QuotePriceBreakdown(amount: msg.quoteAmount!),
+            ),
           if (isAccepted)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -1775,8 +1786,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildTypingDots() {
     return SizedBox(
-      width: 28,
-      height: 12,
+      width: 36,
+      height: 14,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(3, (i) {

@@ -147,6 +147,36 @@ export class PlatformFeesService {
     return { baseFee, discount, finalFee };
   }
 
+  /**
+   * Full price breakdown for a given service amount.
+   * GST is charged on the service amount + convenience fee (both are taxable
+   * supplies under Indian GST), so the customer sees one consistent total.
+   */
+  async getPriceBreakdown(
+    amount: number,
+    promoCode?: string,
+    userId?: string,
+  ): Promise<{
+    baseAmount: number;
+    convenienceFee: number;
+    gstRate: number;
+    gstAmount: number;
+    total: number;
+  }> {
+    const fee = await this.getConvenienceFee(amount, promoCode, userId);
+    const gstRate = parseFloat(process.env.GST_RATE || '0.18');
+    const taxable = amount + fee.finalFee;
+    const gstAmount = Math.round(taxable * gstRate * 100) / 100;
+    const total = Math.round((taxable + gstAmount) * 100) / 100;
+    return {
+      baseAmount: Math.round(amount * 100) / 100,
+      convenienceFee: fee.finalFee,
+      gstRate,
+      gstAmount,
+      total,
+    };
+  }
+
   // ─── Subscription Plans ──────────────────────────────────────
 
   async createSubscriptionPlan(

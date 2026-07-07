@@ -4,6 +4,7 @@ import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../widgets/price_breakdown_card.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class CustomerJobDetailScreen extends StatefulWidget {
@@ -626,6 +627,7 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
               ),
             ],
           ),
+          QuotePriceBreakdown(amount: (double.tryParse('$amount') ?? 0)),
           if (message != null && message.isNotEmpty) ...[
             const SizedBox(height: 10),
             Container(

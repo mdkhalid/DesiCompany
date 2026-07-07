@@ -42,6 +42,10 @@ export class CreateBookingDto {
   scheduledDate: string;
 
   @IsOptional()
+  @IsNumber()
+  estimatedHours?: number;
+
+  @IsOptional()
   @IsString()
   description?: string;
 

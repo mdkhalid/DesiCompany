@@ -160,4 +160,21 @@ export class PublicFeesController {
       req.user.id,
     );
   }
+
+  @Get('price-breakdown/estimate')
+  @ApiOperation({
+    summary:
+      'Estimate full price breakdown (service + convenience fee + GST) for an amount',
+  })
+  async estimateBreakdown(
+    @Req() req: AuthenticatedRequest,
+    @Query('amount') amount: string,
+    @Query('promoCode') promoCode?: string,
+  ) {
+    return this.platformFeesService.getPriceBreakdown(
+      parseFloat(amount) || 0,
+      promoCode,
+      req.user.id,
+    );
+  }
 }

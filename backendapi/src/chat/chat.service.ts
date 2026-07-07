@@ -12,6 +12,14 @@ import { Provider } from '../users/entities/provider.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { PresenceService } from './presence.service';
 
+export interface BookingSummary {
+  id: string;
+  status: string;
+  serviceName?: string;
+  scheduledDate?: string;
+  totalAmount?: number;
+}
+
 export interface ConversationItem {
   id: string;
   type: 'booking' | 'direct';
@@ -24,8 +32,10 @@ export interface ConversationItem {
   unreadCount: number;
   bookingId?: string;
   bookingStatus?: string;
+  serviceName?: string;
   isOnline?: boolean;
   bookingIds?: string[];
+  bookings?: BookingSummary[];
 }
 
 @Injectable()
@@ -69,7 +79,8 @@ export class ChatService {
 
     // For dual-role users, use the currently active role to avoid duplicate
     // conversations appearing from both customer and provider perspectives.
-    const activeRole: 'customer' | 'provider' = user.role === 'provider' ? 'provider' : 'customer';
+    const activeRole: 'customer' | 'provider' =
+      user.role === 'provider' ? 'provider' : 'customer';
 
     const conversations: ConversationItem[] = [];
 
@@ -82,13 +93,21 @@ export class ChatService {
     if (activeRole === 'customer' && user.customer) {
       bookings = await this.bookingRepository.find({
         where: { customer: { id: user.customer.id } },
-        relations: { customer: true, provider: { user: true } },
+        relations: {
+          customer: true,
+          provider: { user: true },
+          providerService: { category: true },
+        },
         order: { updatedAt: 'DESC' },
       });
     } else if (activeRole === 'provider' && user.provider) {
       bookings = await this.bookingRepository.find({
         where: { provider: { id: user.provider.id } },
-        relations: { customer: { user: true }, provider: true },
+        relations: {
+          customer: { user: true },
+          provider: true,
+          providerService: { category: true },
+        },
         order: { updatedAt: 'DESC' },
       });
     } else {
@@ -159,6 +178,17 @@ export class ChatService {
         if (!partnerId) continue;
 
         const lastMsg = lastMessageMap.get(booking.id);
+        const serviceName = booking.providerService?.category?.nameEn;
+        const summary: BookingSummary = {
+          id: booking.id,
+          status: booking.status,
+          serviceName,
+          scheduledDate: booking.scheduledDate?.toISOString(),
+          totalAmount:
+            booking.totalAmount != null
+              ? Number(booking.totalAmount)
+              : undefined,
+        };
         conversations.push({
           id: `booking_${booking.id}`,
           type: 'booking',
@@ -170,6 +200,8 @@ export class ChatService {
           unreadCount: unreadMap.get(booking.id) || 0,
           bookingId: booking.id,
           bookingStatus: booking.status,
+          serviceName,
+          bookings: [summary],
         });
       }
     }
@@ -195,30 +227,46 @@ export class ChatService {
 
     // === MERGE DUPLICATE PARTNERS ===
     // Group conversations by partnerId so the same person shows only once.
-    // The most recent conversation is kept; all booking IDs are collected.
+    // All their bookings are collected into a single, de-duplicated,
+    // most-recent-first list, and the most recent booking drives the preview.
+    const mergeBookings = (
+      a?: BookingSummary[],
+      b?: BookingSummary[],
+    ): BookingSummary[] => {
+      const map = new Map<string, BookingSummary>();
+      for (const item of [...(a ?? []), ...(b ?? [])]) {
+        map.set(item.id, item);
+      }
+      return Array.from(map.values()).sort(
+        (x, y) =>
+          new Date(y.scheduledDate ?? 0).getTime() -
+          new Date(x.scheduledDate ?? 0).getTime(),
+      );
+    };
+
     const merged = new Map<string, ConversationItem>();
     for (const conv of conversations) {
       const existing = merged.get(conv.partnerId);
       if (!existing) {
-        conv.bookingIds = conv.type === 'booking' && conv.bookingId ? [conv.bookingId] : [];
+        conv.bookingIds =
+          conv.type === 'booking' && conv.bookingId ? [conv.bookingId] : [];
         merged.set(conv.partnerId, conv);
       } else {
-        // Merge: keep the one with the most recent lastMessageAt
-        if (new Date(conv.lastMessageAt).getTime() > new Date(existing.lastMessageAt).getTime()) {
-          const bookingIds = existing.bookingIds || [];
-          merged.set(conv.partnerId, {
-            ...conv,
-            bookingIds: conv.type === 'booking' && conv.bookingId
-              ? [...bookingIds, conv.bookingId]
-              : bookingIds,
-            unreadCount: existing.unreadCount + conv.unreadCount,
-          });
-        } else {
-          existing.unreadCount += conv.unreadCount;
-          if (conv.type === 'booking' && conv.bookingId) {
-            existing.bookingIds = [...(existing.bookingIds || []), conv.bookingId];
-          }
-        }
+        // Merge: keep the conversation with the most recent lastMessageAt as
+        // the "head" (drives name/avatar/last message), but always union the
+        // bookings and unread counts from both.
+        const mergedConv: ConversationItem =
+          new Date(conv.lastMessageAt).getTime() >
+          new Date(existing.lastMessageAt).getTime()
+            ? { ...conv }
+            : { ...existing };
+        mergedConv.unreadCount = existing.unreadCount + conv.unreadCount;
+        mergedConv.bookingIds = mergeBookings(
+          existing.bookings,
+          conv.bookings,
+        ).map((b) => b.id);
+        mergedConv.bookings = mergeBookings(existing.bookings, conv.bookings);
+        merged.set(conv.partnerId, mergedConv);
       }
     }
     const mergedConversations = Array.from(merged.values());
@@ -359,7 +407,10 @@ export class ChatService {
         { isRead: true },
       );
 
-      return { messages: messages.reverse().map((m) => this.formatMessage(m)), total };
+      return {
+        messages: messages.reverse().map((m) => this.formatMessage(m)),
+        total,
+      };
     } else {
       // Direct message - parse room ID
       const parts = targetId.split('_');
@@ -388,7 +439,10 @@ export class ChatService {
       const [messages, total] = await this.directMessageRepository.findAndCount(
         {
           where: [
-            { customer: { id: customerEntity.id }, provider: { id: providerEntity.id } },
+            {
+              customer: { id: customerEntity.id },
+              provider: { id: providerEntity.id },
+            },
           ],
           relations: { sender: { customer: true, provider: true } },
           order: { createdAt: 'DESC' },
@@ -407,7 +461,10 @@ export class ChatService {
         { isRead: true },
       );
 
-      return { messages: messages.reverse().map((m) => this.formatDirectMessage(m)), total };
+      return {
+        messages: messages.reverse().map((m) => this.formatDirectMessage(m)),
+        total,
+      };
     }
   }
 
@@ -416,9 +473,11 @@ export class ChatService {
     let senderName = '';
     if (sender) {
       if (sender.customer) {
-        senderName = `${sender.customer.firstName || ''} ${sender.customer.lastName || ''}`.trim();
+        senderName =
+          `${sender.customer.firstName || ''} ${sender.customer.lastName || ''}`.trim();
       } else if (sender.provider) {
-        senderName = `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
+        senderName =
+          `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
       }
       if (!senderName) {
         senderName = sender.role === 'provider' ? 'Provider' : 'Customer';
@@ -444,9 +503,11 @@ export class ChatService {
     let senderName = '';
     if (sender) {
       if (sender.customer) {
-        senderName = `${sender.customer.firstName || ''} ${sender.customer.lastName || ''}`.trim();
+        senderName =
+          `${sender.customer.firstName || ''} ${sender.customer.lastName || ''}`.trim();
       } else if (sender.provider) {
-        senderName = `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
+        senderName =
+          `${sender.provider.firstName || ''} ${sender.provider.lastName || ''}`.trim();
       }
       if (!senderName) {
         senderName = sender.role === 'provider' ? 'Provider' : 'Customer';
@@ -576,7 +637,10 @@ export class ChatService {
       if (!providerEntity) return { messages: [], total: 0 };
 
       const [messages] = await this.directMessageRepository.findAndCount({
-        where: { customer: { id: customerEntity.id }, provider: { id: providerEntity.id } },
+        where: {
+          customer: { id: customerEntity.id },
+          provider: { id: providerEntity.id },
+        },
         relations: { sender: { customer: true, provider: true } },
         order: { createdAt: 'DESC' },
       });

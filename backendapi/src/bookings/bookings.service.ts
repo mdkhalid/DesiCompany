@@ -108,7 +108,11 @@ export class BookingsService {
       );
     }
 
-    await this.validateBookingSlot(provider.id, dto.scheduledDate);
+    await this.validateBookingSlot(
+      provider.id,
+      dto.scheduledDate,
+      dto.estimatedHours,
+    );
 
     const providerService = await this.providerServiceRepository.findOne({
       where: {
@@ -573,11 +577,30 @@ export class BookingsService {
     return this.recalculateTotals(charge.booking.id);
   }
 
-  private async validateBookingSlot(providerId: string, scheduledDate: string) {
-    const dateObj = new Date(scheduledDate);
-    const dateStr = dateObj.toISOString().slice(0, 10);
-    const dayOfWeek = dateObj.getDay();
-    const bookingMinutes = dateObj.getHours() * 60 + dateObj.getMinutes();
+  /**
+   * Parse a scheduledDate string (YYYY-MM-DDTHH:MM:SSZ) WITHOUT timezone
+   * conversion. The app encodes the provider's wall-clock time as a UTC label,
+   * so we must read the literal date/time parts, not the server-local ones.
+   */
+  private parseScheduledParts(scheduledDate: string) {
+    const dateStr = scheduledDate.slice(0, 10);
+    const timePart = scheduledDate.slice(11, 16) || '00:00';
+    const [hh, mm] = timePart.split(':').map((n) => Number(n));
+    const [y, mo, d] = dateStr.split('-').map((n) => Number(n));
+    const dayOfWeek = new Date(y, mo - 1, d).getDay();
+    return { dateStr, minutes: hh * 60 + mm, dayOfWeek };
+  }
+
+  private async validateBookingSlot(
+    providerId: string,
+    scheduledDate: string,
+    estimatedHours?: number,
+  ) {
+    const { dateStr, minutes: bookingMinutes, dayOfWeek } =
+      this.parseScheduledParts(scheduledDate);
+    const durationHours =
+      estimatedHours && estimatedHours > 0 ? estimatedHours : 1;
+    const bookingEnd = bookingMinutes + durationHours * 60;
 
     const override = await this.dateOverrideRepository.findOne({
       where: { provider: { id: providerId }, overrideDate: dateStr },
@@ -627,12 +650,6 @@ export class BookingsService {
       );
     }
 
-    const nextDay = new Date(dateObj);
-    nextDay.setDate(nextDay.getDate() + 1);
-
-    const estimatedHours = 1;
-    const bookingEnd = bookingMinutes + estimatedHours * 60;
-
     const conflictingBookings = await this.bookingRepository.find({
       where: {
         provider: { id: providerId },
@@ -664,10 +681,14 @@ export class BookingsService {
     }
 
     const hasConflict = conflictingBookings.some((b) => {
-      const bDate = new Date(b.scheduledDate);
-      if (bDate < dateObj || bDate >= nextDay) return false;
-      const bStart = bDate.getHours() * 60 + bDate.getMinutes();
-      const bEnd = bStart + (b.estimatedHours || 1) * 60;
+      // Compare wall-clock parts, not server-local Date fields
+      const iso = (b.scheduledDate as Date).toISOString();
+      if (iso.slice(0, 10) !== dateStr) return false;
+      const [bh, bm] = iso.slice(11, 16).split(':').map(Number);
+      const bStart = bh * 60 + bm;
+      const bDuration =
+        b.estimatedHours && b.estimatedHours > 0 ? b.estimatedHours : 1;
+      const bEnd = bStart + bDuration * 60;
       return bookingMinutes < bEnd && bookingEnd > bStart;
     });
 
@@ -795,9 +816,10 @@ export class BookingsService {
       booking,
     );
 
-    // ── GST on service amount ──
+    // ── GST on (service amount + convenience fee) ──
     const gstRate = parseFloat(process.env.GST_RATE || '0.18');
-    const gstAmount = Math.round(serviceAmount * gstRate * 100) / 100;
+    const gstAmount =
+      Math.round((serviceAmount + fee.finalFee) * gstRate * 100) / 100;
     booking.gstAmount = gstAmount;
     await this.upsertCharge('gst', 'GST', gstAmount, booking);
 

@@ -463,9 +463,10 @@ export class QuotesService {
       promoCode,
       userId,
     );
-    // Calculate GST on service amount
+    // Calculate GST on (service amount + convenience fee)
     const gstRate = parseFloat(process.env.GST_RATE || '0.18');
-    const gstAmount = Math.round(serviceAmount * gstRate * 100) / 100;
+    const gstAmount =
+      Math.round((serviceAmount + feeResult.finalFee) * gstRate * 100) / 100;
 
     savedBooking.totalAmount = serviceAmount + feeResult.finalFee + gstAmount;
     savedBooking.convenienceFee = feeResult.finalFee;

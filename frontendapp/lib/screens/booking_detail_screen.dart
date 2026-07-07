@@ -247,15 +247,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     const SizedBox(height: 6),
                     Text(description, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                   ],
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    const Icon(Icons.currency_rupee, size: 16, color: AppTheme.textSecondary),
-                    const SizedBox(width: 4),
-                    Text('$total', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                  ]),
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Price breakdown card
+            _buildPriceBreakdown(b, loc),
             const SizedBox(height: 12),
 
             // Address card
@@ -327,6 +325,68 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           ]),
           const SizedBox(height: 12),
           child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceBreakdown(Map b, LocalizationProvider loc) {
+    final total = double.tryParse('${b['totalAmount']}') ?? 0;
+    final fee = double.tryParse('${b['convenienceFee']}') ?? 0;
+    final gst = double.tryParse('${b['gstAmount']}') ?? 0;
+    final base = total - fee - gst;
+
+    // Derive GST rate from the stored amounts (graceful if zero)
+    final taxable = base + fee;
+    final gstRatePct = taxable > 0 ? (gst / taxable) * 100 : 0;
+
+    String fmt(double v) =>
+        v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+
+    Widget row(String label, String value, {bool bold = false}) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: bold ? 14 : 13,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+                color: bold ? AppTheme.textPrimary : AppTheme.textSecondary,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: bold ? 15 : 13,
+                fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+                color: bold ? AppTheme.primary : AppTheme.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _buildSectionCard(
+      icon: Icons.receipt_long,
+      title: loc.tr('price_breakdown_title'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          row(loc.tr('base_price'), '₹${fmt(base)}'),
+          row(
+            loc.tr('convenience_fee'),
+            fee > 0 ? '₹${fmt(fee)}' : loc.tr('fee_waived'),
+          ),
+          row(
+            '${loc.tr('gst')} (${gstRatePct == gstRatePct.roundToDouble() ? gstRatePct.toInt() : gstRatePct.toStringAsFixed(1)}%)',
+            '₹${fmt(gst)}',
+          ),
+          const Divider(height: 16, thickness: 1),
+          row(loc.tr('total_amount'), '₹${fmt(total)}', bold: true),
         ],
       ),
     );

@@ -1,11 +1,13 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' as intl;
+import 'dart:async';
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
+import '../widgets/price_breakdown_card.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class ProviderSubmitQuoteScreen extends StatefulWidget {
@@ -27,15 +29,30 @@ class _ProviderSubmitQuoteScreenState extends State<ProviderSubmitQuoteScreen> {
   bool _loading = true;
   bool _submitting = false;
   DateTime? _validUntil;
+  double _amountValue = 0;
+  Timer? _amountDebounce;
 
   @override
   void initState() {
     super.initState();
+    _amountController.addListener(_onAmountChanged);
+    _onAmountChanged();
     _loadJob();
+  }
+
+  void _onAmountChanged() {
+    _amountDebounce?.cancel();
+    _amountDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      final v = double.tryParse(_amountController.text.trim()) ?? 0;
+      if (v != _amountValue) setState(() => _amountValue = v);
+    });
   }
 
   @override
   void dispose() {
+    _amountDebounce?.cancel();
+    _amountController.removeListener(_onAmountChanged);
     _amountController.dispose();
     _hoursController.dispose();
     _messageController.dispose();
@@ -189,6 +206,8 @@ class _ProviderSubmitQuoteScreenState extends State<ProviderSubmitQuoteScreen> {
                                   return null;
                                 },
                               ),
+                              const SizedBox(height: 12),
+                              QuotePriceBreakdown(amount: _amountValue),
                               const SizedBox(height: 16),
                               _buildLabel(loc.tr('estimated_hours', params: {'hours': ''})),
                               TextFormField(
