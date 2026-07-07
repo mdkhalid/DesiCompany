@@ -44,9 +44,8 @@ export class UsersController {
   }
 
   @Get(':id')
-  @Roles(UserRole.ADMIN)
   findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+    return this.usersService.getProfile(id);
   }
 
   @Patch(':id/status')

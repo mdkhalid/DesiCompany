@@ -51,6 +51,48 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } catch (e, st) { AppLogger.e('notifications_screen', 'Operation failed', e, st); }
   }
 
+  Future<String?> _fetchPartnerName(String? userId, String? bookingId) async {
+    if (bookingId != null) {
+      try {
+        final data = await ApiService.get('/bookings/$bookingId');
+        if (data is Map) {
+          final currentUserId = await AuthService.getUserId();
+          final userRole = await AuthService.getUserRole();
+          Map? partner;
+          if (userRole == 'provider') {
+            final customer = data['customer'];
+            if (customer is Map) partner = customer['user'] as Map?;
+          } else {
+            final provider = data['provider'];
+            if (provider is Map) partner = provider['user'] as Map?;
+          }
+          if (partner != null) {
+            final first = partner['firstName'] as String? ?? '';
+            final last = partner['lastName'] as String? ?? '';
+            final name = '$first $last'.trim();
+            if (name.isNotEmpty) return name;
+          }
+        }
+      } catch (_) {}
+    }
+    if (userId != null) {
+      try {
+        final data = await ApiService.get('/users/$userId');
+        if (data is Map) {
+          final customer = data['customer'] as Map?;
+          final provider = data['provider'] as Map?;
+          final name = customer != null
+              ? '${customer['firstName'] ?? ''} ${customer['lastName'] ?? ''}'.trim()
+              : provider != null
+                  ? '${provider['firstName'] ?? ''} ${provider['lastName'] ?? ''}'.trim()
+                  : '';
+          if (name.isNotEmpty) return name;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
   void _handleTap(Map<String, dynamic> n) async {
     if (n['isRead'] != true) {
       _markAsRead(n['id']);
@@ -70,6 +112,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (isChatNotif) {
         final roomId = metadata['roomId'] as String?;
         final bookingId = metadata['bookingId'] as String?;
+        final senderName = metadata['senderName'] as String?;
         // For booking-based chats: roomId is 'booking_<id>', or fallback to bookingId
         // For direct chats: roomId starts with 'direct_'
         final isDirect = roomId != null && roomId.startsWith('direct_');
@@ -82,6 +125,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           final userRole = await AuthService.getUserRole();
           final partnerId = userRole == 'provider' ? customerUserId : providerEntityId;
           if (!mounted) return;
+          final resolvedName = senderName ?? (partnerId != null ? await _fetchPartnerName(partnerId, null) : null);
           if (partnerId != null) {
             Navigator.push(
               context,
@@ -89,16 +133,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 builder: (_) => ChatScreen(
                   providerId: partnerId,
                   mode: 'direct',
+                  providerName: resolvedName,
                 ),
               ),
             );
           }
         } else if (effectiveBookingId != null) {
           if (!mounted) return;
+          final resolvedName = senderName ?? await _fetchPartnerName(null, effectiveBookingId);
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ChatScreen(bookingId: effectiveBookingId, mode: 'booking'),
+              builder: (_) => ChatScreen(
+                bookingId: effectiveBookingId,
+                mode: 'booking',
+                providerName: resolvedName,
+              ),
             ),
           );
         }

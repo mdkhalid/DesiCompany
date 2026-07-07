@@ -583,6 +583,7 @@ export class ChatGateway
           bookingId,
           roomId: `booking_${bookingId}`,
           type: 'chat_message',
+          senderName: client.data.userName,
         },
         recipientRole,
       );
@@ -662,6 +663,7 @@ export class ChatGateway
           bookingId: payload.bookingId,
           roomId: `booking_${payload.bookingId}`,
           type: 'chat_image',
+          senderName: client.data.userName,
         },
         recipientRole,
       );
@@ -754,6 +756,7 @@ export class ChatGateway
           bookingId: payload.bookingId,
           roomId: `booking_${payload.bookingId}`,
           type: 'chat_file',
+          senderName: client.data.userName,
         },
         recipientRole,
       );
@@ -838,6 +841,7 @@ export class ChatGateway
             roomId: targetId,
             providerId,
             type: 'chat_quote',
+            senderName: client.data.userName,
           },
           recipientRole,
         );
@@ -881,15 +885,16 @@ export class ChatGateway
               : UserRole.PROVIDER;
           await this.sendPushIfOffline(
             quoteOtherUserId,
-            'New quote',
-            content,
-            {
-              bookingId: targetId,
-              roomId: `booking_${targetId}`,
-              type: 'chat_quote',
-            },
-            recipientRole,
-          );
+          'New quote',
+          content,
+          {
+            bookingId: targetId,
+            roomId: `booking_${targetId}`,
+            type: 'chat_quote',
+            senderName: client.data.userName,
+          },
+          recipientRole,
+        );
         }
       }
     }
@@ -1046,6 +1051,7 @@ export class ChatGateway
             roomId: targetId,
             providerId: providerId,
             type: 'chat_quick_reply',
+            senderName: client.data.userName,
           },
           recipientRole,
         );
@@ -1109,18 +1115,19 @@ export class ChatGateway
               : UserRole.PROVIDER;
           await this.sendPushIfOffline(
             qrOtherUserId,
-            'Quick reply',
-            content,
-            {
-              bookingId: targetId,
-              roomId: `booking_${targetId}`,
-              type: 'chat_quick_reply',
-            },
-            recipientRole,
-          );
-        }
+          'Quick reply',
+          content,
+          {
+            bookingId: targetId,
+            roomId: `booking_${targetId}`,
+            type: 'chat_quick_reply',
+            senderName: client.data.userName,
+          },
+          recipientRole,
+        );
       }
     }
+  }
   }
 
   @SubscribeMessage('mark_read')
@@ -1455,6 +1462,7 @@ export class ChatGateway
           roomId,
           providerId,
           type: 'direct_message',
+          senderName: client.data.userName,
         },
         recipientRole,
       );
@@ -1529,7 +1537,7 @@ export class ChatGateway
         imgNotifyUserId,
         'New image',
         'Sent an image',
-        { roomId: payload.roomId, providerId, type: 'direct_image' },
+        { roomId: payload.roomId, providerId, type: 'direct_image', senderName: client.data.userName },
         recipientRole,
       );
     }
@@ -1619,6 +1627,7 @@ export class ChatGateway
           roomId: payload.roomId,
           providerId,
           type: 'direct_file',
+          senderName: client.data.userName,
         },
         recipientRole,
       );
@@ -1693,7 +1702,7 @@ export class ChatGateway
         quoteNotifyUserId,
         'New quote',
         payload.message || `Quote: ₹${payload.amount}`,
-        { roomId: payload.roomId, providerId, type: 'direct_quote' },
+        { roomId: payload.roomId, providerId, type: 'direct_quote', senderName: client.data.userName },
         recipientRole,
       );
     }

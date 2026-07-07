@@ -20,10 +20,20 @@ export class UsersService {
   ) {}
 
   async getProfile(userId: string) {
-    const user = await this.userRepository.findOne({
+    let user = await this.userRepository.findOne({
       where: { id: userId },
       relations: { customer: true, provider: true },
     });
+
+    if (!user) {
+      const provider = await this.providerRepository.findOne({
+        where: { id: userId },
+        relations: { user: { customer: true, provider: true } },
+      });
+      if (provider?.user) {
+        user = provider.user;
+      }
+    }
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -166,7 +176,7 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const user = await this.userRepository.findOne({
+    let user = await this.userRepository.findOne({
       where: { id },
       relations: {
         customer: true,
@@ -175,6 +185,16 @@ export class UsersService {
         },
       },
     });
+
+    if (!user) {
+      const provider = await this.providerRepository.findOne({
+        where: { id },
+        relations: { user: true },
+      });
+      if (provider?.user) {
+        user = provider.user;
+      }
+    }
 
     if (!user) {
       throw new NotFoundException('User not found');

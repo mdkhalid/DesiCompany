@@ -48,6 +48,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final Set<String> _knownOnlineUserIds = {};
   String _targetLang = 'en';
   bool _translating = false;
+  String? _partnerName;
   bool _showEmojiPicker = false;
 
   // Booking info for header card
@@ -68,13 +69,19 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserId();
+    _initAsync();
+    _startRetryTimer();
+  }
+
+  Future<void> _initAsync() async {
+    await _loadUserId();
     _initHive();
     _connectSocket();
     if (!_isDirect && widget.bookingId != null) {
-      _fetchBookingInfo();
+      await _fetchBookingInfo();
+    } else if (_isDirect && widget.providerId != null) {
+      await _fetchDirectPartnerName();
     }
-    _startRetryTimer();
   }
 
   Future<void> _initHive() async {
@@ -119,6 +126,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool get _isDirect => widget.mode == 'direct' || widget.mode == 'direct_chat';
   bool get _isProvider => _userRole == 'provider';
+  String? get _resolvedPartnerName => _partnerName ?? widget.providerName;
 
   // ==================== MESSAGE CACHING ====================
 
@@ -226,11 +234,50 @@ class _ChatScreenState extends State<ChatScreen> {
           _bookingInfo = data as Map<String, dynamic>;
           _loadingBooking = false;
           _partnerOnline = _knownOnlineUserIds.contains(_resolvePartnerUserId() ?? '');
+          _partnerName ??= _resolveBookingPartnerName();
         });
       }
     } catch (e, st) { AppLogger.e('chat_screen', 'Operation failed', e, st);
       if (mounted) setState(() => _loadingBooking = false);
     }
+  }
+
+  String? _resolveBookingPartnerName() {
+    if (_currentUserId == null || _bookingInfo == null) return null;
+    final partnerUser = _resolvePartnerUser();
+    if (partnerUser == null) return null;
+    final name = '${partnerUser['firstName'] ?? ''} ${partnerUser['lastName'] ?? ''}'.trim();
+    return name.isNotEmpty ? name : null;
+  }
+
+  Map<String, dynamic>? _resolvePartnerUser() {
+    if (_bookingInfo == null || _currentUserId == null) return null;
+    final customer = _bookingInfo!['customer'];
+    final provider = _bookingInfo!['provider'];
+    Map<String, dynamic>? customerUser;
+    Map<String, dynamic>? providerUser;
+    if (customer is Map) customerUser = customer['user'] as Map<String, dynamic>?;
+    if (provider is Map) providerUser = provider['user'] as Map<String, dynamic>?;
+    if (_userRole == 'provider') return customerUser;
+    return providerUser ?? customerUser;
+  }
+
+  Future<void> _fetchDirectPartnerName() async {
+    try {
+      final data = await ApiService.get('/users/${widget.providerId}');
+      if (mounted && data is Map) {
+        final customer = data['customer'] as Map?;
+        final provider = data['provider'] as Map?;
+        final name = customer != null
+            ? '${customer['firstName'] ?? ''} ${customer['lastName'] ?? ''}'.trim()
+            : provider != null
+                ? '${provider['firstName'] ?? ''} ${provider['lastName'] ?? ''}'.trim()
+                : '';
+        if (name.isNotEmpty) {
+          if (mounted) setState(() => _partnerName = name);
+        }
+      }
+    } catch (e, st) { AppLogger.e('chat_screen', 'Failed to fetch partner name', e, st); }
   }
 
   String _bookingStatusLabel(String? status) {
@@ -840,7 +887,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF66A3FF),
-        title: widget.providerName != null
+        title: _resolvedPartnerName != null
             ? FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
@@ -849,7 +896,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      widget.providerName!,
+                      _resolvedPartnerName!,
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
