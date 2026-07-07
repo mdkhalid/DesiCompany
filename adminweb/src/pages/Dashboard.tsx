@@ -56,7 +56,7 @@ export default function Dashboard() {
     try {
       const [metricsData, analyticsData] = await Promise.all([
         api.get<DashboardMetrics>('/admin/dashboard'),
-        api.get<AnalyticsData>('/admin/analytics'),
+        api.get<AnalyticsData>(`/admin/analytics?range=${timeRange}`),
       ]);
       setMetrics(metricsData);
       setAnalytics(analyticsData);
@@ -107,7 +107,7 @@ export default function Dashboard() {
     }));
     return (
       <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Bookings Trend (Last 30 days)</h3>
+        <h3 className="text-lg font-semibold mb-4">Bookings Trend (Last {timeRange === '90d' ? '90' : timeRange === '7d' ? '7' : '30'} days)</h3>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />

@@ -139,7 +139,7 @@ export class ChatService {
         }
       }
 
-      // Batch: unread count per booking (single query)
+      // Batch: unread count per booking — exclude own messages
       type UnreadRow = { bookingId: string; cnt: string; msg_booking: string };
       const unreadRows: UnreadRow[] = await this.messageRepository
         .createQueryBuilder('msg')
@@ -147,6 +147,7 @@ export class ChatService {
         .addSelect('COUNT(*)', 'cnt')
         .where('msg.booking IN (:...bookingIds)', { bookingIds })
         .andWhere('msg.isRead = false')
+        .andWhere('msg.senderId != :userId', { userId })
         .groupBy('msg.booking')
         .getRawMany();
 
@@ -401,9 +402,9 @@ export class ChatService {
         take: limit,
       });
 
-      // Mark messages as read
+      // Mark messages as read (only messages from other users)
       await this.messageRepository.update(
-        { booking: { id: targetId }, isRead: false },
+        { booking: { id: targetId }, isRead: false, sender: { id: Not(userId) } },
         { isRead: true },
       );
 
@@ -451,12 +452,13 @@ export class ChatService {
         },
       );
 
-      // Mark as read
+      // Mark as read (only messages from other users)
       await this.directMessageRepository.update(
         {
           customer: { id: customerEntity.id },
           provider: { id: providerEntity.id },
           isRead: false,
+          sender: { id: Not(userId) },
         },
         { isRead: true },
       );
@@ -664,7 +666,7 @@ export class ChatService {
   ): Promise<void> {
     if (type === 'booking') {
       await this.messageRepository.update(
-        { booking: { id: targetId }, isRead: false },
+        { booking: { id: targetId }, isRead: false, sender: { id: Not(userId) } },
         { isRead: true },
       );
     } else {
@@ -684,6 +686,7 @@ export class ChatService {
           customer: { id: customerEntity.id },
           provider: { id: providerId },
           isRead: false,
+          sender: { id: Not(userId) },
         },
         { isRead: true },
       );

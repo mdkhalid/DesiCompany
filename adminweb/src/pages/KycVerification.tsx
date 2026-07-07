@@ -140,10 +140,17 @@ export default function KycVerification() {
     setActionMessage('');
     try {
       const remarks = prompt('Optional remarks for approval:') || undefined;
-      for (const id of documentIds) {
-        await api.patch<KycDoc>(`/kyc/${id}/status`, { status: 'approved', remarks });
+      const results = await Promise.allSettled(
+        documentIds.map((id) =>
+          api.patch<KycDoc>(`/kyc/${id}/status`, { status: 'approved', remarks }),
+        ),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed === 0) {
+        setActionMessage(`Approved ${documentIds.length} document(s) successfully.`);
+      } else {
+        setActionMessage(`Approved ${documentIds.length - failed} document(s), ${failed} failed.`);
       }
-      setActionMessage(`Approved ${documentIds.length} document(s) successfully.`);
       await load();
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : 'Failed to approve documents');
@@ -162,13 +169,21 @@ export default function KycVerification() {
     setActionError('');
     setActionMessage('');
     try {
-      for (const id of documentIds) {
-        await api.patch<KycDoc>(`/kyc/${id}/status`, {
-          status: 'rejected',
-          remarks: remarks.trim(),
-        });
+      const trimmed = remarks.trim();
+      const results = await Promise.allSettled(
+        documentIds.map((id) =>
+          api.patch<KycDoc>(`/kyc/${id}/status`, {
+            status: 'rejected',
+            remarks: trimmed,
+          }),
+        ),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed === 0) {
+        setActionMessage(`Rejected ${documentIds.length} document(s).`);
+      } else {
+        setActionMessage(`Rejected ${documentIds.length - failed} document(s), ${failed} failed.`);
       }
-      setActionMessage(`Rejected ${documentIds.length} document(s).`);
       await load();
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : 'Failed to reject documents');

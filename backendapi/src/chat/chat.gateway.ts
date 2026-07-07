@@ -12,7 +12,7 @@ import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Message, MessageType } from './entities/message.entity';
 import {
   DirectMessage,
@@ -26,6 +26,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { sanitizeText } from '../common/utils/input-sanitizer';
 import { PresenceService } from './presence.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 interface AuthenticatedSocket extends Socket {
   data: {
@@ -207,6 +208,7 @@ export class ChatGateway
     private readonly jwtService: JwtService,
     private readonly pushNotificationsService: PushNotificationsService,
     private readonly presenceService: PresenceService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -286,6 +288,10 @@ export class ChatGateway
           next(new Error(`Invalid token: ${(err as Error)?.message || err}`));
         });
     });
+  }
+
+  private async markBookingNotificationsRead(userId: string, bookingId: string) {
+    await this.notificationsService.markBookingNotificationsAsRead(userId, bookingId);
   }
 
   private async getPartnerIds(userId: string): Promise<string[]> {
@@ -443,16 +449,19 @@ export class ChatGateway
       const room = `booking_${payload.bookingId}`;
       void client.join(room);
 
-      // Get unread IDs before marking as read
+      // Get unread IDs before marking as read (exclude own messages)
       const unreadMessages = await this.messageRepository.find({
         where: { booking: { id: payload.bookingId }, isRead: false },
-        select: { id: true },
+        select: { id: true, sender: { id: true } },
+        relations: { sender: true },
       });
-      const unreadIds = unreadMessages.map((m) => m.id);
+      const otherUnreadIds = unreadMessages
+        .filter((m) => m.sender?.id !== client.data.userId)
+        .map((m) => m.id);
 
-      if (unreadIds.length > 0) {
+      if (otherUnreadIds.length > 0) {
         await this.messageRepository.update(
-          { booking: { id: payload.bookingId }, isRead: false },
+          { id: In(otherUnreadIds) },
           { isRead: true },
         );
       }
@@ -474,10 +483,13 @@ export class ChatGateway
           })
         : messages;
 
+      // Mark related in-app notifications as read
+      this.markBookingNotificationsRead(client.data.userId, payload.bookingId).catch(() => {});
+
       client.emit('history', this.formatHistoryMessages(filteredMessages));
       client.emit('messages_read', {
         bookingId: payload.bookingId,
-        messageIds: unreadIds,
+        messageIds: otherUnreadIds,
       });
     } catch (err) {
       this.logger.error(
@@ -1158,22 +1170,21 @@ export class ChatGateway
             provider: { id: providerId },
             isRead: false,
           },
-          select: { id: true },
+          select: { id: true, sender: { id: true } },
+          relations: { sender: true },
         });
-        const unreadIds = unreadDms.map((m) => m.id);
-        if (unreadIds.length > 0) {
+        const otherUnreadIds = unreadDms
+          .filter((m) => m.sender?.id !== client.data.userId)
+          .map((m) => m.id);
+        if (otherUnreadIds.length > 0) {
           await this.directMessageRepository.update(
-            {
-              customer: { id: customerEntity.id },
-              provider: { id: providerId },
-              isRead: false,
-            },
+            { id: In(otherUnreadIds) },
             { isRead: true },
           );
         }
         this.server.to(payload.roomId).emit('messages_read', {
           roomId: payload.roomId,
-          messageIds: unreadIds,
+          messageIds: otherUnreadIds,
         });
       }
       return;
@@ -1183,19 +1194,22 @@ export class ChatGateway
     if (payload.bookingId) {
       const unreadBookingMessages = await this.messageRepository.find({
         where: { booking: { id: payload.bookingId }, isRead: false },
-        select: { id: true },
+        select: { id: true, sender: { id: true } },
+        relations: { sender: true },
       });
-      const unreadIds = unreadBookingMessages.map((m) => m.id);
-      if (unreadIds.length > 0) {
+      const otherUnreadIds = unreadBookingMessages
+        .filter((m) => m.sender?.id !== client.data.userId)
+        .map((m) => m.id);
+      if (otherUnreadIds.length > 0) {
         await this.messageRepository.update(
-          { booking: { id: payload.bookingId }, isRead: false },
+          { id: In(otherUnreadIds) },
           { isRead: true },
         );
       }
       const room = `booking_${payload.bookingId}`;
       this.server.to(room).emit('messages_read', {
         bookingId: payload.bookingId,
-        messageIds: unreadIds,
+        messageIds: otherUnreadIds,
       });
     }
   }

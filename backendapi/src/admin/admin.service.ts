@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
@@ -64,15 +64,42 @@ export class AdminService {
     };
   }
 
-  async findAllBookings() {
-    return this.bookingRepository.find({
-      relations: {
-        customer: { user: true },
-        provider: { user: true },
-        providerService: true,
-      },
-      order: { createdAt: 'DESC' },
-    });
+  async findAllBookings(query: { page?: number; limit?: number; search?: string; status?: string }) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const qb = this.bookingRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.customer', 'customer')
+      .leftJoinAndSelect('customer.user', 'customerUser')
+      .leftJoinAndSelect('booking.provider', 'provider')
+      .leftJoinAndSelect('provider.user', 'providerUser')
+      .leftJoinAndSelect('booking.providerService', 'providerService');
+
+    if (query.status && query.status !== 'all') {
+      qb.andWhere('booking.status = :status', { status: query.status });
+    }
+    if (query.search) {
+      qb.andWhere(
+        '(customer.firstName ILIKE :search OR provider.firstName ILIKE :search OR booking.id ILIKE :search OR customerUser.phone ILIKE :search OR providerUser.phone ILIKE :search)',
+        { search: `%${query.search}%` },
+      );
+    }
+
+    const total = await qb.getCount();
+    const bookings = await qb
+      .orderBy('booking.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return {
+      bookings,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findAllCommissions() {
@@ -234,6 +261,20 @@ export class AdminService {
     await this.activityLogsService.log('user.activated', 'User', userId);
 
     return saved;
+  }
+
+  async batchUpdateStatus(userIds: string[], status: string) {
+    const validStatuses = [UserStatus.ACTIVE, UserStatus.SUSPENDED];
+    if (!validStatuses.includes(status as UserStatus)) {
+      throw new BadRequestException('Invalid status. Must be active or suspended.');
+    }
+
+    await this.userRepository.update(
+      { id: In(userIds) },
+      { status: status as UserStatus },
+    );
+
+    return { updated: userIds.length, status };
   }
 
   async unblockProvider(userId: string) {

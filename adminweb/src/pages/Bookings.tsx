@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '../services/api';
 import type { Booking } from '../types';
 import SearchInput from '../components/SearchInput';
+import Pagination from '../components/Pagination';
 import { TableSkeleton } from '../components/LoadingSkeleton';
 import { notify } from '../services/notify';
 
@@ -12,13 +13,21 @@ export default function Bookings() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   async function load() {
     setLoading(true);
     setError('');
     try {
-      const data = await api.get<Booking[]>('/admin/bookings');
-      setBookings(data);
+      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (search) params.set('search', search);
+      const data = await api.get<{ bookings: Booking[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/bookings?${params}`);
+      setBookings(data.bookings);
+      setTotal(data.total);
+      setTotalPages(data.totalPages);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load bookings');
     } finally {
@@ -26,9 +35,19 @@ export default function Bookings() {
     }
   }
 
-  const stableLoad = useCallback(load, []);
+  const stableLoad = useCallback(load, [page, statusFilter, search]);
 
   useEffect(() => { stableLoad(); }, [stableLoad]);
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function handleStatusFilter(f: string) {
+    setStatusFilter(f);
+    setPage(1);
+  }
 
   const statusColors: Record<string, string> = {
     requested: 'bg-yellow-100 text-yellow-700',
@@ -42,16 +61,7 @@ export default function Bookings() {
 
   const statusOptions = ['all', 'requested', 'accepted', 'on_the_way', 'working', 'completed', 'cancelled', 'rejected'];
 
-  const filtered = bookings
-    .filter((b) => statusFilter === 'all' || b.status === statusFilter)
-    .filter((b) => {
-      if (!search) return true;
-      const customerName = (b.customer?.firstName || '').toLowerCase();
-      const providerName = (b.provider?.firstName || '').toLowerCase();
-      const id = b.id.toLowerCase();
-      const searchLower = search.toLowerCase();
-      return customerName.includes(searchLower) || providerName.includes(searchLower) || id.includes(searchLower);
-    });
+  const filtered = bookings;
 
   function toggleBookingSelection(bookingId: string) {
     setSelectedBookings((prev) => {
@@ -118,7 +128,7 @@ export default function Bookings() {
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <SearchInput
           value={search}
-          onChange={setSearch}
+          onChange={handleSearchChange}
           placeholder="Search by customer, provider, or ID..."
           className="w-full md:w-80"
         />
@@ -126,7 +136,7 @@ export default function Bookings() {
           {statusOptions.map((status) => (
             <button
               key={status}
-              onClick={() => setStatusFilter(status)}
+              onClick={() => handleStatusFilter(status)}
               className={`px-3 py-1 rounded-full text-xs capitalize ${
                 statusFilter === status ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
@@ -228,6 +238,10 @@ export default function Bookings() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {!loading && !error && (
+        <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
       )}
     </div>
   );

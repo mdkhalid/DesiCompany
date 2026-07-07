@@ -10,6 +10,34 @@ import * as Sentry from '@sentry/nestjs';
 import { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 
+function validateEnv() {
+  const required = ['JWT_SECRET', 'JWT_REFRESH_SECRET'];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    console.error(`Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+
+  const warnings: string[] = [];
+  if (!process.env.DATABASE_URL && !process.env.DB_HOST) {
+    warnings.push('DATABASE_URL or DB_HOST not set — database connection may fail');
+  }
+  if (!process.env.REDIS_URL && !process.env.REDIS_HOST) {
+    warnings.push('REDIS_URL or REDIS_HOST not set — OTP/caching features will fail');
+  }
+  if (!process.env.OTP_MOCK_CODE) {
+    warnings.push('OTP_MOCK_CODE not set — defaulting to 123456 in mock mode');
+  }
+  if (!process.env.CORS_ALLOWED_ORIGINS) {
+    warnings.push('CORS_ALLOWED_ORIGINS not set — only localhost/LAN origins allowed in dev');
+  }
+  if (warnings.length > 0) {
+    for (const w of warnings) {
+      console.warn(`[Env Validation] ${w}`);
+    }
+  }
+}
+
 if (process.env.SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
@@ -20,6 +48,8 @@ if (process.env.SENTRY_DSN) {
     ),
   });
 }
+
+validateEnv();
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {

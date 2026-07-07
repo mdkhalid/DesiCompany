@@ -16,6 +16,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 import { NotificationsService } from './notifications.service';
+import { NotificationGateway } from './notification.gateway';
 
 interface AuthRequest {
   user: { id: string; role: UserRole };
@@ -25,7 +26,10 @@ interface AuthRequest {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.CUSTOMER, UserRole.PROVIDER, UserRole.ADMIN)
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly notificationGateway: NotificationGateway,
+  ) {}
 
   @Get()
   findAll(
@@ -48,13 +52,18 @@ export class NotificationsController {
 
   @Patch(':id/read')
   @HttpCode(HttpStatus.OK)
-  markAsRead(@Param('id') id: string, @Req() req: AuthRequest) {
-    return this.notificationsService.markAsRead(id, req.user.id);
+  async markAsRead(@Param('id') id: string, @Req() req: AuthRequest) {
+    await this.notificationsService.markAsRead(id, req.user.id);
+    const count = await this.notificationsService.getUnreadCount(req.user.id, req.user.role);
+    this.notificationGateway.sendToUser(req.user.id, 'unread_count', { count });
+    return { success: true };
   }
 
   @Patch('read-all')
   @HttpCode(HttpStatus.OK)
-  markAllAsRead(@Req() req: AuthRequest) {
-    return this.notificationsService.markAllAsRead(req.user.id, req.user.role);
+  async markAllAsRead(@Req() req: AuthRequest) {
+    await this.notificationsService.markAllAsRead(req.user.id, req.user.role);
+    this.notificationGateway.sendToUser(req.user.id, 'unread_count', { count: 0 });
+    return { success: true };
   }
 }

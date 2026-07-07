@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../common/enums/user-role.enum';
@@ -67,13 +67,41 @@ export class NotificationsService {
     notificationId: string,
     userId: string,
   ): Promise<Notification | null> {
-    await this.notificationRepository.update(
-      { id: notificationId, user: { id: userId } },
-      { isRead: true },
-    );
-    return this.notificationRepository.findOne({
-      where: { id: notificationId },
+    const notification = await this.notificationRepository.findOne({
+      where: { id: notificationId, user: { id: userId } },
     });
+    if (!notification) return null;
+
+    notification.isRead = true;
+    await this.notificationRepository.save(notification);
+
+    // Also mark other unread notifications for the same conversation as read
+    const meta = notification.metadata as Record<string, unknown> | undefined;
+    const bookingId = meta?.bookingId as string | undefined;
+    const roomId = meta?.roomId as string | undefined;
+
+    if (bookingId || roomId) {
+      const unread = await this.notificationRepository.find({
+        where: { user: { id: userId }, isRead: false },
+        select: { id: true, metadata: true },
+      });
+      const relatedIds = unread
+        .filter((n) => {
+          const m = n.metadata as Record<string, unknown> | undefined;
+          if (bookingId && m?.bookingId === bookingId) return true;
+          if (roomId && m?.roomId === roomId) return true;
+          return false;
+        })
+        .map((n) => n.id);
+      if (relatedIds.length > 0) {
+        await this.notificationRepository.update(
+          { id: In(relatedIds) },
+          { isRead: true },
+        );
+      }
+    }
+
+    return notification;
   }
 
   async markAllAsRead(
@@ -100,6 +128,25 @@ export class NotificationsService {
       where.recipientRole = activeRole;
     }
     return this.notificationRepository.count({ where });
+  }
+
+  async markBookingNotificationsAsRead(
+    userId: string,
+    bookingId: string,
+  ): Promise<void> {
+    const unread = await this.notificationRepository.find({
+      where: { user: { id: userId }, isRead: false },
+      select: { id: true, metadata: true },
+    });
+    const relatedIds = unread
+      .filter((n) => (n.metadata as Record<string, unknown> | undefined)?.bookingId === bookingId)
+      .map((n) => n.id);
+    if (relatedIds.length > 0) {
+      await this.notificationRepository.update(
+        { id: In(relatedIds) },
+        { isRead: true },
+      );
+    }
   }
 
   async broadcast(

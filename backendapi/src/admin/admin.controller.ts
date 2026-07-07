@@ -27,6 +27,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '../common/enums/user-role.enum';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
+import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { SuspendUserDto } from './dto/suspend-user.dto';
 import { CommissionType } from '../common/enums/commission-type.enum';
 
@@ -59,8 +60,8 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get full analytics dashboard' })
   @ApiResponse({ status: 200, description: 'Returns analytics data' })
-  getAnalytics() {
-    return this.analyticsService.getDashboardAnalytics();
+  getAnalytics(@Query('range') range?: string) {
+    return this.analyticsService.getDashboardAnalytics(range);
   }
 
   @Get('analytics/revenue')
@@ -92,10 +93,10 @@ export class AdminController {
 
   @Get('bookings')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Get all bookings' })
-  @ApiResponse({ status: 200, description: 'Returns all bookings' })
-  findAllBookings() {
-    return this.adminService.findAllBookings();
+  @ApiOperation({ summary: 'Get all bookings with pagination' })
+  @ApiResponse({ status: 200, description: 'Returns paginated bookings' })
+  findAllBookings(@Query() query: ListBookingsQueryDto) {
+    return this.adminService.findAllBookings(query);
   }
 
   @Get('commissions')
@@ -156,6 +157,14 @@ export class AdminController {
   @ApiResponse({ status: 200, description: 'User activated' })
   activateUser(@Param('id') id: string) {
     return this.adminService.activateUser(id);
+  }
+
+  @Patch('users/batch/status')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Batch update user status' })
+  @ApiResponse({ status: 200, description: 'Users updated' })
+  batchUpdateStatus(@Body('userIds') userIds: string[], @Body('status') status: string) {
+    return this.adminService.batchUpdateStatus(userIds, status);
   }
 
   @Patch('providers/:id/unblock')

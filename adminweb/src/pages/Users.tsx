@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../services/api';
 import type { User } from '../types';
 import SearchInput from '../components/SearchInput';
+import Pagination from '../components/Pagination';
 import { TableSkeleton } from '../components/LoadingSkeleton';
 import { notify } from '../services/notify';
 
@@ -13,13 +14,22 @@ export default function Users() {
   const [error, setError] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   async function load() {
     setLoading(true);
     setError('');
     try {
-      const data = await api.get<User[]>('/users');
-      setUsers(data);
+      const params = new URLSearchParams({ page: String(page), limit: '20' });
+      if (filter !== 'all') params.set('role', filter);
+      if (search) params.set('search', search);
+      const data = await api.get<{ users: User[]; total: number; page: number; limit: number; totalPages: number }>(`/admin/users?${params}`);
+      setUsers(data.users);
+      setTotal(data.total);
+      setTotalPages(data.totalPages);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load users');
     } finally {
@@ -27,7 +37,18 @@ export default function Users() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  const stableLoad = useCallback(load, [page, filter, search]);
+  useEffect(() => { stableLoad(); }, [stableLoad]);
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function handleFilterChange(f: string) {
+    setFilter(f);
+    setPage(1);
+  }
 
   async function toggleStatus(user: User) {
     const action = user.status === 'active' ? 'suspend' : 'activate';
@@ -44,17 +65,16 @@ export default function Users() {
 
   async function handleBulkAction() {
     if (!bulkAction || selectedUsers.size === 0) return;
-
+    setBulkLoading(true);
     const action = bulkAction === 'suspend' ? 'suspend' : 'activate';
     if (!confirm(`Are you sure you want to ${action} ${selectedUsers.size} users?`)) return;
 
     try {
       const newStatus = action === 'suspend' ? 'suspended' : 'active';
-      await Promise.all(
-        Array.from(selectedUsers).map((userId) =>
-          api.patch(`/users/${userId}/status`, { status: newStatus })
-        )
-      );
+      await api.patch('/admin/users/batch/status', {
+        userIds: Array.from(selectedUsers),
+        status: newStatus,
+      });
       setUsers((prev) =>
         prev.map((u) => (selectedUsers.has(u.id) ? { ...u, status: newStatus } : u))
       );
@@ -63,6 +83,8 @@ export default function Users() {
       notify.success(`${selectedUsers.size} users ${action}d successfully`);
     } catch (e: unknown) {
       notify.error(e instanceof Error ? e.message : 'Failed to perform bulk action');
+    } finally {
+      setBulkLoading(false);
     }
   }
 
@@ -102,15 +124,7 @@ export default function Users() {
     return full || user.phone;
   }
 
-  const filtered = users
-    .filter((u) => filter === 'all' || u.role === filter)
-    .filter((u) => {
-      if (!search) return true;
-      const name = userName(u).toLowerCase();
-      const phone = u.phone.toLowerCase();
-      const searchLower = search.toLowerCase();
-      return name.includes(searchLower) || phone.includes(searchLower);
-    });
+  const filtered = users;
 
   return (
     <div>
@@ -124,7 +138,7 @@ export default function Users() {
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <SearchInput
           value={search}
-          onChange={setSearch}
+          onChange={handleSearchChange}
           placeholder="Search by name or phone..."
           className="w-full md:w-80"
         />
@@ -132,7 +146,7 @@ export default function Users() {
           {['all', 'customer', 'provider', 'admin'].map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => handleFilterChange(f)}
               className={`px-4 py-1 rounded-full text-sm capitalize ${
                 filter === f ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
@@ -256,6 +270,10 @@ export default function Users() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {!loading && !error && (
+        <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
       )}
     </div>
   );

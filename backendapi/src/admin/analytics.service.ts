@@ -26,7 +26,7 @@ export class AnalyticsService {
     private readonly transactionRepository: Repository<Transaction>,
   ) {}
 
-  async getDashboardAnalytics(): Promise<{
+  async getDashboardAnalytics(range?: string): Promise<{
     overview: {
       totalBookings: number;
       todayBookings: number;
@@ -85,7 +85,7 @@ export class AnalyticsService {
       this.getRecentBookings(10),
       this.getTopProviders(5),
       this.getBookingsByStatus(),
-      this.getDailyBookingsTrend(30),
+      this.getDailyBookingsTrend(range === '90d' ? 90 : range === '7d' ? 7 : 30),
     ]);
 
     return {

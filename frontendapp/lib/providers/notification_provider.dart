@@ -125,23 +125,8 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
   Future<void> markAsRead(String notificationId) async {
     try {
       await ApiService.patch('/notifications/$notificationId/read');
-      state = state.copyWith(
-        notifications: state.notifications.map((n) {
-          if (n.id == notificationId) {
-            return AppNotification(
-              id: n.id,
-              title: n.title,
-              body: n.body,
-              type: n.type,
-              data: n.data,
-              createdAt: n.createdAt,
-              isRead: true,
-            );
-          }
-          return n;
-        }).toList(),
-        unreadCount: state.unreadCount > 0 ? state.unreadCount - 1 : 0,
-      );
+      // Refetch from server to sync all notifications' read status
+      await fetchNotifications();
     } catch (e) {}
   }
 
