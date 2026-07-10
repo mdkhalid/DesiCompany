@@ -4,9 +4,11 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, LessThan, IsNull, Not } from 'typeorm';
+import { Cron } from '@nestjs/schedule';
 import { Booking } from '../bookings/entities/booking.entity';
 import { Payment } from './entities/payment.entity';
 import { Wallet } from './entities/wallet.entity';
@@ -18,8 +20,12 @@ import { PaymentStatus } from '../common/enums/payment-status.enum';
 import { TransactionSource } from '../common/enums/transaction-source.enum';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
-import { ForbiddenException } from '@nestjs/common';
 import { SoftBlockService } from './soft-block.service';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
+import { ProviderSubscription } from '../platform-fees/entities/provider-subscription.entity';
+import { ProviderSubscriptionPlan } from '../platform-fees/entities/provider-subscription-plan.entity';
+import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config.entity';
+import { Provider } from '../users/entities/provider.entity';
 
 @Injectable()
 export class PaymentsService {
@@ -34,10 +40,232 @@ export class PaymentsService {
     private readonly walletRepository: Repository<Wallet>,
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
+    @InjectRepository(Provider)
+    private readonly providerRepository: Repository<Provider>,
+    @InjectRepository(ProviderSubscription)
+    private readonly subscriptionRepository: Repository<ProviderSubscription>,
+    @InjectRepository(ProviderSubscriptionPlan)
+    private readonly planRepository: Repository<ProviderSubscriptionPlan>,
+    @InjectRepository(PlatformFeeConfig)
+    private readonly feeConfigRepository: Repository<PlatformFeeConfig>,
     private readonly paymentGatewayFactory: PaymentGatewayFactory,
-    private readonly dataSource: DataSource,
     private readonly softBlockService: SoftBlockService,
+    private readonly platformFeesService: PlatformFeesService,
   ) {}
+
+  async createOrderForSubscription(
+    planId: string,
+    userId: string,
+  ) {
+    const provider = await this.providerRepository.findOne({
+      where: { user: { id: userId } },
+    });
+    if (!provider) throw new NotFoundException('Provider profile not found');
+
+    const plan = await this.planRepository.findOne({
+      where: { id: planId, isActive: true },
+    });
+    if (!plan) throw new NotFoundException('Subscription plan not found');
+
+    const existingSub = await this.subscriptionRepository.findOne({
+      where: { provider: { id: provider.id }, status: 'active' },
+    });
+    if (existingSub) {
+      throw new BadRequestException('You already have an active subscription');
+    }
+
+    const featureConfig = await this.feeConfigRepository.findOne({
+      where: { configKey: 'feature_provider_subscriptions' },
+    });
+    const isEnabled = featureConfig?.isActive !== false &&
+      featureConfig?.configValue?.enabled !== false;
+    if (!isEnabled) {
+      throw new BadRequestException('Subscriptions are currently disabled');
+    }
+
+    const isChargeable = featureConfig?.configValue?.chargeable !== false;
+
+    if (!isChargeable || Number(plan.price) <= 0) {
+      const sub = await this.platformFeesService.assignSubscription(
+        provider.id,
+        planId,
+      );
+      return { status: 'free', subscription: sub };
+    }
+
+    const gateway = await this.paymentGatewayFactory.getDefault();
+    const gatewayType = gateway.getName() as PaymentGatewayType;
+
+    if (gatewayType === PaymentGatewayType.CASH) {
+      throw new BadRequestException('Cash not supported for subscriptions');
+    }
+
+    const amountPaise = Math.round(Number(plan.price) * 100);
+    const order = await gateway.createOrder({
+      amount: amountPaise,
+      currency: 'INR',
+      bookingId: `sub_${planId}`,
+      customerPhone: '',
+    });
+
+    const payment = this.paymentRepository.create({
+      method: PaymentMethod.ONLINE,
+      status: PaymentStatus.PENDING,
+      amount: Number(plan.price),
+      gateway: gatewayType,
+      gatewayOrderId: order.gatewayOrderId,
+      transactionId: order.gatewayOrderId,
+      purposeType: 'subscription',
+      purposeId: provider.id,
+      metadata: { planId },
+    });
+    await this.paymentRepository.save(payment);
+
+    const lastPayment = await this.paymentRepository.findOne({
+      where: { purposeId: provider.id, status: PaymentStatus.SUCCESS },
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      status: 'chargeable',
+      gatewayOrderId: order.gatewayOrderId,
+      keyId: order.keyId,
+      amount: amountPaise,
+      currency: order.currency,
+      paymentId: payment.id,
+      planId,
+      preferredMethod: lastPayment?.gatewayResponse
+        ? this.extractMethodFromResponse(lastPayment.gatewayResponse)
+        : undefined,
+    };
+  }
+
+  async verifySubscriptionPayment(
+    planId: string,
+    userId: string,
+    razorpayPaymentId: string,
+    razorpayOrderId: string,
+    razorpaySignature: string,
+  ): Promise<{ status: string; subscription?: any }> {
+    const payment = await this.paymentRepository.findOne({
+      where: { gatewayOrderId: razorpayOrderId },
+    });
+    if (!payment) throw new NotFoundException('Payment record not found');
+
+    if (payment.status === PaymentStatus.SUCCESS) {
+      const sub = await this.subscriptionRepository.findOne({
+        where: { provider: { user: { id: userId } } },
+        relations: { plan: true },
+      });
+      return { status: 'success', subscription: sub };
+    }
+
+    try {
+      const gateway = await this.paymentGatewayFactory.getByType(payment.gateway);
+      const gatewayStatus = await gateway.getStatus(razorpayOrderId);
+
+      if (gatewayStatus.status === 'success') {
+        payment.status = PaymentStatus.SUCCESS;
+        payment.transactionId = razorpayPaymentId;
+        payment.gatewayResponse = JSON.stringify(gatewayStatus);
+        await this.paymentRepository.save(payment);
+
+        const provider = await this.providerRepository.findOne({
+          where: { user: { id: userId } },
+        });
+
+        const sub = provider
+          ? await this.platformFeesService.activateSubscriptionPayment(
+              provider.id,
+              userId,
+              payment.id,
+              payment.amount,
+              planId,
+            )
+          : null;
+
+        return { status: 'success', subscription: sub };
+      }
+
+      if (gatewayStatus.status === 'failed') {
+        payment.status = PaymentStatus.FAILED;
+        payment.gatewayResponse = JSON.stringify(gatewayStatus);
+        await this.paymentRepository.save(payment);
+        return { status: 'failed' };
+      }
+
+      return { status: 'pending' };
+    } catch (err) {
+      this.logger.warn(
+        `Payment verification failed for order ${razorpayOrderId}: ${(err as Error).message}`,
+      );
+      return { status: 'pending' };
+    }
+  }
+
+  private extractMethodFromResponse(response: string): string | undefined {
+    try {
+      const parsed = JSON.parse(response);
+      if (parsed?.method) return parsed.method;
+      if (parsed?.payment_method) return parsed.payment_method;
+    } catch {}
+    return undefined;
+  }
+
+  @Cron('0 */15 * * * *')
+  async reconcileStuckPayments() {
+    this.logger.log('Running payment reconciliation...');
+
+    const stuckPayments = await this.paymentRepository.find({
+      where: {
+        status: PaymentStatus.PENDING,
+        gatewayOrderId: Not(IsNull()),
+        createdAt: LessThan(new Date(Date.now() - 10 * 60 * 1000)),
+      },
+    });
+
+    for (const payment of stuckPayments) {
+      try {
+        const gateway = await this.paymentGatewayFactory.getByType(payment.gateway);
+        const gatewayStatus = await gateway.getStatus(payment.gatewayOrderId);
+
+        if (gatewayStatus.status === 'success' && payment.status === PaymentStatus.PENDING) {
+          payment.status = PaymentStatus.SUCCESS;
+          payment.transactionId = gatewayStatus.gatewayPaymentId || payment.transactionId;
+          payment.gatewayResponse = JSON.stringify(gatewayStatus);
+          await this.paymentRepository.save(payment);
+
+          if (payment.purposeType === 'subscription') {
+            const providerRec = await this.providerRepository.findOne({
+              where: { id: payment.purposeId },
+              relations: { user: true },
+            });
+            const planId = (payment.metadata as Record<string, unknown>)?.planId as string | undefined;
+            if (providerRec && planId) {
+              await this.platformFeesService.activateSubscriptionPayment(
+                providerRec.id,
+                providerRec.user?.id || payment.purposeId,
+                payment.id,
+                payment.amount,
+                planId,
+              );
+            }
+          }
+
+          this.logger.log(`Reconciled payment ${payment.id} — activated`);
+        } else if (gatewayStatus.status === 'failed') {
+          payment.status = PaymentStatus.FAILED;
+          payment.gatewayResponse = JSON.stringify(gatewayStatus);
+          await this.paymentRepository.save(payment);
+          this.logger.log(`Reconciled payment ${payment.id} — marked failed`);
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Reconciliation failed for payment ${payment.id}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
 
   async createOrderForBooking(
     bookingId: string,
@@ -112,12 +340,13 @@ export class PaymentsService {
     if (!payment) {
       throw new NotFoundException('Payment not found');
     }
-    if (
-      role !== UserRole.ADMIN &&
-      payment.booking.customer.user.id !== userId &&
-      payment.booking.provider.user.id !== userId
-    ) {
-      throw new ForbiddenException('Access denied');
+    if (role !== UserRole.ADMIN && payment.booking) {
+      if (
+        payment.booking.customer?.user?.id !== userId &&
+        payment.booking.provider?.user?.id !== userId
+      ) {
+        throw new ForbiddenException('Access denied');
+      }
     }
 
     if (payment.status !== PaymentStatus.PENDING || !payment.gatewayOrderId) {
@@ -224,6 +453,7 @@ export class PaymentsService {
   }
 
   async creditProviderWallet(payment: Payment) {
+    if (!payment.booking) return;
     const booking = await this.bookingRepository.findOne({
       where: { id: payment.booking.id },
       relations: { provider: { user: true } },

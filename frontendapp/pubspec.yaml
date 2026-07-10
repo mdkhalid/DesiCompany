@@ -33,6 +33,7 @@ dependencies:
   emoji_picker_flutter: ^4.3.0
   flutter_image_compress: ^2.3.0
   file_picker: ^8.1.7
+  razorpay_flutter: ^1.4.0
 
 dev_dependencies:
   flutter_test:

@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { PlatformFeeConfig } from './entities/platform-fee-config.entity';
 import { ProviderSubscriptionPlan } from './entities/provider-subscription-plan.entity';
 import { ProviderSubscription } from './entities/provider-subscription.entity';
@@ -43,6 +43,7 @@ export class PlatformFeesService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   // ─── Fee Config ───────────────────────────────────────────────
@@ -187,7 +188,7 @@ export class PlatformFeesService {
   }
 
   async getAllSubscriptionPlans(): Promise<ProviderSubscriptionPlan[]> {
-    return this.planRepository.find({ order: { monthlyPrice: 'ASC' } });
+    return this.planRepository.find({ order: { price: 'ASC' } });
   }
 
   async updateSubscriptionPlan(
@@ -236,8 +237,9 @@ export class PlatformFeesService {
     );
 
     const now = new Date();
+    const totalDays = (plan.durationMonths * 30) + (plan.extraDays || 0);
     const endDate = new Date(now);
-    endDate.setMonth(endDate.getMonth() + 1);
+    endDate.setDate(endDate.getDate() + totalDays);
 
     const subscription = this.subscriptionRepository.create({
       provider,
@@ -259,6 +261,64 @@ export class PlatformFeesService {
     }
 
     return saved;
+  }
+
+  async activateSubscriptionPayment(
+    providerId: string,
+    userId: string,
+    paymentId: string,
+    amount: number,
+    planId: string,
+  ): Promise<ProviderSubscription> {
+    const byPayment = await this.subscriptionRepository.findOne({
+      where: { paymentId },
+    });
+    if (byPayment) return byPayment;
+
+    const existing = await this.subscriptionRepository.findOne({
+      where: { provider: { id: providerId }, status: 'active' },
+    });
+    if (existing) return existing;
+
+    const provider = await this.providerRepository.findOne({
+      where: { id: providerId },
+    });
+    if (!provider) throw new NotFoundException('Provider not found');
+
+    const plan = await this.planRepository.findOne({ where: { id: planId } });
+    if (!plan) throw new NotFoundException('Subscription plan not found');
+
+    return this.dataSource.transaction(async (manager) => {
+      await manager.update(
+        ProviderSubscription,
+        { provider: { id: providerId }, status: 'active' },
+        { status: 'expired', cancelledAt: new Date() },
+      );
+
+      const now = new Date();
+      const totalDays = (plan.durationMonths * 30) + (plan.extraDays || 0);
+      const endDate = new Date(now);
+      endDate.setDate(endDate.getDate() + totalDays);
+
+      const subscription = manager.create(ProviderSubscription, {
+        provider,
+        plan,
+        status: 'active',
+        startDate: now,
+        endDate,
+        amountPaid: amount,
+        paymentId,
+        featuresSnapshot: plan.benefits,
+      });
+
+      const saved = await manager.save(subscription);
+
+      this.activityLogsService
+        .log(userId, `Activated subscription '${plan.name}' via payment ${paymentId}`)
+        .catch(() => {});
+
+      return saved;
+    });
   }
 
   async getProviderSubscription(

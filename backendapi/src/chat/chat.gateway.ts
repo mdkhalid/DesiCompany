@@ -264,6 +264,8 @@ export class ChatGateway
           relations: { customer: true, provider: true },
         })
         .then((user) => {
+          if (!socket.connected) return;
+
           if (!user) {
             return next(new Error('User not found'));
           }
@@ -290,8 +292,14 @@ export class ChatGateway
     });
   }
 
-  private async markBookingNotificationsRead(userId: string, bookingId: string) {
-    await this.notificationsService.markBookingNotificationsAsRead(userId, bookingId);
+  private async markBookingNotificationsRead(
+    userId: string,
+    bookingId: string,
+  ) {
+    await this.notificationsService.markBookingNotificationsAsRead(
+      userId,
+      bookingId,
+    );
   }
 
   private async getPartnerIds(userId: string): Promise<string[]> {
@@ -446,6 +454,8 @@ export class ChatGateway
         return;
       }
 
+      if (!client.connected) return;
+
       const room = `booking_${payload.bookingId}`;
       void client.join(room);
 
@@ -484,7 +494,10 @@ export class ChatGateway
         : messages;
 
       // Mark related in-app notifications as read
-      this.markBookingNotificationsRead(client.data.userId, payload.bookingId).catch(() => {});
+      this.markBookingNotificationsRead(
+        client.data.userId,
+        payload.bookingId,
+      ).catch(() => {});
 
       client.emit('history', this.formatHistoryMessages(filteredMessages));
       client.emit('messages_read', {
@@ -897,16 +910,16 @@ export class ChatGateway
               : UserRole.PROVIDER;
           await this.sendPushIfOffline(
             quoteOtherUserId,
-          'New quote',
-          content,
-          {
-            bookingId: targetId,
-            roomId: `booking_${targetId}`,
-            type: 'chat_quote',
-            senderName: client.data.userName,
-          },
-          recipientRole,
-        );
+            'New quote',
+            content,
+            {
+              bookingId: targetId,
+              roomId: `booking_${targetId}`,
+              type: 'chat_quote',
+              senderName: client.data.userName,
+            },
+            recipientRole,
+          );
         }
       }
     }
@@ -1127,19 +1140,19 @@ export class ChatGateway
               : UserRole.PROVIDER;
           await this.sendPushIfOffline(
             qrOtherUserId,
-          'Quick reply',
-          content,
-          {
-            bookingId: targetId,
-            roomId: `booking_${targetId}`,
-            type: 'chat_quick_reply',
-            senderName: client.data.userName,
-          },
-          recipientRole,
-        );
+            'Quick reply',
+            content,
+            {
+              bookingId: targetId,
+              roomId: `booking_${targetId}`,
+              type: 'chat_quick_reply',
+              senderName: client.data.userName,
+            },
+            recipientRole,
+          );
+        }
       }
     }
-  }
   }
 
   @SubscribeMessage('mark_read')
@@ -1551,7 +1564,12 @@ export class ChatGateway
         imgNotifyUserId,
         'New image',
         'Sent an image',
-        { roomId: payload.roomId, providerId, type: 'direct_image', senderName: client.data.userName },
+        {
+          roomId: payload.roomId,
+          providerId,
+          type: 'direct_image',
+          senderName: client.data.userName,
+        },
         recipientRole,
       );
     }
@@ -1716,7 +1734,12 @@ export class ChatGateway
         quoteNotifyUserId,
         'New quote',
         payload.message || `Quote: ₹${payload.amount}`,
-        { roomId: payload.roomId, providerId, type: 'direct_quote', senderName: client.data.userName },
+        {
+          roomId: payload.roomId,
+          providerId,
+          type: 'direct_quote',
+          senderName: client.data.userName,
+        },
         recipientRole,
       );
     }
@@ -1727,65 +1750,79 @@ export class ChatGateway
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: { roomId: string },
   ) {
-    if (!client.data.userId) {
-      client.emit('error', { message: 'Unauthorized' });
-      return;
-    }
+    try {
+      if (!client.data.userId) {
+        client.emit('error', { message: 'Unauthorized' });
+        return;
+      }
 
-    const room = payload.roomId;
-    const parts = room.split('_');
-    if (parts.length !== 3 || parts[0] !== 'direct') {
-      client.emit('error', { message: 'Invalid room ID format' });
-      return;
-    }
-    const customerUserId = parts[1];
-    const providerId = parts[2];
+      const room = payload.roomId;
+      const parts = room.split('_');
+      if (parts.length !== 3 || parts[0] !== 'direct') {
+        client.emit('error', { message: 'Invalid room ID format' });
+        return;
+      }
+      const customerUserId = parts[1];
+      const providerId = parts[2];
 
-    const customerEntity = await this.customerRepository.findOne({
-      where: { user: { id: customerUserId } },
-    });
-    if (!customerEntity) {
-      client.emit('error', { message: 'Customer not found' });
-      return;
-    }
+      const customerEntity = await this.customerRepository.findOne({
+        where: { user: { id: customerUserId } },
+      });
+      if (!customerEntity) {
+        client.emit('error', { message: 'Customer not found' });
+        return;
+      }
 
-    void client.join(room);
+      if (!client.connected) {
+        return;
+      }
 
-    // Get unread IDs before marking as read
-    const unreadDirectMessages = await this.directMessageRepository.find({
-      where: {
-        customer: { id: customerEntity.id },
-        provider: { id: providerId },
-        isRead: false,
-      },
-      select: { id: true },
-    });
-    const unreadIds = unreadDirectMessages.map((m) => m.id);
+      void client.join(room);
 
-    if (unreadIds.length > 0) {
-      await this.directMessageRepository.update(
-        {
+      // Get unread IDs before marking as read
+      const unreadDirectMessages = await this.directMessageRepository.find({
+        where: {
           customer: { id: customerEntity.id },
           provider: { id: providerId },
           isRead: false,
         },
-        { isRead: true },
+        select: { id: true },
+      });
+      const unreadIds = unreadDirectMessages.map((m) => m.id);
+
+      if (unreadIds.length > 0) {
+        await this.directMessageRepository.update(
+          {
+            customer: { id: customerEntity.id },
+            provider: { id: providerId },
+            isRead: false,
+          },
+          { isRead: true },
+        );
+      }
+
+      const messages = await this.directMessageRepository.find({
+        where: [
+          { customer: { id: customerEntity.id }, provider: { id: providerId } },
+        ],
+        relations: { sender: true },
+        order: { createdAt: 'ASC' },
+        take: 50,
+      });
+
+      client.emit('direct_chat_history', this.formatHistoryMessages(messages));
+      this.server
+        .to(room)
+        .emit('messages_read', { roomId: room, messageIds: unreadIds });
+    } catch (err) {
+      this.logger.error(
+        `[JOIN_DIRECT] Error in handleJoinDirectChat: ${(err as Error)?.message}`,
+        (err as Error)?.stack,
       );
+      client.emit('error', {
+        message: 'Join direct chat failed: internal server error',
+      });
     }
-
-    const messages = await this.directMessageRepository.find({
-      where: [
-        { customer: { id: customerEntity.id }, provider: { id: providerId } },
-      ],
-      relations: { sender: true },
-      order: { createdAt: 'ASC' },
-      take: 50,
-    });
-
-    client.emit('direct_chat_history', this.formatHistoryMessages(messages));
-    this.server
-      .to(room)
-      .emit('messages_read', { roomId: room, messageIds: unreadIds });
   }
 
   // ==================== EDIT & DELETE MESSAGES ====================

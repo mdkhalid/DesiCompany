@@ -17,7 +17,16 @@ export class CreateSubscriptionPlanDto {
 
   @IsNumber()
   @Min(0)
-  monthlyPrice: number;
+  price: number;
+
+  @IsNumber()
+  @Min(1)
+  durationMonths: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  extraDays?: number;
 
   @IsOptional()
   @IsObject()

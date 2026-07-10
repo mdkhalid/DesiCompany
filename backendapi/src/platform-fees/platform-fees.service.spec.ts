@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { PlatformFeesService } from './platform-fees.service';
 import { PlatformFeeConfig } from './entities/platform-fee-config.entity';
 import { ProviderSubscriptionPlan } from './entities/provider-subscription-plan.entity';
@@ -103,6 +103,12 @@ describe('PlatformFeesService', () => {
         { provide: getRepositoryToken(Provider), useValue: providerRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: ActivityLogsService, useValue: activityLogsService },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn().mockImplementation((cb) => cb({ update: jest.fn(), create: jest.fn(), save: jest.fn().mockResolvedValue({}) })),
+          },
+        },
       ],
     }).compile();
 
@@ -255,7 +261,8 @@ describe('PlatformFeesService', () => {
   describe('Subscription Plans', () => {
     const dto = {
       name: 'Pro',
-      monthlyPrice: 499,
+      price: 499,
+      durationMonths: 1,
       benefits: { commissionDiscount: 20 },
     };
 

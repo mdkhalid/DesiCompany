@@ -24,4 +24,16 @@ export class ProviderSubscription extends BaseEntity {
 
   @Column({ type: 'timestamp', name: 'cancelled_at', nullable: true })
   cancelledAt: Date;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'amount_paid', default: 0 })
+  amountPaid: number;
+
+  @Column({ name: 'payment_id', nullable: true })
+  paymentId: string;
+
+  @Column({ name: 'auto_renew', default: true })
+  autoRenew: boolean;
+
+  @Column({ type: 'jsonb', name: 'features_snapshot', nullable: true })
+  featuresSnapshot: Record<string, unknown>;
 }

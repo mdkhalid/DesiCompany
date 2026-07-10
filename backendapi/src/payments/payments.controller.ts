@@ -16,6 +16,10 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentOrderDto } from './dto/create-payment-order.dto';
 import { PayCashDto, MarkCashReceivedDto } from './dto/cash-payment.dto';
+import {
+  CreateSubscriptionOrderDto,
+  VerifySubscriptionPaymentDto,
+} from './dto/subscription-payment.dto';
 
 interface AuthRequest {
   user: { id: string; role: UserRole };
@@ -36,6 +40,34 @@ export class PaymentsController {
       dto.bookingId,
       req.user.id,
       req.user.role,
+    );
+  }
+
+  @Post('subscription-order')
+  @Roles(UserRole.PROVIDER)
+  async createSubscriptionOrder(
+    @Body() dto: CreateSubscriptionOrderDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.paymentsService.createOrderForSubscription(
+      dto.planId,
+      req.user.id,
+    );
+  }
+
+  @Post('subscription/verify')
+  @Roles(UserRole.PROVIDER)
+  @HttpCode(HttpStatus.OK)
+  async verifySubscription(
+    @Body() dto: VerifySubscriptionPaymentDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.paymentsService.verifySubscriptionPayment(
+      dto.planId,
+      req.user.id,
+      dto.razorpayPaymentId,
+      dto.razorpayOrderId,
+      dto.razorpaySignature,
     );
   }
 

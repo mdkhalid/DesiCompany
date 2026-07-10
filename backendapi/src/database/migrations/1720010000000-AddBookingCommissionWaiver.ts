@@ -1,18 +1,9 @@
-import {
-  MigrationInterface,
-  QueryRunner,
-  TableColumn,
-} from 'typeorm';
+import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddBookingCommissionWaiver1720010000000
-  implements MigrationInterface
-{
+export class AddBookingCommissionWaiver1720010000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const bookingsTable = await queryRunner.getTable('bookings');
-    if (
-      bookingsTable &&
-      !bookingsTable.findColumnByName('commission_waived')
-    ) {
+    if (bookingsTable && !bookingsTable.findColumnByName('commission_waived')) {
       await queryRunner.addColumn(
         'bookings',
         new TableColumn({
@@ -53,10 +44,7 @@ export class AddBookingCommissionWaiver1720010000000
     ) {
       await queryRunner.dropColumn('bookings', 'commission_waived_reason');
     }
-    if (
-      bookingsTable &&
-      bookingsTable.findColumnByName('commission_waived')
-    ) {
+    if (bookingsTable && bookingsTable.findColumnByName('commission_waived')) {
       await queryRunner.dropColumn('bookings', 'commission_waived');
     }
 

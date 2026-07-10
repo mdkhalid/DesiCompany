@@ -54,7 +54,10 @@ export class NotificationsController {
   @HttpCode(HttpStatus.OK)
   async markAsRead(@Param('id') id: string, @Req() req: AuthRequest) {
     await this.notificationsService.markAsRead(id, req.user.id);
-    const count = await this.notificationsService.getUnreadCount(req.user.id, req.user.role);
+    const count = await this.notificationsService.getUnreadCount(
+      req.user.id,
+      req.user.role,
+    );
     this.notificationGateway.sendToUser(req.user.id, 'unread_count', { count });
     return { success: true };
   }
@@ -63,7 +66,9 @@ export class NotificationsController {
   @HttpCode(HttpStatus.OK)
   async markAllAsRead(@Req() req: AuthRequest) {
     await this.notificationsService.markAllAsRead(req.user.id, req.user.role);
-    this.notificationGateway.sendToUser(req.user.id, 'unread_count', { count: 0 });
+    this.notificationGateway.sendToUser(req.user.id, 'unread_count', {
+      count: 0,
+    });
     return { success: true };
   }
 }

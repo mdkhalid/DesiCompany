@@ -20,6 +20,9 @@ import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
+import { ProviderSubscription } from '../platform-fees/entities/provider-subscription.entity';
+import { ProviderSubscriptionPlan } from '../platform-fees/entities/provider-subscription-plan.entity';
+import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config.entity';
 
 @Module({
   imports: [
@@ -32,6 +35,9 @@ import { Booking } from '../bookings/entities/booking.entity';
       User,
       Provider,
       Booking,
+      ProviderSubscription,
+      ProviderSubscriptionPlan,
+      PlatformFeeConfig,
     ]),
     BookingsModule,
     CommissionsModule,

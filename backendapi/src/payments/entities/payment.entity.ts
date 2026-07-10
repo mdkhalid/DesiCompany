@@ -7,9 +7,15 @@ import { Booking } from '../../bookings/entities/booking.entity';
 
 @Entity('payments')
 export class Payment extends BaseEntity {
-  @ManyToOne(() => Booking, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Booking, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'booking_id' })
-  booking: Booking;
+  booking: Booking | null;
+
+  @Column({ nullable: true, name: 'purpose_type' })
+  purposeType: string;
+
+  @Column({ nullable: true, name: 'purpose_id' })
+  purposeId: string;
 
   @Column()
   method: PaymentMethod;
@@ -41,4 +47,7 @@ export class Payment extends BaseEntity {
     name: 'gateway_order_id',
   })
   gatewayOrderId: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, unknown>;
 }

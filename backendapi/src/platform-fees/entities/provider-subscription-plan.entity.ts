@@ -9,8 +9,14 @@ export class ProviderSubscriptionPlan extends BaseEntity {
   @Column({ nullable: true })
   description: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'monthly_price' })
-  monthlyPrice: number;
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  price: number;
+
+  @Column({ default: 1, name: 'duration_months' })
+  durationMonths: number;
+
+  @Column({ default: 0, name: 'extra_days' })
+  extraDays: number;
 
   @Column({ type: 'jsonb', nullable: true })
   benefits: Record<string, unknown>;

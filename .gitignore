@@ -46,3 +46,6 @@ adminweb/tsconfig.tsbuildinfo
 
 # Agent guide (generated)
 AGENTS.md
+
+# Planning documents
+project-docs/subscription-plan.md

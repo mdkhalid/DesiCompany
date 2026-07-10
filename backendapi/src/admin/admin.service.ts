@@ -64,7 +64,12 @@ export class AdminService {
     };
   }
 
-  async findAllBookings(query: { page?: number; limit?: number; search?: string; status?: string }) {
+  async findAllBookings(query: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
@@ -266,7 +271,9 @@ export class AdminService {
   async batchUpdateStatus(userIds: string[], status: string) {
     const validStatuses = [UserStatus.ACTIVE, UserStatus.SUSPENDED];
     if (!validStatuses.includes(status as UserStatus)) {
-      throw new BadRequestException('Invalid status. Must be active or suspended.');
+      throw new BadRequestException(
+        'Invalid status. Must be active or suspended.',
+      );
     }
 
     await this.userRepository.update(

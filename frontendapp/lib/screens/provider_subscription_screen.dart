@@ -3,6 +3,7 @@ import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../widgets/payment_method_selector.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class ProviderSubscriptionScreen extends StatefulWidget {
@@ -46,13 +47,62 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
     final loc = DesiCompanyApp.localeProvider!;
     setState(() => _subscribingId = true);
     try {
-      await ApiService.post('/subscription-plans/$planId/subscribe');
+      final order = await ApiService.post('/payments/subscription-order', body: {
+        'planId': planId,
+      }) as Map<String, dynamic>;
+
       if (!mounted) return;
       setState(() => _subscribingId = false);
+
+      final status = order['status'] as String?;
+
+      if (status == 'free') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(loc.tr('subscription_active'))),
+        );
+        _load();
+        return;
+      }
+
+      if (status == 'chargeable') {
+        final result = await showModalBottomSheet<Map<String, dynamic>>(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (ctx) => PaymentMethodSelector(
+            keyId: order['keyId'] as String,
+            orderId: order['gatewayOrderId'] as String,
+            amountPaise: order['amount'] as int,
+            amount: (order['amount'] as int) / 100,
+            planId: planId,
+            preferredMethod: order['preferredMethod'] as String?,
+          ),
+        );
+
+        if (result == null) return;
+
+        final paymentStatus = result['status'] as String?;
+        if (paymentStatus == 'success') {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(loc.tr('subscription_active'))),
+          );
+          _load();
+        } else if (paymentStatus == 'pending') {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Payment received. Activating subscription...')),
+          );
+          _load();
+        }
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.tr('subscription_active'))),
+        SnackBar(content: Text('Unexpected response from server')),
       );
-      _load();
     } catch (e) {
       if (!mounted) return;
       setState(() => _subscribingId = false);
@@ -196,7 +246,9 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
 
   Widget _buildPlanCard(Map<String, dynamic> plan, LocalizationProvider loc) {
     final name = plan['name'] ?? '';
-    final price = (plan['monthlyPrice'] ?? 0).toDouble();
+    final price = (plan['price'] ?? 0).toDouble();
+    final durationMonths = plan['durationMonths'] ?? 1;
+    final extraDays = plan['extraDays'] ?? 0;
     final benefits = plan['benefits'] as Map<String, dynamic>? ?? {};
     final isActive = plan['isActive'] ?? true;
     final isCurrentPlan = _activeSub?['plan']?['id'] == plan['id'];
@@ -235,10 +287,16 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
                             '₹${price.toStringAsFixed(0)}',
                             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.primary),
                           ),
-                          Text(
-                            loc.tr('billing_monthly'),
-                            style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
-                          ),
+                          if (durationMonths > 1 || extraDays > 0)
+                            Text(
+                              ' / ${durationMonths}mo${extraDays > 0 ? "+$extraDays" : ""}',
+                              style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                            )
+                          else
+                            Text(
+                              loc.tr('billing_monthly'),
+                              style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+                            ),
                         ],
                       ),
                     ],

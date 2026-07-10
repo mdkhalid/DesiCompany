@@ -139,7 +139,11 @@ export class NotificationsService {
       select: { id: true, metadata: true },
     });
     const relatedIds = unread
-      .filter((n) => (n.metadata as Record<string, unknown> | undefined)?.bookingId === bookingId)
+      .filter(
+        (n) =>
+          (n.metadata as Record<string, unknown> | undefined)?.bookingId ===
+          bookingId,
+      )
       .map((n) => n.id);
     if (relatedIds.length > 0) {
       await this.notificationRepository.update(

@@ -723,10 +723,7 @@ export class ServicesService {
       });
     }
 
-    if (
-      dto.latitude !== undefined &&
-      dto.longitude !== undefined
-    ) {
+    if (dto.latitude !== undefined && dto.longitude !== undefined) {
       const lat = dto.latitude;
       const lng = dto.longitude;
       const km = dto.radiusKm && dto.radiusKm > 0 ? dto.radiusKm : 100;

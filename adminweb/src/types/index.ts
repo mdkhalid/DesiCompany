@@ -118,7 +118,9 @@ export interface SubscriptionPlan {
   id: string;
   name: string;
   description?: string;
-  monthlyPrice: number;
+  price: number;
+  durationMonths: number;
+  extraDays: number;
   benefits: Record<string, unknown>;
   isActive: boolean;
   createdAt: string;

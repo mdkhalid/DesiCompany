@@ -277,6 +277,7 @@ describe('ChatGateway', () => {
         data: { userId: 'user-1' },
         emit: mockEmit,
         join: mockJoin,
+        connected: true,
       } as unknown as Socket;
 
       await gateway.handleJoin(client as never, { bookingId: 'booking-1' });

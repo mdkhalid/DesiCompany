@@ -404,7 +404,11 @@ export class ChatService {
 
       // Mark messages as read (only messages from other users)
       await this.messageRepository.update(
-        { booking: { id: targetId }, isRead: false, sender: { id: Not(userId) } },
+        {
+          booking: { id: targetId },
+          isRead: false,
+          sender: { id: Not(userId) },
+        },
         { isRead: true },
       );
 
@@ -666,7 +670,11 @@ export class ChatService {
   ): Promise<void> {
     if (type === 'booking') {
       await this.messageRepository.update(
-        { booking: { id: targetId }, isRead: false, sender: { id: Not(userId) } },
+        {
+          booking: { id: targetId },
+          isRead: false,
+          sender: { id: Not(userId) },
+        },
         { isRead: true },
       );
     } else {

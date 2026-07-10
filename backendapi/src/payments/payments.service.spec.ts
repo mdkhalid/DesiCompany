@@ -19,6 +19,11 @@ import { BookingStatus } from '../common/enums/booking-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 import { PaymentGateway } from './gateways/payment-gateway.interface';
 import { SoftBlockService } from './soft-block.service';
+import { Provider } from '../users/entities/provider.entity';
+import { ProviderSubscription } from '../platform-fees/entities/provider-subscription.entity';
+import { ProviderSubscriptionPlan } from '../platform-fees/entities/provider-subscription-plan.entity';
+import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config.entity';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 interface CreateOrderResult {
   gatewayOrderId: string;
@@ -103,6 +108,29 @@ describe('PaymentsService', () => {
           provide: SoftBlockService,
           useValue: {
             checkAndBlockForProvider: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Provider),
+          useValue: { findOne: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(ProviderSubscription),
+          useValue: { findOne: jest.fn(), update: jest.fn(), create: jest.fn(), save: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(ProviderSubscriptionPlan),
+          useValue: { findOne: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(PlatformFeeConfig),
+          useValue: { findOne: jest.fn() },
+        },
+        {
+          provide: PlatformFeesService,
+          useValue: {
+            assignSubscription: jest.fn(),
+            activateSubscriptionPayment: jest.fn(),
           },
         },
       ],
