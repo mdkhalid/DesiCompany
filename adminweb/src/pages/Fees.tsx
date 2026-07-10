@@ -176,6 +176,8 @@ function ConfigTab() {
         update.isActive = value;
       } else if (field === 'featureEnabled') {
         update.configValue = { ...config.configValue, enabled: value };
+      } else if (field === 'chargeable') {
+        update.configValue = { ...config.configValue, chargeable: value };
       }
       const saved = await api.patch<PlatformFeeConfig>(`/admin/fee-configs/${config.configKey}`, update);
       setConfigs((prev) => prev.map((c) => (c.configKey === config.configKey ? saved : c)));
@@ -260,6 +262,16 @@ function ConfigTab() {
             onToggle={(v) => featureSubs && updateConfig(featureSubs, 'featureEnabled', v)}
             saving={savingKey === featureSubs?.configKey}
           />
+          {featureSubs && (
+            <ToggleRow
+              label="  ↳ Charge for Subscriptions"
+              description="Deduct plan price from provider wallet on subscribe"
+              config={featureSubs}
+              onToggle={(v) => updateConfig(featureSubs, 'chargeable', v)}
+              saving={savingKey === featureSubs?.configKey}
+              chargeable
+            />
+          )}
           <ToggleRow
             label="Instant Payout"
             description="Enable/disable instant payout requests"
@@ -281,6 +293,16 @@ function ConfigTab() {
             onToggle={(v) => featureMemberships && updateConfig(featureMemberships, 'featureEnabled', v)}
             saving={savingKey === featureMemberships?.configKey}
           />
+          {featureMemberships && (
+            <ToggleRow
+              label="  ↳ Charge for Memberships"
+              description="Deduct plan price from customer wallet on join"
+              config={featureMemberships}
+              onToggle={(v) => updateConfig(featureMemberships, 'chargeable', v)}
+              saving={savingKey === featureMemberships?.configKey}
+              chargeable
+            />
+          )}
           <ToggleRow
             label="Promo Codes"
             description="Enable/disable promo code redemption"
@@ -300,18 +322,22 @@ function ToggleRow({
   config,
   onToggle,
   saving,
+  chargeable,
 }: {
   label: string;
   description: string;
   config?: PlatformFeeConfig;
   onToggle: (value: boolean) => void;
   saving: boolean;
+  chargeable?: boolean;
 }) {
-  const enabled = config?.configValue?.enabled !== false && config?.isActive !== false;
+  const enabled = chargeable
+    ? config?.configValue?.chargeable !== false
+    : config?.configValue?.enabled !== false && config?.isActive !== false;
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className={`flex items-center justify-between py-2 ${chargeable ? 'ml-6' : ''}`}>
       <div>
-        <p className="text-sm font-medium">{label}</p>
+        <p className={`text-sm font-medium ${chargeable ? 'text-gray-600' : ''}`}>{label}</p>
         <p className="text-xs text-gray-500">{description}</p>
       </div>
       <div className="flex items-center gap-2">
@@ -367,7 +393,9 @@ function PlansTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [monthlyPrice, setMonthlyPrice] = useState(0);
+  const [price, setPrice] = useState(0);
+  const [durationMonths, setDurationMonths] = useState(1);
+  const [extraDays, setExtraDays] = useState(0);
   const [benefits, setBenefits] = useState('');
 
   function resetForm() {
@@ -375,7 +403,9 @@ function PlansTab() {
     setEditingId(null);
     setName('');
     setDescription('');
-    setMonthlyPrice(0);
+    setPrice(0);
+    setDurationMonths(1);
+    setExtraDays(0);
     setBenefits('');
     setActionError('');
   }
@@ -384,13 +414,15 @@ function PlansTab() {
     setEditingId(plan.id);
     setName(plan.name);
     setDescription(plan.description || '');
-    setMonthlyPrice(plan.monthlyPrice);
+    setPrice(plan.price);
+    setDurationMonths(plan.durationMonths ?? 1);
+    setExtraDays(plan.extraDays ?? 0);
     setBenefits(JSON.stringify(plan.benefits || {}, null, 2));
     setShowForm(true);
   }
 
   async function handleSave() {
-    if (!name || monthlyPrice <= 0) {
+    if (!name || price <= 0) {
       setActionError('Name and price are required');
       return;
     }
@@ -399,7 +431,9 @@ function PlansTab() {
       const body: Record<string, unknown> = {
         name,
         description: description || undefined,
-        monthlyPrice,
+        price,
+        durationMonths,
+        extraDays,
         benefits: benefits ? JSON.parse(benefits) : undefined,
       };
       if (editingId) {
@@ -468,11 +502,35 @@ function PlansTab() {
             className="border rounded-lg px-3 py-2 w-full text-sm"
           />
           <NumberInput
-            value={monthlyPrice}
-            onChange={setMonthlyPrice}
-            placeholder="Monthly price (₹)"
+            value={price}
+            onChange={setPrice}
+            placeholder="Price (₹)"
             className="border rounded-lg px-3 py-2 w-full text-sm"
           />
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">Duration</label>
+              <select
+                value={durationMonths}
+                onChange={(e) => setDurationMonths(Number(e.target.value))}
+                className="border rounded-lg px-3 py-2 w-full text-sm"
+              >
+                <option value={1}>1 month</option>
+                <option value={3}>3 months</option>
+                <option value={6}>6 months</option>
+                <option value={12}>12 months</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">Extra Days</label>
+              <NumberInput
+                value={extraDays}
+                onChange={setExtraDays}
+                placeholder="Bonus days"
+                className="border rounded-lg px-3 py-2 w-full text-sm"
+              />
+            </div>
+          </div>
           <textarea
             placeholder='Benefits JSON (e.g. {"commissionDiscount": 20, "prioritySupport": true})'
             value={benefits}
@@ -495,6 +553,7 @@ function PlansTab() {
             <tr>
               <th className="text-left p-3">Name</th>
               <th className="text-left p-3">Price</th>
+              <th className="text-left p-3">Duration</th>
               <th className="text-left p-3">Benefits</th>
               <th className="text-left p-3">Status</th>
               <th className="text-left p-3">Actions</th>
@@ -503,13 +562,16 @@ function PlansTab() {
           <tbody>
             {plans.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-gray-400">No subscription plans yet.</td>
+                <td colSpan={6} className="p-6 text-center text-gray-400">No subscription plans yet.</td>
               </tr>
             )}
             {plans.map((plan) => (
               <tr key={plan.id} className="border-t">
                 <td className="p-3 font-medium">{plan.name}</td>
-                <td className="p-3">₹{plan.monthlyPrice}/mo</td>
+                <td className="p-3">₹{plan.price}</td>
+                <td className="p-3 text-sm text-gray-600">
+                  {plan.durationMonths}mo{plan.extraDays > 0 ? ` +${plan.extraDays}d` : ''}
+                </td>
                 <td className="p-3 text-xs text-gray-500 max-w-xs truncate">
                   {plan.benefits ? JSON.stringify(plan.benefits) : '-'}
                 </td>
