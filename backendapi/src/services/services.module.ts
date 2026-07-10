@@ -13,6 +13,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { SettingsModule } from '../settings/settings.module';
 import { ChatModule } from '../chat/chat.module';
+import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ChatModule } from '../chat/chat.module';
     ]),
     SettingsModule,
     ChatModule,
+    PlatformFeesModule,
   ],
   controllers: [ServicesController, ServiceAreaMapController],
   providers: [ServicesService, ServiceAreaMapService],

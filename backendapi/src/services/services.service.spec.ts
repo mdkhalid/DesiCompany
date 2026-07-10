@@ -13,6 +13,7 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { SettingsService } from '../settings/settings.service';
 import { PresenceService } from '../chat/presence.service';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 type MockRepo = {
   find: jest.Mock;
@@ -92,6 +93,10 @@ describe('ServicesService', () => {
             unregisterSocket: jest.fn(),
             isUserOnline: jest.fn().mockReturnValue(false),
           },
+        },
+        {
+          provide: PlatformFeesService,
+          useValue: { getProviderSubscription: jest.fn().mockResolvedValue(null) },
         },
       ],
     }).compile();

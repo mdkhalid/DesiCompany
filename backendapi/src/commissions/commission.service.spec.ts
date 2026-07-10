@@ -5,6 +5,7 @@ import { CommissionService } from './commission.service';
 import { CommissionConfig } from './entities/commission-config.entity';
 import { CommissionType } from '../common/enums/commission-type.enum';
 import { SettingsService } from '../settings/settings.service';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 type MockRepo = {
   findOne: jest.Mock;
@@ -46,6 +47,7 @@ describe('CommissionService - grace period waiver', () => {
         CommissionService,
         { provide: getRepositoryToken(CommissionConfig), useValue: commissionRepo },
         { provide: SettingsService, useValue: settings },
+        { provide: PlatformFeesService, useValue: { getProviderSubscription: jest.fn() } },
       ],
     }).compile();
 

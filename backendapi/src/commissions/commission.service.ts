@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { CommissionConfig } from './entities/commission-config.entity';
 import { CommissionType } from '../common/enums/commission-type.enum';
 import { SettingsService } from '../settings/settings.service';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 export interface ResolvedCommission {
   type: CommissionType;
@@ -12,6 +13,7 @@ export interface ResolvedCommission {
   source: string;
   waived?: boolean;
   waivedReason?: string;
+  subscriptionDiscounted?: boolean;
 }
 
 @Injectable()
@@ -20,6 +22,7 @@ export class CommissionService {
     @InjectRepository(CommissionConfig)
     private readonly commissionRepository: Repository<CommissionConfig>,
     private readonly settingsService: SettingsService,
+    private readonly platformFeesService: PlatformFeesService,
   ) {}
 
   async getCommission(
@@ -93,13 +96,11 @@ export class CommissionService {
         totalAmount,
         'provider',
         providerId,
-        {
-          fallback: false,
-        },
+        { fallback: false },
       );
       if (providerComm.matched) {
         base = this.toResolved(providerComm);
-        return this.applyGrace(base, totalAmount, options);
+        return this.applyAllDiscounts(base, totalAmount, providerId, options);
       }
     }
     if (categoryId) {
@@ -107,18 +108,53 @@ export class CommissionService {
         totalAmount,
         'category',
         categoryId,
-        {
-          fallback: false,
-        },
+        { fallback: false },
       );
       if (categoryComm.matched) {
         base = this.toResolved(categoryComm);
-        return this.applyGrace(base, totalAmount, options);
+        return this.applyAllDiscounts(base, totalAmount, providerId, options);
       }
     }
     const global = await this.getCommission(totalAmount, 'global');
     base = this.toResolved(global);
-    return this.applyGrace(base, totalAmount, options);
+    return this.applyAllDiscounts(base, totalAmount, providerId, options);
+  }
+
+  private async applyAllDiscounts(
+    base: ResolvedCommission,
+    totalAmount: number,
+    providerId?: string,
+    options?: { providerCreatedAt?: Date; now?: Date },
+  ): Promise<ResolvedCommission> {
+    let result = await this.applyGrace(base, totalAmount, options);
+    if (result.waived) return result;
+    if (providerId) {
+      result = await this.applySubscriptionDiscount(result, providerId);
+    }
+    return result;
+  }
+
+  private async applySubscriptionDiscount(
+    base: ResolvedCommission,
+    providerId: string,
+  ): Promise<ResolvedCommission> {
+    try {
+      const sub = await this.platformFeesService.getProviderSubscription(providerId);
+      const discount = sub?.plan?.benefits?.['commissionDiscount'];
+      if (!discount || Number(discount) <= 0) return base;
+
+      if (base.type === CommissionType.PERCENTAGE) {
+        const discountedValue = base.value * (1 - Number(discount) / 100);
+        const discountedAmount = Number(base.amount) * (1 - Number(discount) / 100);
+        return {
+          ...base,
+          value: discountedValue,
+          amount: discountedAmount,
+          subscriptionDiscounted: true,
+        };
+      }
+    } catch {}
+    return base;
   }
 
   private toResolved(comm: {

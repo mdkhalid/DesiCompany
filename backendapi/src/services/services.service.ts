@@ -23,6 +23,7 @@ import { SearchProvidersDto } from './dto/search-providers.dto';
 import { CreateDateOverrideDto } from './dto/date-override.dto';
 import { SettingsService } from '../settings/settings.service';
 import { PresenceService } from '../chat/presence.service';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 
 interface CategoryInput {
   nameEn?: string;
@@ -57,7 +58,26 @@ export class ServicesService {
     private readonly bookingRepository: Repository<Booking>,
     private readonly settingsService: SettingsService,
     private readonly presenceService: PresenceService,
+    private readonly platformFeesService: PlatformFeesService,
   ) {}
+
+  private async annotateWithSubscriptionBenefits<T extends { id?: string }>(
+    providers: (T & { isOnline?: boolean; userId?: string })[],
+  ): Promise<(T & { isOnline?: boolean; userId?: string; hasFeaturedBadge?: boolean; priorityBoost?: number })[]> {
+    const subs = await Promise.all(
+      providers.map((p) =>
+        this.platformFeesService.getProviderSubscription(p.id!).catch(() => null),
+      ),
+    );
+    return providers.map((p, i) => {
+      const benefits = subs[i]?.plan?.benefits as Record<string, unknown> | undefined;
+      return {
+        ...p,
+        hasFeaturedBadge: benefits?.['featuredBadge'] === true,
+        priorityBoost: Number(benefits?.['priorityBoost']) || 0,
+      };
+    }).sort((a, b) => (b.priorityBoost || 0) - (a.priorityBoost || 0));
+  }
 
   private annotateProvidersWithPresence<
     T extends {
@@ -209,6 +229,17 @@ export class ServicesService {
     });
     if (!category) {
       throw new NotFoundException('Category not found');
+    }
+
+    const activeServiceCount = await this.providerServiceRepository.count({
+      where: { provider: { id: dto.providerId } },
+    });
+    const sub = await this.platformFeesService.getProviderSubscription(dto.providerId);
+    const maxServices = sub?.plan?.benefits?.['maxServices'];
+    if (maxServices && activeServiceCount >= Number(maxServices)) {
+      throw new BadRequestException(
+        `Service limit reached (${maxServices}). Upgrade your subscription to add more services.`,
+      );
     }
 
     if (!dto.hourlyRate && !dto.dailyRate && !dto.fixedRate && !dto.unitRate) {
@@ -670,7 +701,8 @@ export class ServicesService {
     }
 
     const providers = await query.getMany();
-    return this.annotateProvidersWithPresence(providers);
+    const annotated = this.annotateProvidersWithPresence(providers);
+    return await this.annotateWithSubscriptionBenefits(annotated);
   }
 
   async searchVerifiedProviders(
@@ -781,7 +813,8 @@ export class ServicesService {
     }
 
     const providers = await query.getMany();
-    return this.annotateProvidersWithPresence(providers);
+    const annotated = this.annotateProvidersWithPresence(providers);
+    return await this.annotateWithSubscriptionBenefits(annotated);
   }
 
   // ─── Busy Slot Management ────────────────────────────────────
