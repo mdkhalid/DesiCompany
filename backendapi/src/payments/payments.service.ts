@@ -26,6 +26,8 @@ import { ProviderSubscription } from '../platform-fees/entities/provider-subscri
 import { ProviderSubscriptionPlan } from '../platform-fees/entities/provider-subscription-plan.entity';
 import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config.entity';
 import { Provider } from '../users/entities/provider.entity';
+import { CustomerMembership } from '../platform-fees/entities/customer-membership.entity';
+import { CustomerMembershipPlan } from '../platform-fees/entities/customer-membership-plan.entity';
 
 @Injectable()
 export class PaymentsService {
@@ -46,6 +48,10 @@ export class PaymentsService {
     private readonly subscriptionRepository: Repository<ProviderSubscription>,
     @InjectRepository(ProviderSubscriptionPlan)
     private readonly planRepository: Repository<ProviderSubscriptionPlan>,
+    @InjectRepository(CustomerMembership)
+    private readonly membershipRepository: Repository<CustomerMembership>,
+    @InjectRepository(CustomerMembershipPlan)
+    private readonly membershipPlanRepository: Repository<CustomerMembershipPlan>,
     @InjectRepository(PlatformFeeConfig)
     private readonly feeConfigRepository: Repository<PlatformFeeConfig>,
     private readonly paymentGatewayFactory: PaymentGatewayFactory,
@@ -212,6 +218,144 @@ export class PaymentsService {
     return undefined;
   }
 
+  async createOrderForMembership(
+    planId: string,
+    userId: string,
+    billingCycle: 'monthly' | 'yearly' = 'monthly',
+  ) {
+    const plan = await this.membershipPlanRepository.findOne({
+      where: { id: planId, isActive: true },
+    });
+    if (!plan) throw new NotFoundException('Membership plan not found');
+
+    const existing = await this.membershipRepository.findOne({
+      where: { customer: { id: userId }, status: 'active' },
+    });
+    if (existing) {
+      throw new BadRequestException('You already have an active membership');
+    }
+
+    const featureConfig = await this.feeConfigRepository.findOne({
+      where: { configKey: 'feature_customer_memberships' },
+    });
+    const isEnabled = featureConfig?.isActive !== false &&
+      featureConfig?.configValue?.enabled !== false;
+    if (!isEnabled) {
+      throw new BadRequestException('Memberships are currently disabled');
+    }
+
+    const isChargeable = featureConfig?.configValue?.chargeable !== false;
+    const price = billingCycle === 'yearly' ? Number(plan.yearlyPrice) : Number(plan.monthlyPrice);
+
+    if (!isChargeable || price <= 0) {
+      const membership = await this.platformFeesService.assignCustomerMembership(
+        userId, planId, billingCycle,
+      );
+      return { status: 'free', membership };
+    }
+
+    const gateway = await this.paymentGatewayFactory.getDefault();
+    const gatewayType = gateway.getName() as PaymentGatewayType;
+
+    if (gatewayType === PaymentGatewayType.CASH) {
+      throw new BadRequestException('Cash not supported for memberships');
+    }
+
+    const amountPaise = Math.round(price * 100);
+    const order = await gateway.createOrder({
+      amount: amountPaise,
+      currency: 'INR',
+      bookingId: `mem_${planId}`,
+      customerPhone: '',
+    });
+
+    const payment = this.paymentRepository.create({
+      method: PaymentMethod.ONLINE,
+      status: PaymentStatus.PENDING,
+      amount: price,
+      gateway: gatewayType,
+      gatewayOrderId: order.gatewayOrderId,
+      transactionId: order.gatewayOrderId,
+      purposeType: 'membership',
+      purposeId: userId,
+      metadata: { planId, billingCycle },
+    });
+    await this.paymentRepository.save(payment);
+
+    const lastPayment = await this.paymentRepository.findOne({
+      where: { purposeId: userId, status: PaymentStatus.SUCCESS },
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      status: 'chargeable',
+      gatewayOrderId: order.gatewayOrderId,
+      keyId: order.keyId,
+      amount: amountPaise,
+      currency: order.currency,
+      paymentId: payment.id,
+      planId,
+      billingCycle,
+      preferredMethod: lastPayment?.gatewayResponse
+        ? this.extractMethodFromResponse(lastPayment.gatewayResponse)
+        : undefined,
+    };
+  }
+
+  async verifyMembershipPayment(
+    planId: string,
+    userId: string,
+    razorpayPaymentId: string,
+    razorpayOrderId: string,
+    razorpaySignature: string,
+    billingCycle: 'monthly' | 'yearly' = 'monthly',
+  ): Promise<{ status: string; membership?: any }> {
+    const payment = await this.paymentRepository.findOne({
+      where: { gatewayOrderId: razorpayOrderId },
+    });
+    if (!payment) throw new NotFoundException('Payment record not found');
+
+    if (payment.status === PaymentStatus.SUCCESS) {
+      const membership = await this.membershipRepository.findOne({
+        where: { customer: { id: userId } },
+        relations: { plan: true },
+      });
+      return { status: 'success', membership };
+    }
+
+    try {
+      const gateway = await this.paymentGatewayFactory.getByType(payment.gateway);
+      const gatewayStatus = await gateway.getStatus(razorpayOrderId);
+
+      if (gatewayStatus.status === 'success') {
+        payment.status = PaymentStatus.SUCCESS;
+        payment.transactionId = razorpayPaymentId;
+        payment.gatewayResponse = JSON.stringify(gatewayStatus);
+        await this.paymentRepository.save(payment);
+
+        const membership = await this.platformFeesService.activateMembershipPayment(
+          userId, userId, payment.id, payment.amount, planId, billingCycle,
+        );
+
+        return { status: 'success', membership };
+      }
+
+      if (gatewayStatus.status === 'failed') {
+        payment.status = PaymentStatus.FAILED;
+        payment.gatewayResponse = JSON.stringify(gatewayStatus);
+        await this.paymentRepository.save(payment);
+        return { status: 'failed' };
+      }
+
+      return { status: 'pending' };
+    } catch (err) {
+      this.logger.warn(
+        `Membership payment verification failed for order ${razorpayOrderId}: ${(err as Error).message}`,
+      );
+      return { status: 'pending' };
+    }
+  }
+
   @Cron('0 */15 * * * *')
   async reconcileStuckPayments() {
     this.logger.log('Running payment reconciliation...');
@@ -248,6 +392,16 @@ export class PaymentsService {
                 payment.id,
                 payment.amount,
                 planId,
+              );
+            }
+          } else if (payment.purposeType === 'membership') {
+            const meta = payment.metadata as Record<string, unknown> | undefined;
+            const planId = meta?.planId as string | undefined;
+            const billingCycle = (meta?.billingCycle as 'monthly' | 'yearly') || 'monthly';
+            if (planId) {
+              await this.platformFeesService.activateMembershipPayment(
+                payment.purposeId, payment.purposeId, payment.id,
+                payment.amount, planId, billingCycle,
               );
             }
           }

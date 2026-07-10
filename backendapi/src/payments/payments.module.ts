@@ -23,6 +23,8 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { ProviderSubscription } from '../platform-fees/entities/provider-subscription.entity';
 import { ProviderSubscriptionPlan } from '../platform-fees/entities/provider-subscription-plan.entity';
 import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config.entity';
+import { CustomerMembership } from '../platform-fees/entities/customer-membership.entity';
+import { CustomerMembershipPlan } from '../platform-fees/entities/customer-membership-plan.entity';
 
 @Module({
   imports: [
@@ -38,6 +40,8 @@ import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config
       ProviderSubscription,
       ProviderSubscriptionPlan,
       PlatformFeeConfig,
+      CustomerMembership,
+      CustomerMembershipPlan,
     ]),
     BookingsModule,
     CommissionsModule,

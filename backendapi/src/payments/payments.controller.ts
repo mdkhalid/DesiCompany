@@ -19,6 +19,8 @@ import { PayCashDto, MarkCashReceivedDto } from './dto/cash-payment.dto';
 import {
   CreateSubscriptionOrderDto,
   VerifySubscriptionPaymentDto,
+  CreateMembershipOrderDto,
+  VerifyMembershipPaymentDto,
 } from './dto/subscription-payment.dto';
 
 interface AuthRequest {
@@ -68,6 +70,36 @@ export class PaymentsController {
       dto.razorpayPaymentId,
       dto.razorpayOrderId,
       dto.razorpaySignature,
+    );
+  }
+
+  @Post('membership-order')
+  @Roles(UserRole.CUSTOMER)
+  async createMembershipOrder(
+    @Body() dto: CreateMembershipOrderDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.paymentsService.createOrderForMembership(
+      dto.planId,
+      req.user.id,
+      dto.billingCycle || 'monthly',
+    );
+  }
+
+  @Post('membership/verify')
+  @Roles(UserRole.CUSTOMER)
+  @HttpCode(HttpStatus.OK)
+  async verifyMembership(
+    @Body() dto: VerifyMembershipPaymentDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.paymentsService.verifyMembershipPayment(
+      dto.planId,
+      req.user.id,
+      dto.razorpayPaymentId,
+      dto.razorpayOrderId,
+      dto.razorpaySignature,
+      dto.billingCycle || 'monthly',
     );
   }
 

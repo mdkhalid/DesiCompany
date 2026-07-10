@@ -734,6 +734,70 @@ export class PlatformFeesService {
     }
   }
 
+  async activateMembershipPayment(
+    customerId: string,
+    userId: string,
+    paymentId: string,
+    amount: number,
+    planId: string,
+    billingCycle: 'monthly' | 'yearly',
+  ): Promise<CustomerMembership> {
+    const byPayment = await this.customerMembershipRepository.findOne({
+      where: { paymentId },
+    });
+    if (byPayment) return byPayment;
+
+    const existing = await this.customerMembershipRepository.findOne({
+      where: { customer: { id: customerId }, status: 'active' },
+    });
+    if (existing) return existing;
+
+    const user = await this.userRepository.findOne({
+      where: { id: customerId },
+    });
+    if (!user) throw new NotFoundException('Customer not found');
+
+    const plan = await this.membershipPlanRepository.findOne({
+      where: { id: planId },
+    });
+    if (!plan) throw new NotFoundException('Membership plan not found');
+
+    return this.dataSource.transaction(async (manager) => {
+      await manager.update(
+        CustomerMembership,
+        { customer: { id: customerId }, status: 'active' },
+        { status: 'expired', cancelledAt: new Date() },
+      );
+
+      const now = new Date();
+      const endDate = new Date(now);
+      if (billingCycle === 'yearly') {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+
+      const membership = manager.create(CustomerMembership, {
+        customer: user,
+        plan,
+        status: 'active',
+        startDate: now,
+        endDate,
+        billingCycle,
+        amountPaid: amount,
+        paymentId,
+      });
+
+      const saved = await manager.save(membership);
+
+      this.activityLogsService
+        .log(userId, `Activated membership '${plan.name}' via payment ${paymentId}`)
+        .catch(() => {});
+
+      return saved;
+    });
+  }
+
   // ─── Convenience Fee Waiver via Membership ───────────────────
 
   async getCustomerFeeWaiver(customerId: string): Promise<{

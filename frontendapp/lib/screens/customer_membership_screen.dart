@@ -3,6 +3,7 @@ import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../theme.dart';
+import '../widgets/payment_method_selector.dart';
 
 import 'package:desicompany/services/app_logger.dart';
 class CustomerMembershipScreen extends StatefulWidget {
@@ -47,15 +48,56 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
   Future<void> _join(String planId, String billingCycle) async {
     final loc = DesiCompanyApp.localeProvider!;
     try {
-      await ApiService.post(
-        '/membership-plans/$planId/join',
-        body: {'billingCycle': billingCycle},
-      );
+      final order = await ApiService.post('/payments/membership-order', body: {
+        'planId': planId,
+        'billingCycle': billingCycle,
+      }) as Map<String, dynamic>;
+
       if (!mounted) return;
+
+      final status = order['status'] as String?;
+
+      if (status == 'free') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(loc.tr('join_membership'))),
+        );
+        _load();
+        return;
+      }
+
+      if (status == 'chargeable') {
+        final result = await showModalBottomSheet<Map<String, dynamic>>(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (ctx) => PaymentMethodSelector(
+            keyId: order['keyId'] as String,
+            orderId: order['gatewayOrderId'] as String,
+            amountPaise: order['amount'] as int,
+            amount: (order['amount'] as int) / 100,
+            planId: planId,
+            preferredMethod: order['preferredMethod'] as String?,
+          ),
+        );
+
+        if (result == null) return;
+
+        final paymentStatus = result['status'] as String?;
+        if (paymentStatus == 'success' || paymentStatus == 'pending') {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(loc.tr('join_membership'))),
+          );
+          _load();
+        }
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loc.tr('join_membership'))),
+        SnackBar(content: Text('Unexpected response from server')),
       );
-      _load();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
