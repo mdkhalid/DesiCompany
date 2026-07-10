@@ -16,14 +16,14 @@ import 'profile_picker_screen.dart';
 import 'dart:async';
 import 'package:desicompany/services/app_logger.dart';
 
-class ProviderHomeScreen extends StatefulWidget {
-  const ProviderHomeScreen({super.key});
+class ProviderHomeContent extends StatefulWidget {
+  const ProviderHomeContent({super.key});
 
   @override
-  State<ProviderHomeScreen> createState() => _ProviderHomeScreenState();
+  State<ProviderHomeContent> createState() => _ProviderHomeContentState();
 }
 
-class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
+class _ProviderHomeContentState extends State<ProviderHomeContent> {
   List _bookings = [];
   int _todayJobs = 0;
   double _todayEarnings = 0.0;
@@ -38,6 +38,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
   String _locationText = 'Set location';
   bool _locating = false;
   StreamSubscription<int>? _unreadCountSub;
+  Map<String, dynamic>? _graceStatus;
 
   @override
   void initState() {
@@ -45,6 +46,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     _loadBookings();
     _loadProviderName();
     _loadUnreadCount();
+    _loadGraceStatus();
     AppPresenceService.connect();
     _unreadCountSub = NotificationWebSocketService.unreadCountStream.listen((count) {
       if (mounted) setState(() => _unreadCount = count);
@@ -103,6 +105,17 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
       });
     } catch (e) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadGraceStatus() async {
+    try {
+      final data = await ApiService.get('/provider-grace/status');
+      if (mounted && data is Map) {
+        setState(() => _graceStatus = Map<String, dynamic>.from(data));
+      }
+    } catch (e, st) {
+      AppLogger.e('provider_home_screen', 'Failed to load grace status', e, st);
     }
   }
 
@@ -180,8 +193,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               if (_hasMultipleRoles) ...[
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                      context,
+                    Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
                         builder: (_) => ProfilePickerScreen(user: _currentUser!),
                       ),
@@ -449,270 +461,290 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
               Expanded(
                 child: _loading
                     ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                    : _buildContent(loc),
-              ),
-            ],
-          ),
+                : _buildContent(loc),
+            ),
+          ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+    ),
     );
   }
 
   Widget _buildContent(LocalizationProvider loc) {
+    final showGraceBanner = _graceStatus?['commissionWaivedActive'] == true;
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFFF5F0FF),
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
-      child: _bookings.isEmpty
-          ? Center(
-              child: Container(
-                margin: const EdgeInsets.all(40),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  loc.tr('no_bookings'),
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
-              itemCount: _bookings.length,
-              itemBuilder: (_, i) {
-                final b = _bookings[i];
-                final statusColor = _statusColor(b['status'] ?? '');
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+      child: Column(
+        children: [
+          if (showGraceBanner)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: _buildGraceBanner(),
+            ),
+          Expanded(
+            child: _bookings.isEmpty
+                ? Center(
+                    child: Container(
+                      margin: const EdgeInsets.all(40),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${loc.tr('booking_number')}${shortId(b['id']?.toString())}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textPrimary,
-                                fontSize: 15,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: statusColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              _statusLabel(b['status'] ?? ''),
-                              style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        loc.tr('no_bookings'),
+                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.currency_rupee, size: 16, color: AppTheme.textSecondary),
-                          Text(
-                            '${b['totalAmount'] ?? 0}',
-                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.schedule, size: 14, color: Colors.grey.shade500),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatBookingDate(b['scheduledDate']?.toString()),
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      if (b['status'] == 'requested')
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () => _updateStatus(b['id'], 'accepted'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF43A047),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                ),
-                                child: Text(
-                                  loc.tr('accept'),
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _updateStatus(b['id'], 'rejected'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFFE53935),
-                                  side: const BorderSide(color: Color(0xFFE53935)),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                ),
-                                child: Text(
-                                  loc.tr('reject'),
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+                    itemCount: _bookings.length,
+                    itemBuilder: (_, i) {
+                      final b = _bookings[i];
+                      final statusColor = _statusColor(b['status'] ?? '');
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                      if (b['status'] == 'accepted')
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () => _updateStatus(b['id'], 'on_the_way'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6C3FB4),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${loc.tr('booking_number')}${shortId(b['id']?.toString())}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 15,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    _statusLabel(b['status'] ?? ''),
+                                    style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: Text(
-                              loc.tr('on_the_way'),
-                              style: const TextStyle(fontSize: 13),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.currency_rupee, size: 16, color: AppTheme.textSecondary),
+                                Text(
+                                  '${b['providerAmount'] ?? b['totalAmount'] ?? 0}',
+                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                                ),
+                              ],
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(Icons.schedule, size: 14, color: Colors.grey.shade500),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _formatBookingDate(b['scheduledDate']?.toString()),
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (b['status'] == 'requested')
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () => _updateStatus(b['id'], 'accepted'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF43A047),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                      ),
+                                      child: Text(
+                                        loc.tr('accept'),
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () => _updateStatus(b['id'], 'rejected'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFFE53935),
+                                        side: const BorderSide(color: Color(0xFFE53935)),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                      ),
+                                      child: Text(
+                                        loc.tr('reject'),
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            if (b['status'] == 'accepted')
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () => _updateStatus(b['id'], 'on_the_way'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6C3FB4),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                  child: Text(
+                                    loc.tr('on_the_way'),
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                            if (b['status'] == 'on_the_way')
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () => _updateStatus(b['id'], 'working'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF00BFA5),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                  child: Text(
+                                    loc.tr('start_working'),
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                            if (b['status'] == 'working')
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () => _updateStatus(b['id'], 'completed'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1E88E5),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                  child: Text(
+                                    loc.tr('mark_completed'),
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                            if (b['status'] == 'completed')
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    final customer = b['customer'];
+                                    String customerName = 'Customer';
+                                    if (customer is Map) {
+                                      // Try direct firstName/lastName on customer
+                                      String firstName = customer['firstName']?.toString() ?? '';
+                                      String lastName = customer['lastName']?.toString() ?? '';
+                                      
+                                      // If empty, try nested user object
+                                      if (firstName.isEmpty && lastName.isEmpty) {
+                                        final user = customer['user'];
+                                        if (user is Map) {
+                                          firstName = user['firstName']?.toString() ?? '';
+                                          lastName = user['lastName']?.toString() ?? '';
+                                        }
+                                      }
+                                      
+                                      final fullName = '$firstName $lastName'.trim();
+                                      // Only use the name if it's not empty and doesn't look like a phone number
+                                      if (fullName.isNotEmpty && !_looksLikePhoneNumber(fullName)) {
+                                        customerName = fullName;
+                                      }
+                                    }
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/provider-customer-feedback',
+                                      arguments: {
+                                        'bookingId': b['id'],
+                                        'customerName': customerName,
+                                        'providerName': _providerName.isNotEmpty ? _providerName : 'Provider',
+                                      },
+                                    );
+                                  },
+                                  icon: const Icon(Icons.feedback_outlined, size: 16),
+                                  label: Text(
+                                    loc.tr('private_feedback'),
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF6C3FB4),
+                                    side: const BorderSide(color: Color(0xFF6C3FB4)),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                ),
+                              ),
+                          ]),
                         ),
-                      if (b['status'] == 'on_the_way')
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () => _updateStatus(b['id'], 'working'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00BFA5),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: Text(
-                              loc.tr('start_working'),
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        ),
-                      if (b['status'] == 'working')
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () => _updateStatus(b['id'], 'completed'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1E88E5),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: Text(
-                              loc.tr('mark_completed'),
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        ),
-                      if (b['status'] == 'completed')
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              final customer = b['customer'];
-                              String customerName = 'Customer';
-                              if (customer is Map) {
-                                // Try direct firstName/lastName on customer
-                                String firstName = customer['firstName']?.toString() ?? '';
-                                String lastName = customer['lastName']?.toString() ?? '';
-                                
-                                // If empty, try nested user object
-                                if (firstName.isEmpty && lastName.isEmpty) {
-                                  final user = customer['user'];
-                                  if (user is Map) {
-                                    firstName = user['firstName']?.toString() ?? '';
-                                    lastName = user['lastName']?.toString() ?? '';
-                                  }
-                                }
-                                
-                                final fullName = '$firstName $lastName'.trim();
-                                // Only use the name if it's not empty and doesn't look like a phone number
-                                if (fullName.isNotEmpty && !_looksLikePhoneNumber(fullName)) {
-                                  customerName = fullName;
-                                }
-                              }
-                              Navigator.pushNamed(
-                                context,
-                                '/provider-customer-feedback',
-                                arguments: {
-                                  'bookingId': b['id'],
-                                  'customerName': customerName,
-                                  'providerName': _providerName.isNotEmpty ? _providerName : 'Provider',
-                                },
-                              );
-                            },
-                            icon: const Icon(Icons.feedback_outlined, size: 16),
-                            label: Text(
-                              loc.tr('private_feedback'),
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF6C3FB4),
-                              side: const BorderSide(color: Color(0xFF6C3FB4)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                    ]),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    final loc = DesiCompanyApp.localeProvider!;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _navItem(Icons.assignment_outlined, loc.tr('nav_requests'), true, () {}),
-              _navItem(Icons.work_outline, loc.tr('open_jobs'), false, () => Navigator.pushNamed(context, '/provider-open-jobs')),
-              _navItem(Icons.chat, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/conversations')),
-              _navItem(Icons.person, loc.tr('my_account'), false, () => Navigator.pushNamed(context, '/my-account')),
-            ],
-          ),
+    );
+  }
+
+  Widget _buildGraceBanner() {
+    final daysLeft = _graceStatus?['daysLeft'] ?? 0;
+    final message = daysLeft == 1
+        ? '0% commission today — your grace period ends soon!'
+        : '0% commission · $daysLeft days left';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF43A047), Color(0xFF2E7D32)],
         ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.celebration, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -729,30 +761,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> {
     } catch (_) {
       return '';
     }
-  }
-
-  Widget _navItem(IconData icon, String label, bool active, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: active ? AppTheme.primary : AppTheme.textSecondary,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: active ? AppTheme.primary : AppTheme.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   bool _looksLikePhoneNumber(String text) {

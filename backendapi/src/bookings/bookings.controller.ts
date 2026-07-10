@@ -68,7 +68,7 @@ export class BookingsController {
   }
 
   @Get('provider/me')
-  @Roles(UserRole.PROVIDER, UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get current provider bookings' })
   @ApiResponse({ status: 200, description: 'Returns provider bookings' })
   findMyProviderBookings(@Req() req: AuthRequest) {

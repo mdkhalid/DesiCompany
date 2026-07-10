@@ -3,12 +3,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CommissionConfig } from './entities/commission-config.entity';
 import { CommissionType } from '../common/enums/commission-type.enum';
+import { SettingsService } from '../settings/settings.service';
+
+export interface ResolvedCommission {
+  type: CommissionType;
+  value: number;
+  amount: number;
+  source: string;
+  waived?: boolean;
+  waivedReason?: string;
+}
 
 @Injectable()
 export class CommissionService {
   constructor(
     @InjectRepository(CommissionConfig)
     private readonly commissionRepository: Repository<CommissionConfig>,
+    private readonly settingsService: SettingsService,
   ) {}
 
   async getCommission(
@@ -73,12 +84,10 @@ export class CommissionService {
     totalAmount: number,
     providerId?: string,
     categoryId?: string,
-  ): Promise<{
-    type: CommissionType;
-    value: number;
-    amount: number;
-    source: string;
-  }> {
+    options?: { providerCreatedAt?: Date; now?: Date },
+  ): Promise<ResolvedCommission> {
+    let base: ResolvedCommission;
+
     if (providerId) {
       const providerComm = await this.getCommission(
         totalAmount,
@@ -88,7 +97,10 @@ export class CommissionService {
           fallback: false,
         },
       );
-      if (providerComm.matched) return providerComm;
+      if (providerComm.matched) {
+        base = this.toResolved(providerComm);
+        return this.applyGrace(base, totalAmount, options);
+      }
     }
     if (categoryId) {
       const categoryComm = await this.getCommission(
@@ -99,9 +111,62 @@ export class CommissionService {
           fallback: false,
         },
       );
-      if (categoryComm.matched) return categoryComm;
+      if (categoryComm.matched) {
+        base = this.toResolved(categoryComm);
+        return this.applyGrace(base, totalAmount, options);
+      }
     }
-    return this.getCommission(totalAmount, 'global');
+    const global = await this.getCommission(totalAmount, 'global');
+    base = this.toResolved(global);
+    return this.applyGrace(base, totalAmount, options);
+  }
+
+  private toResolved(comm: {
+    type: CommissionType;
+    value: number;
+    amount: number;
+    source: string;
+    matched: boolean;
+  }): ResolvedCommission {
+    return {
+      type: comm.type,
+      value: comm.value,
+      amount: comm.amount,
+      source: comm.source,
+    };
+  }
+
+  /**
+   * If the provider is within their admin-configured grace period, waive the
+   * commission entirely (amount = 0) while preserving the original rate info.
+   */
+  private async applyGrace(
+    base: ResolvedCommission,
+    totalAmount: number,
+    options?: { providerCreatedAt?: Date; now?: Date },
+  ): Promise<ResolvedCommission> {
+    if (!options?.providerCreatedAt) return base;
+
+    const enabled =
+      await this.settingsService.isProviderGraceCommissionWaiverEnabled();
+    if (!enabled) return base;
+
+    const graceDays = await this.settingsService.getProviderGracePeriodDays();
+    if (graceDays <= 0) return base;
+
+    const cutoff = new Date(options.providerCreatedAt);
+    cutoff.setDate(cutoff.getDate() + graceDays);
+    const now = options.now ?? new Date();
+
+    if (now <= cutoff) {
+      return {
+        ...base,
+        amount: 0,
+        waived: true,
+        waivedReason: `Provider grace period (${graceDays} days)`,
+      };
+    }
+    return base;
   }
 
   private computeAmount(config: CommissionConfig, totalAmount: number): number {

@@ -3,21 +3,16 @@ node_modules/
 dist/
 build/
 .env
-ISSUES.md
+project-docs/
 *.log
 server.log
 server-error.log
 body.json
 body2.json
 login_resp.json
-TEST_CREDENTIALS.md
-NEW_FEATURES.md
-PRODUCTION_READINESS.md
 .kimchi/
 .deepseek/
 .commandcode/
-chat-gaps.md
-FEATURES.md
 msg.txt
 temp_tasklist.txt
 temp_typerom.txt
@@ -48,3 +43,6 @@ adminweb/tsconfig.tsbuildinfo
 
 # Flutter tool state
 .flutter_tool_state
+
+# Agent guide (generated)
+AGENTS.md

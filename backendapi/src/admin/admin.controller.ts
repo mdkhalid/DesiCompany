@@ -8,8 +8,11 @@ import {
   Param,
   Query,
   Req,
+  Res,
+  Header,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -91,6 +94,38 @@ export class AdminController {
     return this.analyticsService.getCategoryAnalytics();
   }
 
+  @Get('analytics/grace')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get grace-period promo cost analytics' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns waived commission / CAC metrics',
+  })
+  getGracePromoAnalytics(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.analyticsService.getGracePromoAnalytics(startDate, endDate);
+  }
+
+  @Get('analytics/grace/csv')
+  @Roles(UserRole.ADMIN)
+  @Header('Content-Type', 'text/csv')
+  @ApiOperation({ summary: 'Export grace-period promo report as CSV' })
+  async getGracePromoCsv(
+    @Res() res: Response,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const csv = await this.analyticsService.getGracePromoCsv(
+      startDate,
+      endDate,
+    );
+    const filename = `grace-promo-report-${Date.now()}.csv`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  }
+
   @Get('bookings')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all bookings with pagination' })
@@ -163,7 +198,10 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Batch update user status' })
   @ApiResponse({ status: 200, description: 'Users updated' })
-  batchUpdateStatus(@Body('userIds') userIds: string[], @Body('status') status: string) {
+  batchUpdateStatus(
+    @Body('userIds') userIds: string[],
+    @Body('status') status: string,
+  ) {
     return this.adminService.batchUpdateStatus(userIds, status);
   }
 

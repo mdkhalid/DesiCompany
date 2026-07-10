@@ -10,6 +10,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { RevokedToken } from './entities/revoked-token.entity';
 import { SmsModule } from '../sms/sms.module';
 import { OtpStoreService } from '../common/redis-otp.service';
+import { ProviderGraceModule } from '../provider-grace/provider-grace.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { OtpStoreService } from '../common/redis-otp.service';
       },
     }),
     SmsModule,
+    ProviderGraceModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, OtpStoreService],

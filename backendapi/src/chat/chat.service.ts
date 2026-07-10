@@ -121,7 +121,7 @@ export class ChatService {
       const lastMessages = await this.messageRepository
         .createQueryBuilder('msg')
         .select(['msg.id', 'msg.content', 'msg.createdAt', 'msg.booking'])
-        .where('msg.booking IN (:...bookingIds)', { bookingIds })
+        .where('msg.booking_id IN (:...bookingIds)', { bookingIds })
         .orderBy('msg.createdAt', 'DESC')
         .getMany();
 
@@ -145,9 +145,9 @@ export class ChatService {
         .createQueryBuilder('msg')
         .select('msg.booking', 'bookingId')
         .addSelect('COUNT(*)', 'cnt')
-        .where('msg.booking IN (:...bookingIds)', { bookingIds })
+        .where('msg.booking_id IN (:...bookingIds)', { bookingIds })
         .andWhere('msg.isRead = false')
-        .andWhere('msg.senderId != :userId', { userId })
+        .andWhere('msg.sender_id != :userId', { userId })
         .groupBy('msg.booking')
         .getRawMany();
 

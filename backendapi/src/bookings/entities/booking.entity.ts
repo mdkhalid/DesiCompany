@@ -52,6 +52,12 @@ export class Booking extends BaseEntity {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   commissionAmount: number;
 
+  @Column({ default: false, name: 'commission_waived' })
+  commissionWaived: boolean;
+
+  @Column({ type: 'varchar', nullable: true, name: 'commission_waived_reason' })
+  commissionWaivedReason?: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   providerAmount: number;
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, downloadCsv } from '../services/api';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -27,6 +27,7 @@ interface AnalyticsOverview {
   totalRevenue: number;
   monthRevenue: number;
   averageRating: number;
+  gracePromoCost: number;
 }
 
 interface AnalyticsData {
@@ -177,6 +178,13 @@ export default function Dashboard() {
           >
             🔄 Refresh
           </button>
+          <button
+            onClick={() => downloadCsv('/admin/analytics/grace/csv', `grace-promo-report-${Date.now()}.csv`).catch(() => {})}
+            className="px-3 py-1 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700"
+            title="Export grace-period promo cost report (CSV)"
+          >
+            ⬇ Grace Report
+          </button>
         </div>
       </div>
 
@@ -224,7 +232,7 @@ export default function Dashboard() {
 
           {/* Overview Summary */}
           {overview && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow p-6 text-white">
                 <p className="text-blue-100 text-sm">Total Revenue</p>
                 <p className="text-3xl font-bold">
@@ -247,6 +255,12 @@ export default function Dashboard() {
                 <p className="text-orange-100 text-sm">Avg Rating</p>
                 <p className="text-3xl font-bold">
                   ⭐ {safeValue(overview.averageRating).toFixed(1)}
+                </p>
+              </div>
+              <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow p-6 text-white">
+                <p className="text-red-100 text-sm">Grace Promo Cost (mo)</p>
+                <p className="text-3xl font-bold">
+                  ₹{safeValue(overview.gracePromoCost).toLocaleString()}
                 </p>
               </div>
             </div>

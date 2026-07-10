@@ -52,4 +52,8 @@ export class SettingsService {
   async isProviderGracePeriodEnabled(): Promise<boolean> {
     return this.getBoolean('provider_grace_period_enabled', true);
   }
+
+  async isProviderGraceCommissionWaiverEnabled(): Promise<boolean> {
+    return this.getBoolean('provider_grace_period_commission_waiver', true);
+  }
 }

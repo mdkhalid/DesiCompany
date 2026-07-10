@@ -17,6 +17,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
 import { SmsService } from '../sms/sms.service';
 import { OtpStoreService } from '../common/redis-otp.service';
+import { ProviderGraceService } from '../provider-grace/provider-grace.service';
 
 interface RegisterDto {
   phone: string;
@@ -79,6 +80,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly smsService: SmsService,
     private readonly otpStore: OtpStoreService,
+    private readonly providerGraceService: ProviderGraceService,
   ) {}
 
   async requestOtp(phone: string): Promise<{ message: string }> {
@@ -158,6 +160,11 @@ export class AuthService {
         lastName: registerDto.lastName || undefined,
       });
       await this.providerRepository.save(provider);
+    }
+
+    // Send welcome push about the 0% commission grace period (no-op if disabled)
+    if (registerDto.role === UserRole.PROVIDER) {
+      this.providerGraceService.sendWelcome(savedUser.id).catch(() => {});
     }
 
     const tokens = this.generateTokens(savedUser);

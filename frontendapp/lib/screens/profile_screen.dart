@@ -190,7 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _logout() async {
     await AuthService.logout();
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
+      Navigator.of(context, rootNavigator: true).pushReplacementNamed('/login');
     }
   }
 

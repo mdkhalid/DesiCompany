@@ -10,6 +10,7 @@ import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from './presence.service';
 
 describe('ChatGateway', () => {
@@ -49,6 +50,11 @@ describe('ChatGateway', () => {
     sendToUser: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    create: jest.fn().mockResolvedValue(undefined),
+    markBookingNotificationsAsRead: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -67,6 +73,7 @@ describe('ChatGateway', () => {
         },
         { provide: JwtService, useValue: mockJwtService },
         { provide: PushNotificationsService, useValue: mockPushNotificationsService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
         {
           provide: PresenceService,
           useValue: {

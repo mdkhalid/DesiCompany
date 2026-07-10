@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/app_presence_service.dart';
 import '../services/location_service.dart';
@@ -13,13 +13,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'profile_picker_screen.dart';
 import 'package:desicompany/services/app_logger.dart';
-class CustomerHomeScreen extends StatefulWidget {
-  const CustomerHomeScreen({super.key});
+class CustomerHomeContent extends StatefulWidget {
+  const CustomerHomeContent({super.key});
   @override
-  State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
+  State<CustomerHomeContent> createState() => _CustomerHomeContentState();
 }
 
-class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
+class _CustomerHomeContentState extends State<CustomerHomeContent> {
   List<ServiceCategory> _categories = [];
   List _allProviders = [];
   List _filteredProviders = [];
@@ -32,6 +32,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   bool _hasMultipleRoles = false;
   User? _currentUser;
   String _locationText = 'Set location';
+  String? _error;
   double? _latitude;
   double? _longitude;
   double _radiusKm = 5;
@@ -63,7 +64,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   void initState() {
     super.initState();
     _loadData();
-    _initLocation();
     AppPresenceService.connect();
     _presenceSub = AppPresenceService.updates.listen((evt) {
       _applyPresenceUpdate(evt.userId, evt.online);
@@ -112,7 +112,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       setState(() {
         _categories = (cats as List).map((c) => ServiceCategory.fromJson(c)).toList();
       });
-      await _loadProviders();
+      await _loadSavedLocation();
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
@@ -120,14 +120,46 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     _loadUserRole();
   }
 
+  Future<void> _loadSavedLocation() async {
+    try {
+      final profile = await ApiService.get('/users/profile');
+      if (!mounted) return;
+      // Profile returns customer/provider nested — read lat/lng from 'customer' sub-object
+      final cust = profile['customer'];
+      final lat = cust is Map ? cust['latitude'] : profile['latitude'];
+      final lng = cust is Map ? cust['longitude'] : profile['longitude'];
+      if (lat != null && lng != null) {
+        final latVal = lat is num ? lat.toDouble() : double.tryParse('$lat');
+        final lngVal = lng is num ? lng.toDouble() : double.tryParse('$lng');
+        if (latVal != null && lngVal != null) {
+          setState(() {
+            _latitude = latVal;
+            _longitude = lngVal;
+          });
+          _loadProviders();
+          LocationService.getAddressFromCoordinates(latVal, lngVal).then((addr) {
+            if (mounted && addr.isNotEmpty) setState(() => _locationText = addr);
+          });
+          return;
+        }
+      }
+      setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _loadProviders() async {
     try {
+      setState(() => _allProviders = []);
       List provs;
-      if (_latitude != null && _longitude != null && _radiusKm > 0) {
-        final path = '/services/search?latitude=$_latitude&longitude=$_longitude&radiusKm=$_radiusKm';
-        provs = await ApiService.get(path);
+      if (_latitude != null && _longitude != null) {
+        final km = _radiusKm > 0 ? _radiusKm : 100;
+        final path = '/services/search?latitude=$_latitude&longitude=$_longitude&radiusKm=$km';
+        final response = await ApiService.get(path);
+        provs = response is List ? response : (response['providers'] ?? []);
       } else {
-        provs = await ApiService.get('/services/providers');
+        provs = [];
       }
       if (!mounted) return;
       setState(() {
@@ -225,13 +257,37 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
     if (result == 'gps') {
       // Use GPS
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
       final position = await LocationService.getCurrentLocation();
-      if (!mounted || position == null) return;
+      if (!mounted) return;
+      if (position == null) {
+        setState(() {
+          _loading = false;
+          _error = 'Could not get GPS location. Try searching for a city instead.';
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Could not detect GPS location. Try typing a city name.'),
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(label: 'OK', onPressed: () {}),
+            ),
+          );
+        }
+        return;
+      }
       setState(() {
         _latitude = position.latitude;
         _longitude = position.longitude;
         _locationText = 'Current location';
         _loading = true;
+      });
+      await ApiService.patch('/users/profile', body: {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
       });
       _loadProviders();
       LocationService.getAddressFromCoordinates(position.latitude, position.longitude)
@@ -240,6 +296,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       // Search by city name
       try {
         final cityName = result;
+        setState(() {
+          _loading = true;
+          _error = null;
+        });
         final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=$cityName&limit=1&countrycodes=in');
         final response = await http.get(url, headers: {'User-Agent': 'DesiCompanyApp/1.0'});
         if (response.statusCode == 200) {
@@ -255,27 +315,45 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               _radiusKm = 10;
               _loading = true;
             });
+            await ApiService.patch('/users/profile', body: {
+              'latitude': lat,
+              'longitude': lon,
+            });
             _loadProviders();
+          } else {
+            if (!mounted) return;
+            setState(() {
+              _loading = false;
+              _error = 'City "$cityName" not found. Try another name.';
+            });
           }
+        } else {
+          if (!mounted) return;
+          setState(() {
+            _loading = false;
+            _error = 'Failed to search for city. Try again.';
+          });
         }
-      } catch (_) {}
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = 'Something went wrong. Try again.';
+        });
+      }
     }
   }
 
-  Future<void> _initLocation() async {
-    final position = await LocationService.getCurrentLocation();
-    if (!mounted) return;
-    if (position != null) {
-      _latitude = position.latitude;
-      _longitude = position.longitude;
-      final address = await LocationService.getAddressFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-      if (!mounted) return;
-      setState(() => _locationText = address);
-      _loadProviders();
-    }
+
+  int _providerCountForCategory(String? categoryId) {
+    if (categoryId == null || _allProviders.isEmpty) return 0;
+    return _allProviders.where((p) {
+      final svcs = p['services'] as List? ?? [];
+      return svcs.any((s) {
+        final cat = s['category'];
+        return cat is Map && cat['id'] == categoryId;
+      });
+    }).length;
   }
 
   void _selectCategory(String? id) {
@@ -283,6 +361,31 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       _selectedCategoryId = _selectedCategoryId == id ? null : id;
       _applyFilters();
     });
+  }
+
+  bool _fuzzyMatch(String text, String query) {
+    if (text.contains(query)) return true;
+    final words = text.split(RegExp(r'\s+'));
+    for (final word in words) {
+      if (word.length < 3 || query.length < 3) continue;
+      final maxDist = query.length <= 4 ? 1 : 2;
+      if (_levenshtein(word, query) <= maxDist) return true;
+    }
+    return false;
+  }
+
+  int _levenshtein(String a, String b) {
+    if (a.length > b.length) return _levenshtein(b, a);
+    var prev = List<int>.generate(a.length + 1, (i) => i);
+    for (var j = 1; j <= b.length; j++) {
+      var curr = [j];
+      for (var i = 1; i <= a.length; i++) {
+        final cost = a[i - 1] == b[j - 1] ? 0 : 1;
+        curr.add([prev[i] + 1, curr[i - 1] + 1, prev[i - 1] + cost].reduce((x, y) => x < y ? x : y));
+      }
+      prev = curr;
+    }
+    return prev[a.length];
   }
 
   void _applyFilters() {
@@ -300,10 +403,25 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     }
 
     if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
       results = results.where((p) {
-        final name = '${p['firstName'] ?? ''} ${p['lastName'] ?? ''}'.toLowerCase();
-        final city = (p['city'] ?? '').toLowerCase();
-        return name.contains(_searchQuery.toLowerCase()) || city.contains(_searchQuery.toLowerCase());
+        final firstName = (p['firstName'] ?? '').toString().toLowerCase();
+        final lastName = (p['lastName'] ?? '').toString().toLowerCase();
+        final city = (p['city'] ?? '').toString().toLowerCase();
+        final svcs = p['services'] as List? ?? [];
+        final serviceNames = svcs.map((s) {
+          final cat = s['category'];
+          return cat is Map ? (cat['nameEn'] ?? cat['name'] ?? '').toString().toLowerCase() : '';
+        }).join(' ');
+        // Check if all query words match any field (fuzzy: allows partial/typo)
+        final words = query.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+        return words.every((word) {
+          return firstName.contains(word) ||
+              lastName.contains(word) ||
+              city.contains(word) ||
+              serviceNames.contains(word) ||
+              _fuzzyMatch(serviceNames, word);
+        });
       }).toList();
     }
 
@@ -340,7 +458,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -588,6 +705,116 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   Widget _buildCategoriesSection() {
     final loc = LocalizationProvider.of(context);
+
+    // When a category is selected, show compact horizontal chip row
+    if (_selectedCategoryId != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                loc.tr('categories'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _selectCategory(null),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.close, size: 14, color: AppTheme.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        loc.tr('clear_filter'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final cat = _categories[index];
+                final isSelected = cat.id == _selectedCategoryId;
+                final count = _providerCountForCategory(cat.id);
+                return GestureDetector(
+                  onTap: () => _selectCategory(cat.id),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.primary : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected ? AppTheme.primary : Colors.grey.shade300,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          cat.nameEn,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? Colors.white : AppTheme.textPrimary,
+                          ),
+                        ),
+                        if (count > 0) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.25)
+                                  : AppTheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$count',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected ? Colors.white : AppTheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Default: full grid view
     final displayCategories = _showAllCategories ? _categories : _categories.take(8).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -638,6 +865,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final color = iconData['color'] as Color;
     final icon = iconData['icon'] as IconData;
     final isSelected = cat.id == _selectedCategoryId;
+    final count = _providerCountForCategory(cat.id);
 
     return GestureDetector(
       onTap: () => _selectCategory(cat.id),
@@ -681,6 +909,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            if (count > 0)
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? Colors.white70 : Colors.grey,
+                ),
+              ),
           ],
         ),
       ),
@@ -724,6 +961,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   Widget _buildEmptyState() {
     final loc = LocalizationProvider.of(context);
+    final noLocation = _latitude == null || _longitude == null;
     return Container(
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
@@ -739,10 +977,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       ),
       child: Column(
         children: [
-          Icon(Icons.search_off, size: 64, color: Colors.grey.shade300),
+          Icon(
+            noLocation ? Icons.location_off : Icons.search_off,
+            size: 64,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 16),
           Text(
-            loc.tr('no_providers'),
+            noLocation ? 'Select your location' : loc.tr('no_providers'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -751,9 +993,19 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            loc.tr('try_adjusting'),
+            noLocation
+                ? 'Tap the location bar above to set your city'
+                : loc.tr('try_adjusting'),
             style: TextStyle(color: Colors.grey.shade500),
           ),
+          if (_error != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red, fontSize: 13),
+            ),
+          ],
         ],
       ),
     );
@@ -944,68 +1196,4 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    final loc = LocalizationProvider.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(Icons.home_rounded, loc.tr('nav_home'), true, () {}),
-              _navItem(Icons.assignment_outlined, loc.tr('nav_requests'), false, () => Navigator.pushNamed(context, '/customer-requests')),
-              _navItem(Icons.chat_bubble_outline, loc.tr('nav_chat'), false, () => Navigator.pushNamed(context, '/conversations')),
-              _navItem(Icons.person_outline, loc.tr('my_account'), false, () => Navigator.pushNamed(context, '/my-account')),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool active, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: active
-            ? BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              )
-            : null,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: active ? AppTheme.primary : AppTheme.textSecondary,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
-                color: active ? AppTheme.primary : AppTheme.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

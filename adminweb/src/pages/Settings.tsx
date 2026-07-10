@@ -4,6 +4,7 @@ import { api } from '../services/api';
 interface GracePeriodConfig {
   enabled: boolean;
   days: number;
+  commissionWaiver: boolean;
 }
 
 export default function Settings() {
@@ -45,7 +46,11 @@ function GracePeriodTab() {
     setError('');
     try {
       const data = await api.get<GracePeriodConfig>('/settings/provider-grace-period');
-      setConfig(data);
+      setConfig({
+        enabled: data.enabled,
+        days: data.days,
+        commissionWaiver: data.commissionWaiver ?? true,
+      });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load grace period settings');
     } finally {
@@ -64,6 +69,7 @@ function GracePeriodTab() {
       await api.post<GracePeriodConfig>('/settings/provider-grace-period', {
         enabled: config.enabled,
         days: config.days,
+        commissionWaiver: config.commissionWaiver,
       });
       setSuccess('Grace period settings saved successfully!');
       setTimeout(() => setSuccess(''), 3000);
@@ -153,6 +159,29 @@ function GracePeriodTab() {
             </p>
           </div>
 
+          {/* Commission Waiver Toggle */}
+          <div className="flex items-center justify-between py-4 border-t">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Waive Commission During Grace Period</p>
+              <p className="text-xs text-gray-500 mt-1">
+                When enabled, new providers pay 0% platform commission on bookings completed within the grace period — a strong acquisition incentive.
+              </p>
+            </div>
+            <button
+              onClick={() => setConfig(prev => prev ? { ...prev, commissionWaiver: !prev.commissionWaiver } : null)}
+              disabled={saving}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                config?.commissionWaiver ? 'bg-green-500' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                  config?.commissionWaiver ? 'translate-x-6' : ''
+                }`}
+              />
+            </button>
+          </div>
+
           {/* Quick Presets */}
           <div className="py-4 border-t">
             <p className="text-sm font-medium text-gray-900 mb-3">Quick Presets</p>
@@ -198,12 +227,13 @@ function GracePeriodTab() {
               </div>
               <div className="text-sm text-blue-800">
                 <p className="font-medium mb-1">How Grace Period Works</p>
-                <ul className="list-disc list-inside space-y-1 text-xs text-blue-700">
-                  <li>New providers are automatically visible to customers upon registration</li>
-                  <li>Provider created date is tracked to calculate grace period expiry</li>
-                  <li>After grace period expires, only KYC-verified providers remain visible</li>
-                  <li>Admins can manually verify providers anytime via KYC verification page</li>
-                </ul>
+                 <ul className="list-disc list-inside space-y-1 text-xs text-blue-700">
+                   <li>New providers are automatically visible to customers upon registration</li>
+                   <li>Provider created date is tracked to calculate grace period expiry</li>
+                   <li>After grace period expires, only KYC-verified providers remain visible</li>
+                   <li>When commission waiver is on, providers pay 0% commission within the grace period</li>
+                   <li>Admins can manually verify providers anytime via KYC verification page</li>
+                 </ul>
               </div>
             </div>
           </div>
@@ -224,7 +254,7 @@ function GracePeriodTab() {
       {/* Current Status */}
       <div className="bg-white p-6 rounded-xl shadow">
         <h3 className="text-sm font-semibold mb-4">Current Status</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="border rounded-lg p-4">
             <p className="text-xs text-gray-500 mb-1">Grace Period Status</p>
             <p className={`text-lg font-bold ${config?.enabled ? 'text-green-600' : 'text-gray-400'}`}>
@@ -235,6 +265,12 @@ function GracePeriodTab() {
             <p className="text-xs text-gray-500 mb-1">Duration</p>
             <p className="text-lg font-bold text-blue-600">
               {config?.days || 7} {config?.days === 1 ? 'day' : 'days'}
+            </p>
+          </div>
+          <div className="border rounded-lg p-4">
+            <p className="text-xs text-gray-500 mb-1">Commission Waiver</p>
+            <p className={`text-lg font-bold ${config?.commissionWaiver ? 'text-green-600' : 'text-gray-400'}`}>
+              {config?.commissionWaiver ? 'Active (0% commission)' : 'Off'}
             </p>
           </div>
         </div>

@@ -21,6 +21,8 @@ class MyAccountScreen extends StatefulWidget {
 class _MyAccountScreenState extends State<MyAccountScreen> {
   Map<String, dynamic>? _profile;
   bool _loading = true;
+  int _completedJobs = 0;
+  double _totalEarnings = 0;
 
   @override
   void initState() {
@@ -36,9 +38,27 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
         _profile = data;
         _loading = false;
       });
+      if (data['role'] == 'provider') _loadProviderStats();
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _loadProviderStats() async {
+    try {
+      final bookings = await ApiService.get('/bookings/provider/me');
+      if (!mounted) return;
+      final list = bookings is List ? bookings : [];
+      int completed = 0;
+      double earnings = 0;
+      for (final b in list) {
+        if (b['status'] == 'completed') {
+          completed++;
+          earnings += double.tryParse('${b['providerAmount']}') ?? 0;
+        }
+      }
+      if (mounted) setState(() { _completedJobs = completed; _totalEarnings = earnings; });
+    } catch (_) {}
   }
 
   String _getInitials() {
@@ -103,7 +123,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
       AppPresenceService.disconnect();
       await AuthService.logout();
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.of(context, rootNavigator: true).pushReplacementNamed('/login');
       }
     }
   }
@@ -169,6 +189,10 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
         children: [
           _buildProfileHeader(),
+          if (_profile?['role'] == 'provider') ...[
+            const SizedBox(height: 20),
+            _buildProviderStats(),
+          ],
           const SizedBox(height: 24),
           _buildMenuSection(loc),
         ],
@@ -247,6 +271,76 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                       color: AppTheme.primary,
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProviderStats() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF43A047).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.check_circle_outline, color: Color(0xFF43A047), size: 24),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$_completedJobs',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Jobs Done',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+          Container(width: 1, height: 50, color: Colors.grey.shade200),
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.currency_rupee, color: AppTheme.primary, size: 24),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '₹${_totalEarnings.toStringAsFixed(0)}',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Earned',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),

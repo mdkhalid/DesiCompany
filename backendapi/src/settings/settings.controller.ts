@@ -26,7 +26,9 @@ export class SettingsController {
   async getProviderGracePeriod() {
     const enabled = await this.settingsService.isProviderGracePeriodEnabled();
     const days = await this.settingsService.getProviderGracePeriodDays();
-    return { enabled, days };
+    const commissionWaiver =
+      await this.settingsService.isProviderGraceCommissionWaiverEnabled();
+    return { enabled, days, commissionWaiver };
   }
 
   @Post('provider-grace-period')
@@ -35,6 +37,7 @@ export class SettingsController {
   async setProviderGracePeriod(
     @Body('enabled') enabled: boolean,
     @Body('days') days: number,
+    @Body('commissionWaiver') commissionWaiver?: boolean,
   ) {
     await this.settingsService.set(
       'provider_grace_period_enabled',
@@ -46,7 +49,20 @@ export class SettingsController {
       days.toString(),
       'Number of days grace period for new providers (default: 7)',
     );
-    return { enabled, days };
+    if (commissionWaiver !== undefined) {
+      await this.settingsService.set(
+        'provider_grace_period_commission_waiver',
+        commissionWaiver.toString(),
+        'Waive platform commission for providers within their grace period',
+      );
+    }
+    const currentWaiver =
+      await this.settingsService.isProviderGraceCommissionWaiverEnabled();
+    return {
+      enabled,
+      days,
+      commissionWaiver: commissionWaiver ?? currentWaiver,
+    };
   }
 
   @Post()

@@ -596,8 +596,11 @@ export class BookingsService {
     scheduledDate: string,
     estimatedHours?: number,
   ) {
-    const { dateStr, minutes: bookingMinutes, dayOfWeek } =
-      this.parseScheduledParts(scheduledDate);
+    const {
+      dateStr,
+      minutes: bookingMinutes,
+      dayOfWeek,
+    } = this.parseScheduledParts(scheduledDate);
     const durationHours =
       estimatedHours && estimatedHours > 0 ? estimatedHours : 1;
     const bookingEnd = bookingMinutes + durationHours * 60;
@@ -682,7 +685,7 @@ export class BookingsService {
 
     const hasConflict = conflictingBookings.some((b) => {
       // Compare wall-clock parts, not server-local Date fields
-      const iso = (b.scheduledDate as Date).toISOString();
+      const iso = b.scheduledDate.toISOString();
       if (iso.slice(0, 10) !== dateStr) return false;
       const [bh, bm] = iso.slice(11, 16).split(':').map(Number);
       const bStart = bh * 60 + bm;
@@ -830,6 +833,7 @@ export class BookingsService {
       serviceAmount,
       providerId,
       categoryId,
+      { providerCreatedAt: booking.provider?.providerCreatedAt },
     );
 
     // ── Final totals ──
@@ -837,6 +841,8 @@ export class BookingsService {
     booking.totalAmount = totalAmount;
     booking.commissionAmount = commission.amount;
     booking.providerAmount = serviceAmount - commission.amount;
+    booking.commissionWaived = !!commission.waived;
+    booking.commissionWaivedReason = commission.waivedReason;
 
     return this.bookingRepository.save(booking);
   }

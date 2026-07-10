@@ -38,6 +38,7 @@ export class AnalyticsService {
       totalRevenue: number;
       monthRevenue: number;
       averageRating: number;
+      gracePromoCost: number;
     };
     recentBookings: Booking[];
     topProviders: Provider[];
@@ -65,6 +66,7 @@ export class AnalyticsService {
       topProviders,
       bookingsByStatus,
       dailyBookingsTrend,
+      monthGracePromoCost,
     ] = await Promise.all([
       this.bookingRepository.count(),
       this.bookingRepository.count({
@@ -85,7 +87,10 @@ export class AnalyticsService {
       this.getRecentBookings(10),
       this.getTopProviders(5),
       this.getBookingsByStatus(),
-      this.getDailyBookingsTrend(range === '90d' ? 90 : range === '7d' ? 7 : 30),
+      this.getDailyBookingsTrend(
+        range === '90d' ? 90 : range === '7d' ? 7 : 30,
+      ),
+      this.getMonthGracePromoCost(thisMonth),
     ]);
 
     return {
@@ -100,6 +105,7 @@ export class AnalyticsService {
         totalRevenue,
         monthRevenue,
         averageRating: Number(averageRating) || 0,
+        gracePromoCost: Number(monthGracePromoCost) || 0,
       },
       recentBookings,
       topProviders,
@@ -191,6 +197,102 @@ export class AnalyticsService {
     return { categoryStats };
   }
 
+  /**
+   * Grace-period promo cost: commission waived by the admin-configured
+   * "zero commission for N days" offer. Used to measure provider acquisition CAC.
+   */
+  async getGracePromoAnalytics(startDate?: string, endDate?: string) {
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(new Date().setDate(new Date().getDate() - 30));
+    const end = endDate ? new Date(endDate) : new Date();
+
+    const summary: Record<string, unknown> | undefined =
+      await this.bookingRepository
+        .createQueryBuilder('booking')
+        .select(
+          'COALESCE(SUM(booking.commission_amount), 0)',
+          'totalCommissionWaived',
+        )
+        .addSelect('COUNT(booking.id)', 'waivedBookings')
+        .addSelect('COUNT(DISTINCT booking.provider_id)', 'graceProviders')
+        .where('booking.commission_waived = :waived', { waived: true })
+        .andWhere('booking.created_at BETWEEN :start AND :end', { start, end })
+        .getRawOne();
+
+    const dailyTrendRaw: Array<Record<string, unknown>> =
+      await this.bookingRepository
+        .createQueryBuilder('booking')
+        .select('DATE(booking.created_at)', 'date')
+        .addSelect(
+          'COALESCE(SUM(booking.commission_amount), 0)',
+          'waivedCommission',
+        )
+        .addSelect('COUNT(booking.id)', 'waivedBookings')
+        .where('booking.commission_waived = :waived', { waived: true })
+        .andWhere('booking.created_at BETWEEN :start AND :end', { start, end })
+        .groupBy('DATE(booking.created_at)')
+        .orderBy('date', 'ASC')
+        .getRawMany();
+
+    // Retention proxy: providers who had waived bookings AND later completed
+    // at least one non-waived (i.e. paid-commission) booking.
+    const waivedRows: Array<Record<string, unknown>> =
+      await this.bookingRepository
+        .createQueryBuilder('booking')
+        .select('DISTINCT booking.provider_id', 'pid')
+        .where('booking.commission_waived = :waived', { waived: true })
+        .getRawMany();
+    const waivedPids = waivedRows
+      .map((r) => r.pid)
+      .filter((pid): pid is string => Boolean(pid));
+    let retainedProviders = 0;
+    if (waivedPids.length > 0) {
+      const retained: Record<string, unknown> | undefined =
+        await this.bookingRepository
+          .createQueryBuilder('booking')
+          .select('COUNT(DISTINCT booking.provider_id)', 'count')
+          .where('booking.commission_waived = :waived', { waived: false })
+          .andWhere('booking.provider_id IN (:...pids)', { pids: waivedPids })
+          .getRawOne();
+      retainedProviders = Number(retained?.count ?? 0);
+    }
+
+    return {
+      period: { startDate: start, endDate: end },
+      totalCommissionWaived: Number(summary?.totalCommissionWaived ?? 0),
+      waivedBookings: Number(summary?.waivedBookings ?? 0),
+      graceProviders: Number(summary?.graceProviders ?? 0),
+      retainedProviders,
+      dailyTrend: dailyTrendRaw.map((row) => ({
+        date: String(row.date),
+        waivedCommission: Number(row.waivedCommission),
+        waivedBookings: Number(row.waivedBookings),
+      })),
+    };
+  }
+
+  async getGracePromoCsv(
+    startDate?: string,
+    endDate?: string,
+  ): Promise<string> {
+    const data = await this.getGracePromoAnalytics(startDate, endDate);
+    const lines: string[] = [];
+    lines.push('# Grace Period Promo Report');
+    lines.push(
+      `# Period,${data.period.startDate.toISOString()},${data.period.endDate.toISOString()}`,
+    );
+    lines.push(`# Total commission waived,${data.totalCommissionWaived}`);
+    lines.push(`# Waived bookings,${data.waivedBookings}`);
+    lines.push(`# Providers acquired (grace),${data.graceProviders}`);
+    lines.push(`# Providers retained (post-grace),${data.retainedProviders}`);
+    lines.push('date,waived_commission,waived_bookings');
+    for (const row of data.dailyTrend) {
+      lines.push(`${row.date},${row.waivedCommission},${row.waivedBookings}`);
+    }
+    return lines.join('\n');
+  }
+
   private async getTotalRevenue(): Promise<number> {
     const result: Record<string, unknown> | undefined =
       await this.transactionRepository
@@ -272,5 +374,16 @@ export class AnalyticsService {
       .getRawMany();
 
     return result;
+  }
+
+  private async getMonthGracePromoCost(startDate: Date): Promise<number> {
+    const result: Record<string, unknown> | undefined =
+      await this.bookingRepository
+        .createQueryBuilder('booking')
+        .select('COALESCE(SUM(booking.commission_amount), 0)', 'total')
+        .where('booking.commission_waived = :waived', { waived: true })
+        .andWhere('booking.created_at >= :startDate', { startDate })
+        .getRawOne();
+    return Number(result?.total || 0);
   }
 }

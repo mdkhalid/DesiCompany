@@ -250,6 +250,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Flexible(
                         child: Text(
@@ -259,6 +260,8 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                             fontWeight: FontWeight.bold,
                             color: textColor,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (isActive) ...[

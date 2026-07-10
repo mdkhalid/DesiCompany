@@ -61,7 +61,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
           'subtitle': b['status'] ?? 'requested',
           'customerName': customer?['firstName'] != null ? '${customer!['firstName']} ${customer['lastName'] ?? ''}' : 'Customer',
           'city': b['city'] ?? '',
-          'budget': b['totalAmount']?.toString() != null ? '₹${b['totalAmount']}' : '',
+          'budget': b['providerAmount'] != null ? '₹${b['providerAmount']}' : (b['totalAmount'] != null ? '₹${b['totalAmount']}' : ''),
           'date': b['createdAt'],
           'distance': null,
           'raw': b,

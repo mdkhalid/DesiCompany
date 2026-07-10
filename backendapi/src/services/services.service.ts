@@ -534,14 +534,22 @@ export class ServicesService {
       });
 
       const bookedRanges = existingBookings
-        .filter((b) => (b.scheduledDate as Date).toISOString().slice(0, 10) === date)
+        .filter((b) => {
+          const d = b.scheduledDate;
+          const y = d.getFullYear();
+          const mo = `${d.getMonth() + 1}`.padStart(2, '0');
+          const da = `${d.getDate()}`.padStart(2, '0');
+          return `${y}-${mo}-${da}` === date;
+        })
         .map((b) => {
-          const iso = (b.scheduledDate as Date).toISOString();
-          const [bh, bm] = iso.slice(11, 16).split(':').map(Number);
-          const startMinutes = bh * 60 + bm;
+          const d = b.scheduledDate;
+          const startMinutes = d.getHours() * 60 + d.getMinutes();
           const duration =
             b.estimatedHours && b.estimatedHours > 0 ? b.estimatedHours : 1;
-          return { startMin: startMinutes, endMin: startMinutes + duration * 60 };
+          return {
+            startMin: startMinutes,
+            endMin: startMinutes + duration * 60,
+          };
         });
 
       // Busy slots (provider-marked unavailable times for this date)
@@ -717,11 +725,11 @@ export class ServicesService {
 
     if (
       dto.latitude !== undefined &&
-      dto.longitude !== undefined &&
-      dto.radiusKm
+      dto.longitude !== undefined
     ) {
       const lat = dto.latitude;
       const lng = dto.longitude;
+      const km = dto.radiusKm && dto.radiusKm > 0 ? dto.radiusKm : 100;
       // Only include providers with valid location data
       query.andWhere('provider.latitude IS NOT NULL');
       query.andWhere('provider.longitude IS NOT NULL');
@@ -737,7 +745,7 @@ export class ServicesService {
       // Effective radius = smaller of customer's search radius and provider's service radius
       query.andWhere(
         `(${haversine}) / 1000 <= LEAST(:radiusKm, COALESCE(provider.serviceRadiusKm, :radiusKm))`,
-        { radiusKm: dto.radiusKm },
+        { radiusKm: km },
       );
       query.orderBy('distance', 'ASC');
     }

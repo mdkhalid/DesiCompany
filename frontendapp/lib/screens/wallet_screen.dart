@@ -19,6 +19,7 @@ class _WalletScreenState extends State<WalletScreen> {
   bool _loading = true;
   bool _payouting = false;
   bool _hasFeeWaiver = false;
+  double _commissionSaved = 0;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _WalletScreenState extends State<WalletScreen> {
       final wallet = await ApiService.get('/wallet');
       final txns = await ApiService.get('/wallet/transactions');
       _checkFeeWaiver();
+      _loadCommissionSaved();
       final list = (txns['transactions'] as List?) ?? [];
       double earned = 0;
       double spent = 0;
@@ -62,6 +64,15 @@ class _WalletScreenState extends State<WalletScreen> {
         if (mounted) setState(() => _hasFeeWaiver = true);
       }
     } catch (e, st) { AppLogger.e('wallet_screen', 'Operation failed', e, st); }
+  }
+
+  Future<void> _loadCommissionSaved() async {
+    try {
+      final result = await ApiService.get('/provider-grace/commission-saved');
+      if (result is Map && mounted) {
+        setState(() => _commissionSaved = (result['commissionSaved'] ?? 0).toDouble());
+      }
+    } catch (e, st) { AppLogger.e('wallet_screen', 'Commission saved load failed', e, st); }
   }
 
   Future<void> _requestInstantPayout() async {
@@ -195,6 +206,10 @@ class _WalletScreenState extends State<WalletScreen> {
           _buildBalanceCard(loc),
           const SizedBox(height: 20),
           _buildStatsRow(loc),
+          if (_commissionSaved > 0) ...[
+            const SizedBox(height: 16),
+            _buildCommissionSavedCard(),
+          ],
           const SizedBox(height: 28),
           Text(
             loc.tr('transactions'),
@@ -374,6 +389,66 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCommissionSavedCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF43A047), Color(0xFF2E7D32)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.savings_outlined, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Commission saved (grace period)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '₹${_commissionSaved.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
