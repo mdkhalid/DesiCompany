@@ -190,6 +190,10 @@ export class PaymentsService {
             )
           : null;
 
+        if (sub && payment.amount > 0) {
+          await this.recordPaymentTransaction(userId, payment.amount, `Subscription: ${sub.plan?.name || planId}`);
+        }
+
         return { status: 'success', subscription: sub };
       }
 
@@ -206,6 +210,31 @@ export class PaymentsService {
         `Payment verification failed for order ${razorpayOrderId}: ${(err as Error).message}`,
       );
       return { status: 'pending' };
+    }
+  }
+
+  private async recordPaymentTransaction(userId: string, amount: number, description: string) {
+    try {
+      let wallet = await this.walletRepository.findOne({
+        where: { user: { id: userId } },
+      });
+      if (!wallet) {
+        wallet = this.walletRepository.create({
+          user: { id: userId } as any,
+          balance: 0,
+        });
+        wallet = await this.walletRepository.save(wallet);
+      }
+      const tx = this.transactionRepository.create({
+        wallet,
+        type: 'subscription_charge',
+        amount: -amount,
+        description,
+        balanceAfter: Number(wallet.balance),
+      });
+      await this.transactionRepository.save(tx);
+    } catch (err) {
+      this.logger.warn(`Failed to record payment transaction: ${(err as Error).message}`);
     }
   }
 
@@ -336,6 +365,10 @@ export class PaymentsService {
         const membership = await this.platformFeesService.activateMembershipPayment(
           userId, userId, payment.id, payment.amount, planId, billingCycle,
         );
+
+        if (membership && payment.amount > 0) {
+          await this.recordPaymentTransaction(userId, payment.amount, `Membership: ${membership.plan?.name || planId}`);
+        }
 
         return { status: 'success', membership };
       }

@@ -13,6 +13,7 @@ import { User } from '../users/entities/user.entity';
 import { Booking } from '../bookings/entities/booking.entity';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { PublicFeesController } from './public-fees.controller';
+import { SubscriptionCronService } from './subscription-cron.service';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { PublicFeesController } from './public-fees.controller';
     ActivityLogsModule,
   ],
   controllers: [PublicFeesController],
-  providers: [PlatformFeesService],
+  providers: [PlatformFeesService, SubscriptionCronService],
   exports: [PlatformFeesService],
 })
 export class PlatformFeesModule {}
