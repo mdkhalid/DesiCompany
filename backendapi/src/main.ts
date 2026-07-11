@@ -9,6 +9,7 @@ import { Logger } from 'nestjs-pino';
 import * as Sentry from '@sentry/nestjs';
 import { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
+import { RedisIoAdapter } from './chat/redis-io.adapter';
 
 function validateEnv() {
   const required = ['JWT_SECRET', 'JWT_REFRESH_SECRET'];
@@ -225,6 +226,9 @@ async function bootstrap() {
       });
     }
   }
+
+  // Apply Redis WebSocket adapter for horizontal scaling (fallback to in-memory)
+  app.useWebSocketAdapter(new RedisIoAdapter(app));
 
   await app.listen(process.env.PORT ?? 3000);
   app

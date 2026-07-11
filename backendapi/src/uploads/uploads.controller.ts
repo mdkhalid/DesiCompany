@@ -26,7 +26,7 @@ export class UploadsController {
   @Post('chat-image')
   @ApiOperation({ summary: 'Upload chat image attachment' })
   @UseInterceptors(FileInterceptor('file'))
-  uploadChatImage(
+  async uploadChatImage(
     @UploadedFile() file: Express.Multer.File,
     @Req() _req: AuthRequest,
   ) {
@@ -34,10 +34,12 @@ export class UploadsController {
       throw new BadRequestException('File is required');
     }
 
-    const url = this.uploadsService.getFileUrl(file.filename);
+    // Route through StorageService so files go to S3/CDN when configured
+    const result = await this.uploadsService.uploadFile(file, 'chat');
+    
     return {
-      url,
-      filename: file.filename,
+      url: result.url,
+      filename: result.key,
       originalName: file.originalname,
       size: file.size,
       mimetype: file.mimetype,

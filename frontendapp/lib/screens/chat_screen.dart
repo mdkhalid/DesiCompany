@@ -50,6 +50,11 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _translating = false;
   String? _partnerName;
   bool _showEmojiPicker = false;
+  
+  // Pagination state
+  int _currentPage = 1;
+  bool _hasMoreMessages = true;
+  bool _isLoadingMore = false;
 
   // Booking info for header card
   Map<String, dynamic>? _bookingInfo;
@@ -71,6 +76,70 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _initAsync();
     _startRetryTimer();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels <= 0 && _hasMoreMessages && !_isLoadingMore) {
+      _loadMoreMessages();
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore || !_hasMoreMessages) return;
+    
+    setState(() => _isLoadingMore = true);
+    
+    try {
+      final type = _isDirect ? 'direct' : 'booking';
+      final targetId = _isDirect ? _directRoomId : widget.bookingId;
+      if (targetId == null) return;
+
+      final nextPage = _currentPage + 1;
+      final data = await ApiService.get('/chat/messages/$type/$targetId?page=$nextPage&limit=100');
+      final messagesList = data is Map ? data['messages'] : data;
+      
+      if (messagesList is List && messagesList.isNotEmpty) {
+        final olderMessages = messagesList.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
+        
+        // Filter out messages we already have
+        final existingIds = _messages.map((m) => m.id).toSet();
+        final newMessages = olderMessages.where((m) => !existingIds.contains(m.id)).toList();
+        
+        if (newMessages.isNotEmpty) {
+          // Prepend older messages
+          _messages.insertAll(0, newMessages);
+          _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          
+          if (mounted) {
+            setState(() {
+              _currentPage = nextPage;
+              _isLoadingMore = false;
+            });
+          }
+        } else {
+          // No new messages, we've reached the end
+          if (mounted) {
+            setState(() {
+              _hasMoreMessages = false;
+              _isLoadingMore = false;
+            });
+          }
+        }
+      } else {
+        // Empty response, no more messages
+        if (mounted) {
+          setState(() {
+            _hasMoreMessages = false;
+            _isLoadingMore = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingMore = false);
+      }
+    }
   }
 
   Future<void> _initAsync() async {
@@ -308,6 +377,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _scrollController.dispose();
     _socket.disconnect();
@@ -353,6 +423,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _socket.onDisconnect((_) {
       if (mounted) setState(() => _partnerOnline = false);
+    });
+
+    _socket.on('error', (data) {
+      if (mounted) {
+        final message = data is Map ? data['message']?.toString() : 'Connection error';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message ?? 'Chat error occurred'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     });
 
     _socket.on('direct_chat_started', (data) {

@@ -104,6 +104,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
       state = state.copyWith(error: 'Socket error');
     });
 
+    // Listen for custom error events from backend
+    _socket!.on('error', (data) {
+      if (data is Map<String, dynamic> && data.containsKey('message')) {
+        state = state.copyWith(error: data['message'] as String);
+      } else {
+        state = state.copyWith(error: 'An error occurred');
+      }
+    });
+
     // Listen for new messages
     _socket!.on('new_message', (data) {
       if (data is Map<String, dynamic>) {
