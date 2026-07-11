@@ -13,6 +13,7 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import Redis from 'ioredis';
 import { Message, MessageType } from './entities/message.entity';
 import {
   DirectMessage,
@@ -102,6 +103,9 @@ export class ChatGateway
   >();
   private static readonly PARTNER_CACHE_TTL = 60_000; // 60 seconds
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+  private redisPub: Redis | null = null;
+  private redisSub: Redis | null = null;
+  private static readonly PRESENCE_CHANNEL = 'presence:events';
 
   private isRateLimited(userId: string): boolean {
     const now = Date.now();
@@ -209,7 +213,60 @@ export class ChatGateway
     private readonly pushNotificationsService: PushNotificationsService,
     private readonly presenceService: PresenceService,
     private readonly notificationsService: NotificationsService,
-  ) {}
+  ) {
+    this.initRedisPresence();
+  }
+
+  private initRedisPresence(): void {
+    try {
+      this.redisSub = new Redis({
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+        retryStrategy: () => null,
+      });
+      this.redisPub = this.redisSub.duplicate();
+
+      this.redisSub.subscribe(ChatGateway.PRESENCE_CHANNEL, (err) => {
+        if (err) {
+          this.logger.warn('Presence pub/sub unavailable — instance-local only');
+          this.cleanupRedis();
+          return;
+        }
+        this.logger.log('Redis presence pub/sub active');
+      });
+
+      this.redisSub.on('message', (channel, message) => {
+        if (channel === ChatGateway.PRESENCE_CHANNEL) {
+          try {
+            const event = JSON.parse(message);
+            this.server.emit(event.type, event.payload);
+          } catch { /* ignore malformed messages */ }
+        }
+      });
+
+      this.redisSub.on('error', () => this.cleanupRedis());
+    } catch {
+      this.cleanupRedis();
+    }
+  }
+
+  private publishPresence(type: string, payload: Record<string, unknown>): void {
+    if (this.redisPub) {
+      this.redisPub.publish(
+        ChatGateway.PRESENCE_CHANNEL,
+        JSON.stringify({ type, payload }),
+      ).catch(() => {});
+    }
+  }
+
+  private cleanupRedis(): void {
+    this.redisPub?.disconnect();
+    this.redisSub?.disconnect();
+    this.redisPub = null;
+    this.redisSub = null;
+  }
 
   /**
    * Socket.IO middleware — verifies JWT before any events are processed.
@@ -381,9 +438,11 @@ export class ChatGateway
         })
         .catch(() => {});
 
-      // Global broadcast — used by provider list, customer home, etc.
+      // Global broadcast — local + cross-instance via Redis
       if (wasOffline) {
-        this.server.emit('presence_update', { userId, online: true });
+        const payload = { userId, online: true };
+        this.server.emit('presence_update', payload);
+        this.publishPresence('presence_update', payload);
       }
     } else {
       this.logger.warn(
@@ -407,8 +466,10 @@ export class ChatGateway
           })
           .catch(() => {});
 
-        // Global broadcast
-        this.server.emit('presence_update', { userId, online: false });
+        // Global broadcast — local + cross-instance via Redis
+        const payload = { userId, online: false };
+        this.server.emit('presence_update', payload);
+        this.publishPresence('presence_update', payload);
       }
     }
   }
@@ -418,6 +479,7 @@ export class ChatGateway
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
+    this.cleanupRedis();
   }
 
   // ==================== BOOKING-BASED CHAT ====================

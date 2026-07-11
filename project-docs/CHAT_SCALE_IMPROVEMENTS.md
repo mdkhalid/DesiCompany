@@ -17,13 +17,13 @@
 | 4 | **Socket Error Surfacing** — backend errors shown as SnackBars in client | ✅ Done | `frontendapp/lib/providers/chat_provider.dart`, `frontendapp/lib/screens/chat_screen.dart` |
 | 5 | **History Pagination** — scroll-to-top loads older messages via REST | ✅ Done | `frontendapp/lib/screens/chat_screen.dart` |
 
-## 🔄 P2 — Polish (Pending)
+## ✅ P2 — Polish (Complete)
 
-| # | Improvement | Status | Notes |
-|---|-------------|--------|-------|
-| 6 | **Reconnection with exponential backoff** — visible "Reconnecting..." banner | 🔄 Pending | Client-side socket reconnection strategy |
-| 7 | **Pending message dedup hardening** — racy offline-send dedup fix | 🔄 Pending | `chat_screen.dart` pending Hive retry logic |
-| 8 | **Presence Redis pub/sub** — multi-instance presence consistency | 🔄 Pending | `AppPresenceService` needs Redis adapter |
+| # | Improvement | Status | Files Changed |
+|---|-------------|--------|---------------|
+| 6 | **Reconnection with exponential backoff** — visible "Reconnecting..." banner | ✅ Done | `frontendapp/lib/screens/chat_screen.dart`, `frontendapp/lib/screens/conversation_list_screen.dart` |
+| 7 | **Pending message dedup hardening** — racy offline-send dedup fix | ✅ Done | `frontendapp/lib/screens/chat_screen.dart` |
+| 8 | **Presence Redis pub/sub** — multi-instance presence consistency | ✅ Done | `backendapi/src/chat/chat.gateway.ts` |
 
 ---
 

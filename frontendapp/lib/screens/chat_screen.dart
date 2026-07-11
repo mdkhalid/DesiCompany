@@ -50,11 +50,16 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _translating = false;
   String? _partnerName;
   bool _showEmojiPicker = false;
-  
+
   // Pagination state
   int _currentPage = 1;
   bool _hasMoreMessages = true;
   bool _isLoadingMore = false;
+
+  // Reconnection state
+  bool _reconnecting = false;
+  bool _connectionFailed = false;
+  int _reconnectAttempt = 0;
 
   // Booking info for header card
   Map<String, dynamic>? _bookingInfo;
@@ -182,6 +187,8 @@ class _ChatScreenState extends State<ChatScreen> {
           'content': msg.content,
         });
       }
+      // Remove from pending immediately after emit to prevent duplicate retries
+      await _removePendingMessage(msg.id);
     }
   }
 
@@ -398,15 +405,55 @@ class _ChatScreenState extends State<ChatScreen> {
       'transports': ['websocket'],
       'autoConnect': true,
       'auth': {'token': token},
+      'reconnection': true,
+      'reconnectionAttempts': 10,
+      'reconnectionDelay': 1000,
+      'reconnectionDelayMax': 30000,
+      'randomizationFactor': 0.5,
     });
 
     _socket.onConnect((_) {
+      if (mounted) {
+        setState(() {
+          _reconnecting = false;
+          _connectionFailed = false;
+          _reconnectAttempt = 0;
+        });
+      }
       if (_isDirect) {
         _socket.emit('start_direct_chat', {'providerId': widget.providerId});
       } else if (widget.bookingId != null) {
         _socket.emit('join', {'bookingId': widget.bookingId});
       }
       _fetchHistoricalMessages();
+    });
+
+    _socket.onReconnectAttempt((attempt) {
+      if (mounted) {
+        setState(() {
+          _reconnecting = true;
+          _connectionFailed = false;
+          _reconnectAttempt = attempt;
+        });
+      }
+    });
+
+    _socket.onReconnect((_) {
+      if (mounted) {
+        setState(() {
+          _reconnecting = false;
+          _connectionFailed = false;
+        });
+      }
+    });
+
+    _socket.onReconnectFailed((_) {
+      if (mounted) {
+        setState(() {
+          _reconnecting = false;
+          _connectionFailed = true;
+        });
+      }
     });
 
     _socket.onConnectError((err) async {
@@ -599,12 +646,24 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _replaceOrAdd(ChatMessage msg) {
+    // Find and remove matching pending message first
+    if (_pendingBox != null && _pendingBox!.isNotEmpty) {
+      final pendingKeys = _pendingBox!.keys.toList();
+      for (final key in pendingKeys) {
+        final pending = _pendingBox!.get(key);
+        if (pending != null &&
+            pending.senderId == msg.senderId &&
+            pending.content == msg.content) {
+          _pendingBox!.delete(key);
+        }
+      }
+    }
+
     final tempIndex = _messages.indexWhere(
       (m) => m.id.startsWith('temp_') && m.senderId == msg.senderId && m.content == msg.content,
     );
     if (tempIndex != -1) {
       setState(() => _messages[tempIndex] = msg);
-      _removePendingMessage(_messages[tempIndex].id);
       _scrollToBottom();
     } else {
       _addMessage(msg);
@@ -1026,6 +1085,41 @@ class _ChatScreenState extends State<ChatScreen> {
               loc.tr('ask_about'),
               style: TextStyle(color: Colors.blue.shade700, fontSize: 13),
               textAlign: TextAlign.center,
+            ),
+          ),
+        // Reconnection banner
+        if (_reconnecting)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.orange.shade100,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 8),
+                Text(
+                  'Reconnecting... (attempt $_reconnectAttempt)',
+                  style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        if (_connectionFailed)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.red.shade100,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.cloud_off, size: 16, color: Colors.red.shade700),
+                const SizedBox(width: 8),
+                Text(
+                  'Connection lost. Pull down to retry.',
+                  style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                ),
+              ],
             ),
           ),
         Expanded(

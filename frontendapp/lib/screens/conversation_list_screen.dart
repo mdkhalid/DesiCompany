@@ -116,6 +116,8 @@ class _ConversationListScreenState extends State<ConversationListScreen>
   String _searchQuery = '';
   io.Socket? _socket;
   final _searchController = TextEditingController();
+  bool _reconnecting = false;
+  bool _connectionFailed = false;
 
   @override
   void initState() {
@@ -155,12 +157,20 @@ class _ConversationListScreenState extends State<ConversationListScreen>
           .setAuth({'token': token})
           .enableAutoConnect()
           .enableReconnection()
-          .setReconnectionDelay(3000)
+          .setReconnectionDelay(1000)
+          .setReconnectionDelayMax(30000)
           .setReconnectionAttempts(100)
           .build(),
     );
 
-    _socket!.onConnect((_) {});
+    _socket!.onConnect((_) {
+      if (mounted) {
+        setState(() {
+          _reconnecting = false;
+          _connectionFailed = false;
+        });
+      }
+    });
 
     _socket!.on('online_status', (data) {
       final raw = data is Map ? data['onlineUserIds'] : null;
@@ -245,6 +255,33 @@ class _ConversationListScreenState extends State<ConversationListScreen>
           _socket?.dispose();
           _connectSocket();
         }
+      }
+    });
+
+    _socket!.onReconnectAttempt((attempt) {
+      if (mounted) {
+        setState(() {
+          _reconnecting = true;
+          _connectionFailed = false;
+        });
+      }
+    });
+
+    _socket!.onReconnect((_) {
+      if (mounted) {
+        setState(() {
+          _reconnecting = false;
+          _connectionFailed = false;
+        });
+      }
+    });
+
+    _socket!.onReconnectFailed((_) {
+      if (mounted) {
+        setState(() {
+          _reconnecting = false;
+          _connectionFailed = true;
+        });
       }
     });
 
@@ -549,6 +586,44 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                 )
               : Column(
                   children: [
+                    // Reconnection banner
+                    if (_reconnecting)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        color: Colors.orange.shade100,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Reconnecting...',
+                              style: TextStyle(color: Colors.orange.shade800, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_connectionFailed)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        color: Colors.red.shade100,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.cloud_off, size: 16, color: Colors.red.shade700),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: _connectSocket,
+                              child: Text(
+                                'Connection lost. Tap to retry.',
+                                style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                       child: TextField(
