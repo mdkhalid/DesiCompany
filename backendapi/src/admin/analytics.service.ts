@@ -211,7 +211,7 @@ export class AnalyticsService {
       await this.bookingRepository
         .createQueryBuilder('booking')
         .select(
-          'COALESCE(SUM(booking.commission_amount), 0)',
+          'COALESCE(SUM(booking.commissionAmount), 0)',
           'totalCommissionWaived',
         )
         .addSelect('COUNT(booking.id)', 'waivedBookings')
@@ -225,7 +225,7 @@ export class AnalyticsService {
         .createQueryBuilder('booking')
         .select('DATE(booking.created_at)', 'date')
         .addSelect(
-          'COALESCE(SUM(booking.commission_amount), 0)',
+          'COALESCE(SUM(booking.commissionAmount), 0)',
           'waivedCommission',
         )
         .addSelect('COUNT(booking.id)', 'waivedBookings')
@@ -380,7 +380,7 @@ export class AnalyticsService {
     const result: Record<string, unknown> | undefined =
       await this.bookingRepository
         .createQueryBuilder('booking')
-        .select('COALESCE(SUM(booking.commission_amount), 0)', 'total')
+        .select('COALESCE(SUM(booking.commissionAmount), 0)', 'total')
         .where('booking.commission_waived = :waived', { waived: true })
         .andWhere('booking.created_at >= :startDate', { startDate })
         .getRawOne();

@@ -86,7 +86,7 @@ export class ProviderGraceService {
     const result: Record<string, unknown> | undefined =
       await this.bookingRepository
         .createQueryBuilder('booking')
-        .select('COALESCE(SUM(booking.commission_amount), 0)', 'total')
+        .select('COALESCE(SUM(booking.commissionAmount), 0)', 'total')
         .where('booking.provider_id = :providerId', { providerId: provider.id })
         .andWhere('booking.commission_waived = :waived', { waived: true })
         .getRawOne();

@@ -149,7 +149,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initAsync() async {
     await _loadUserId();
-    _initHive();
+    await _initHive();
     _connectSocket();
     if (!_isDirect && widget.bookingId != null) {
       await _fetchBookingInfo();
@@ -250,10 +250,10 @@ class _ChatScreenState extends State<ChatScreen> {
         if (mounted) setState(() {});
         _scrollToBottom();
       } else {
-
+        // No messages in response — empty chat is valid
       }
-    } catch (e) {
-
+    } catch (e, st) {
+      AppLogger.e('chat_screen', 'Failed to fetch historical messages', e, st);
     }
   }
 
