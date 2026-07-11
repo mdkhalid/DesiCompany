@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../services/app_presence_service.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
+import 'app_shell.dart';
 import 'profile_screen.dart';
 import 'wallet_screen.dart';
 import 'support_tickets_screen.dart';
@@ -159,8 +160,8 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
           Tooltip(
             message: loc.tr('header_back'),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => shellBack(context),
             ),
           ),
           const SizedBox(width: 8),
@@ -330,7 +331,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                     color: AppTheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.currency_rupee, color: AppTheme.primary, size: 24),
+                  child: const Icon(Icons.currency_rupee, color: AppTheme.primary, size: 24),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -474,7 +475,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
         
         // Support Section
         const SizedBox(height: 24),
-        Text(
+        const Text(
           'Support',
           style: const TextStyle(
             fontSize: 16,

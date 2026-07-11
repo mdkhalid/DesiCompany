@@ -66,7 +66,7 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _tabs = widget.role == 'provider'
-        ? [
+        ? const [
             ShellTab(
               icon: Icons.assignment_outlined,
               labelKey: 'nav_requests',
@@ -88,7 +88,7 @@ class _AppShellState extends State<AppShell> {
               initialRoute: '/my-account',
             ),
           ]
-        : [
+        : const [
             ShellTab(
               icon: Icons.home_rounded,
               labelKey: 'nav_home',
@@ -112,7 +112,13 @@ class _AppShellState extends State<AppShell> {
           ];
   }
 
-  void _onTabTapped(int index) {
+  void _onTabTapped(int index) => goToTab(index);
+
+  /// Switches to [index] tab. If already on it, resets that tab's stack.
+  /// Exposed via [AppShellScope] so tab-root screens can navigate "back"
+  /// to the home tab instead of popping a non-existent route.
+  void goToTab(int index) {
+    if (index < 0 || index >= _tabs.length) return;
     if (index == _currentIndex) {
       _navigatorKey.currentState?.popUntil((route) => route.isFirst);
       return;
@@ -127,10 +133,13 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final loc = LocalizationProvider.of(context);
     return Scaffold(
-      body: Navigator(
-        key: _navigatorKey,
-        initialRoute: _tabs[_currentIndex].initialRoute,
-        onGenerateRoute: appRouteGenerator,
+      body: AppShellScope(
+        onGoToTab: goToTab,
+        child: Navigator(
+          key: _navigatorKey,
+          initialRoute: _tabs[_currentIndex].initialRoute,
+          onGenerateRoute: appRouteGenerator,
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -148,6 +157,36 @@ class _AppShellState extends State<AppShell> {
             .toList(),
       ),
     );
+  }
+}
+
+/// Lets descendant screens control the shell's bottom-navigation tabs.
+/// Used by tab-root screens whose back button has nothing to pop, so they
+/// can fall back to the home tab instead of doing nothing.
+class AppShellScope extends InheritedWidget {
+  const AppShellScope({
+    super.key,
+    required this.onGoToTab,
+    required super.child,
+  });
+
+  final void Function(int index) onGoToTab;
+
+  static AppShellScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<AppShellScope>();
+
+  @override
+  bool updateShouldNotify(AppShellScope oldWidget) => false;
+}
+
+/// Pops the current route if possible, otherwise returns to the home tab.
+/// Use for back buttons on screens that may be a tab root.
+void shellBack(BuildContext context) {
+  final nav = Navigator.of(context);
+  if (nav.canPop()) {
+    nav.pop();
+  } else {
+    AppShellScope.maybeOf(context)?.onGoToTab(0);
   }
 }
 

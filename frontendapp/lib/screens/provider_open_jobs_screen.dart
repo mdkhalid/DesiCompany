@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../theme.dart';
 import '../widgets/distance_badge.dart';
+import 'app_shell.dart';
 import 'provider_submit_quote_screen.dart';
 import 'provider_job_detail_screen.dart';
 
@@ -146,7 +147,7 @@ class _ProviderOpenJobsScreenState extends State<ProviderOpenJobsScreen> {
       child: Row(children: [
         IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => shellBack(context),
         ),
         const SizedBox(width: 4),
         Text(

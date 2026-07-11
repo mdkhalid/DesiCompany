@@ -5,6 +5,7 @@ import '../main.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme.dart';
+import 'app_shell.dart';
 import 'provider_submit_quote_screen.dart';
 
 import 'package:desicompany/services/app_logger.dart';
@@ -179,7 +180,7 @@ class _ProviderJobDetailScreenState extends State<ProviderJobDetailScreen> {
       child: Row(children: [
         IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => shellBack(context),
         ),
         const SizedBox(width: 4),
         Text(
