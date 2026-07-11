@@ -59,10 +59,7 @@ export class PaymentsService {
     private readonly platformFeesService: PlatformFeesService,
   ) {}
 
-  async createOrderForSubscription(
-    planId: string,
-    userId: string,
-  ) {
+  async createOrderForSubscription(planId: string, userId: string) {
     const provider = await this.providerRepository.findOne({
       where: { user: { id: userId } },
     });
@@ -83,7 +80,8 @@ export class PaymentsService {
     const featureConfig = await this.feeConfigRepository.findOne({
       where: { configKey: 'feature_provider_subscriptions' },
     });
-    const isEnabled = featureConfig?.isActive !== false &&
+    const isEnabled =
+      featureConfig?.isActive !== false &&
       featureConfig?.configValue?.enabled !== false;
     if (!isEnabled) {
       throw new BadRequestException('Subscriptions are currently disabled');
@@ -151,7 +149,7 @@ export class PaymentsService {
     userId: string,
     razorpayPaymentId: string,
     razorpayOrderId: string,
-    razorpaySignature: string,
+    _razorpaySignature: string,
   ): Promise<{ status: string; subscription?: any }> {
     const payment = await this.paymentRepository.findOne({
       where: { gatewayOrderId: razorpayOrderId },
@@ -167,7 +165,9 @@ export class PaymentsService {
     }
 
     try {
-      const gateway = await this.paymentGatewayFactory.getByType(payment.gateway);
+      const gateway = await this.paymentGatewayFactory.getByType(
+        payment.gateway,
+      );
       const gatewayStatus = await gateway.getStatus(razorpayOrderId);
 
       if (gatewayStatus.status === 'success') {
@@ -191,7 +191,11 @@ export class PaymentsService {
           : null;
 
         if (sub && payment.amount > 0) {
-          await this.recordPaymentTransaction(userId, payment.amount, `Subscription: ${sub.plan?.name || planId}`);
+          await this.recordPaymentTransaction(
+            userId,
+            payment.amount,
+            `Subscription: ${sub.plan?.name || planId}`,
+          );
         }
 
         return { status: 'success', subscription: sub };
@@ -213,14 +217,18 @@ export class PaymentsService {
     }
   }
 
-  private async recordPaymentTransaction(userId: string, amount: number, description: string) {
+  private async recordPaymentTransaction(
+    userId: string,
+    amount: number,
+    description: string,
+  ) {
     try {
       let wallet = await this.walletRepository.findOne({
         where: { user: { id: userId } },
       });
       if (!wallet) {
         wallet = this.walletRepository.create({
-          user: { id: userId } as any,
+          user: { id: userId },
           balance: 0,
         });
         wallet = await this.walletRepository.save(wallet);
@@ -234,17 +242,20 @@ export class PaymentsService {
       });
       await this.transactionRepository.save(tx);
     } catch (err) {
-      this.logger.warn(`Failed to record payment transaction: ${(err as Error).message}`);
+      this.logger.warn(
+        `Failed to record payment transaction: ${(err as Error).message}`,
+      );
     }
   }
 
   private extractMethodFromResponse(response: string): string | undefined {
     try {
-      const parsed = JSON.parse(response);
-      if (parsed?.method) return parsed.method;
-      if (parsed?.payment_method) return parsed.payment_method;
-    } catch {}
-    return undefined;
+      const parsed = JSON.parse(response) as Record<string, unknown>;
+      const method = parsed?.['method'] ?? parsed?.['payment_method'];
+      return typeof method === 'string' ? method : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   async createOrderForMembership(
@@ -267,19 +278,26 @@ export class PaymentsService {
     const featureConfig = await this.feeConfigRepository.findOne({
       where: { configKey: 'feature_customer_memberships' },
     });
-    const isEnabled = featureConfig?.isActive !== false &&
+    const isEnabled =
+      featureConfig?.isActive !== false &&
       featureConfig?.configValue?.enabled !== false;
     if (!isEnabled) {
       throw new BadRequestException('Memberships are currently disabled');
     }
 
     const isChargeable = featureConfig?.configValue?.chargeable !== false;
-    const price = billingCycle === 'yearly' ? Number(plan.yearlyPrice) : Number(plan.monthlyPrice);
+    const price =
+      billingCycle === 'yearly'
+        ? Number(plan.yearlyPrice)
+        : Number(plan.monthlyPrice);
 
     if (!isChargeable || price <= 0) {
-      const membership = await this.platformFeesService.assignCustomerMembership(
-        userId, planId, billingCycle,
-      );
+      const membership =
+        await this.platformFeesService.assignCustomerMembership(
+          userId,
+          planId,
+          billingCycle,
+        );
       return { status: 'free', membership };
     }
 
@@ -353,7 +371,9 @@ export class PaymentsService {
     }
 
     try {
-      const gateway = await this.paymentGatewayFactory.getByType(payment.gateway);
+      const gateway = await this.paymentGatewayFactory.getByType(
+        payment.gateway,
+      );
       const gatewayStatus = await gateway.getStatus(razorpayOrderId);
 
       if (gatewayStatus.status === 'success') {
@@ -362,12 +382,22 @@ export class PaymentsService {
         payment.gatewayResponse = JSON.stringify(gatewayStatus);
         await this.paymentRepository.save(payment);
 
-        const membership = await this.platformFeesService.activateMembershipPayment(
-          userId, userId, payment.id, payment.amount, planId, billingCycle,
-        );
+        const membership =
+          await this.platformFeesService.activateMembershipPayment(
+            userId,
+            userId,
+            payment.id,
+            payment.amount,
+            planId,
+            billingCycle,
+          );
 
         if (membership && payment.amount > 0) {
-          await this.recordPaymentTransaction(userId, payment.amount, `Membership: ${membership.plan?.name || planId}`);
+          await this.recordPaymentTransaction(
+            userId,
+            payment.amount,
+            `Membership: ${membership.plan?.name || planId}`,
+          );
         }
 
         return { status: 'success', membership };
@@ -403,12 +433,18 @@ export class PaymentsService {
 
     for (const payment of stuckPayments) {
       try {
-        const gateway = await this.paymentGatewayFactory.getByType(payment.gateway);
+        const gateway = await this.paymentGatewayFactory.getByType(
+          payment.gateway,
+        );
         const gatewayStatus = await gateway.getStatus(payment.gatewayOrderId);
 
-        if (gatewayStatus.status === 'success' && payment.status === PaymentStatus.PENDING) {
+        if (
+          gatewayStatus.status === 'success' &&
+          payment.status === PaymentStatus.PENDING
+        ) {
           payment.status = PaymentStatus.SUCCESS;
-          payment.transactionId = gatewayStatus.gatewayPaymentId || payment.transactionId;
+          payment.transactionId =
+            gatewayStatus.gatewayPaymentId || payment.transactionId;
           payment.gatewayResponse = JSON.stringify(gatewayStatus);
           await this.paymentRepository.save(payment);
 
@@ -417,7 +453,7 @@ export class PaymentsService {
               where: { id: payment.purposeId },
               relations: { user: true },
             });
-            const planId = (payment.metadata as Record<string, unknown>)?.planId as string | undefined;
+            const planId = payment.metadata?.planId as string | undefined;
             if (providerRec && planId) {
               await this.platformFeesService.activateSubscriptionPayment(
                 providerRec.id,
@@ -428,13 +464,20 @@ export class PaymentsService {
               );
             }
           } else if (payment.purposeType === 'membership') {
-            const meta = payment.metadata as Record<string, unknown> | undefined;
+            const meta = payment.metadata as
+              | Record<string, unknown>
+              | undefined;
             const planId = meta?.planId as string | undefined;
-            const billingCycle = (meta?.billingCycle as 'monthly' | 'yearly') || 'monthly';
+            const billingCycle =
+              (meta?.billingCycle as 'monthly' | 'yearly') || 'monthly';
             if (planId) {
               await this.platformFeesService.activateMembershipPayment(
-                payment.purposeId, payment.purposeId, payment.id,
-                payment.amount, planId, billingCycle,
+                payment.purposeId,
+                payment.purposeId,
+                payment.id,
+                payment.amount,
+                planId,
+                billingCycle,
               );
             }
           }

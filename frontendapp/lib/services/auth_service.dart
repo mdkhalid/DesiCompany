@@ -1,14 +1,37 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user.dart';
 import 'api_service.dart';
 
 import 'package:desicompany/services/app_logger.dart';
+
 class AuthService {
   // Keys
   static const _keyToken = 'auth_token';
   static const _keyRefreshToken = 'auth_refresh_token';
   static const _keyUserData = 'auth_user_data';
+
+  // Tokens are stored in the OS secure store (Keychain / Keystore), not in
+  // plaintext SharedPreferences, so they cannot be extracted from a rooted
+  // device or a backup.
+  static final FlutterSecureStorage _secureStorage =
+      const FlutterSecureStorage();
+
+  /// Persists the auth session: tokens go to the OS secure store, the
+  /// (non-secret) user profile is cached in SharedPreferences.
+  static Future<void> _persistSession({
+    required String token,
+    String? refreshToken,
+    required Map<String, dynamic> userData,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await _secureStorage.write(key: _keyToken, value: token);
+    if (refreshToken != null) {
+      await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
+    }
+    await prefs.setString(_keyUserData, jsonEncode(userData));
+  }
 
   static Future<void> sendOtp(String phone) async {
     await ApiService.post('/auth/otp/request', body: {'phone': phone});
@@ -31,10 +54,11 @@ class AuthService {
     final token = data['tokens']['accessToken'] as String;
     final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyToken, token);
-    if (refreshToken != null) await prefs.setString(_keyRefreshToken, refreshToken);
-    await prefs.setString(_keyUserData, jsonEncode(userData));
+    await _persistSession(
+      token: token,
+      refreshToken: refreshToken,
+      userData: userData,
+    );
     return User.fromJson(userData, token: token);
   }
 
@@ -45,10 +69,11 @@ class AuthService {
     final token = data['tokens']['accessToken'] as String;
     final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyUserData, jsonEncode(userData));
-    await prefs.setString(_keyToken, token);
-    if (refreshToken != null) await prefs.setString(_keyRefreshToken, refreshToken);
+    await _persistSession(
+      token: token,
+      refreshToken: refreshToken,
+      userData: userData,
+    );
     return User.fromJson(userData, token: token);
   }
 
@@ -65,10 +90,11 @@ class AuthService {
     final token = data['tokens']['accessToken'] as String;
     final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyToken, token);
-    if (refreshToken != null) await prefs.setString(_keyRefreshToken, refreshToken);
-    await prefs.setString(_keyUserData, jsonEncode(userData));
+    await _persistSession(
+      token: token,
+      refreshToken: refreshToken,
+      userData: userData,
+    );
     return User.fromJson(userData, token: token);
   }
 
@@ -81,28 +107,34 @@ class AuthService {
     final token = data['tokens']['accessToken'] as String;
     final refreshToken = data['tokens']['refreshToken'] as String?;
     final userData = data['user'] as Map<String, dynamic>;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyToken, token);
-    if (refreshToken != null) await prefs.setString(_keyRefreshToken, refreshToken);
-    await prefs.setString(_keyUserData, jsonEncode(userData));
+    await _persistSession(
+      token: token,
+      refreshToken: refreshToken,
+      userData: userData,
+    );
     return User.fromJson(userData, token: token);
   }
 
-  static Future<VerifyOtpResponse> verifyOtpAndSelectRole(String phone, String otp) async {
-    final data = await ApiService.post('/auth/verify-otp', body: {'phone': phone, 'otp': otp});
+  static Future<VerifyOtpResponse> verifyOtpAndSelectRole(
+    String phone,
+    String otp,
+  ) async {
+    final data = await ApiService.post(
+      '/auth/verify-otp',
+      body: {'phone': phone, 'otp': otp},
+    );
     return VerifyOtpResponse.fromJson(data);
   }
 
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyToken);
-    await prefs.remove(_keyRefreshToken);
+    await _secureStorage.delete(key: _keyToken);
+    await _secureStorage.delete(key: _keyRefreshToken);
     await prefs.remove(_keyUserData);
   }
 
   static Future<String?> refreshAccessToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final refreshToken = prefs.getString(_keyRefreshToken);
+    final refreshToken = await _secureStorage.read(key: _keyRefreshToken);
     if (refreshToken == null || refreshToken.isEmpty) return null;
     try {
       final data = await ApiService.post('/auth/refresh', body: {
@@ -112,10 +144,10 @@ class AuthService {
       final newAccess = tokens?['accessToken'] as String?;
       final newRefresh = tokens?['refreshToken'] as String?;
       if (newAccess != null) {
-        await prefs.setString(_keyToken, newAccess);
+        await _secureStorage.write(key: _keyToken, value: newAccess);
       }
       if (newRefresh != null) {
-        await prefs.setString(_keyRefreshToken, newRefresh);
+        await _secureStorage.write(key: _keyRefreshToken, value: newRefresh);
       }
       return newAccess;
     } catch (e, st) {
@@ -125,14 +157,12 @@ class AuthService {
   }
 
   static Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_keyToken);
+    final token = await _secureStorage.read(key: _keyToken);
     return token != null && token.isNotEmpty;
   }
 
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyToken);
+    return _secureStorage.read(key: _keyToken);
   }
 
   static Future<String?> getUserData() async {

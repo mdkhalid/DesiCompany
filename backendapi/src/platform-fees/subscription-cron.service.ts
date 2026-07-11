@@ -70,7 +70,8 @@ export class SubscriptionCronService {
 
     for (const sub of dueSubs) {
       try {
-        const planDays = (sub.plan.durationMonths * 30) + (sub.plan.extraDays || 0);
+        const planDays =
+          sub.plan.durationMonths * 30 + (sub.plan.extraDays || 0);
         const newEndDate = new Date(sub.endDate);
         newEndDate.setDate(newEndDate.getDate() + planDays);
 
@@ -78,7 +79,9 @@ export class SubscriptionCronService {
         sub.endDate = newEndDate;
         sub.amountPaid = 0;
         await this.subscriptionRepository.save(sub);
-        this.logger.log(`Renewed subscription ${sub.id} until ${newEndDate.toISOString()}`);
+        this.logger.log(
+          `Renewed subscription ${sub.id} until ${newEndDate.toISOString()}`,
+        );
       } catch (err) {
         this.logger.warn(
           `Failed to renew subscription ${sub.id}: ${(err as Error).message}`,
@@ -116,7 +119,9 @@ export class SubscriptionCronService {
         mem.endDate = newEndDate;
         mem.amountPaid = 0;
         await this.membershipRepository.save(mem);
-        this.logger.log(`Renewed membership ${mem.id} until ${newEndDate.toISOString()}`);
+        this.logger.log(
+          `Renewed membership ${mem.id} until ${newEndDate.toISOString()}`,
+        );
       } catch (err) {
         this.logger.warn(
           `Failed to renew membership ${mem.id}: ${(err as Error).message}`,

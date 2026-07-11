@@ -41,14 +41,22 @@ export class LoyaltyService {
   async awardPointsForBooking(
     userId: string,
     bookingAmount: number,
+    bookingId: string,
   ): Promise<{ pointsEarned: number; tier: LoyaltyTier }> {
     const loyalty = await this.getOrCreateLoyalty(userId);
+
+    // Idempotency: a retry for the same booking must not double-award points.
+    if (loyalty.lastAwardedBookingId === bookingId) {
+      return { pointsEarned: 0, tier: loyalty.tier };
+    }
+
     const pointsEarned = Math.floor(bookingAmount * 0.1);
 
     loyalty.points = Number(loyalty.points) + pointsEarned;
     loyalty.totalEarned = Number(loyalty.totalEarned) + pointsEarned;
     loyalty.bookingsCount = loyalty.bookingsCount + 1;
     loyalty.tier = this.calculateTier(loyalty.totalEarned);
+    loyalty.lastAwardedBookingId = bookingId;
 
     await this.loyaltyRepository.save(loyalty);
     return { pointsEarned, tier: loyalty.tier };

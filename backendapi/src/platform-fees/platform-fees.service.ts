@@ -237,7 +237,7 @@ export class PlatformFeesService {
     );
 
     const now = new Date();
-    const totalDays = (plan.durationMonths * 30) + (plan.extraDays || 0);
+    const totalDays = plan.durationMonths * 30 + (plan.extraDays || 0);
     const endDate = new Date(now);
     endDate.setDate(endDate.getDate() + totalDays);
 
@@ -296,7 +296,7 @@ export class PlatformFeesService {
       );
 
       const now = new Date();
-      const totalDays = (plan.durationMonths * 30) + (plan.extraDays || 0);
+      const totalDays = plan.durationMonths * 30 + (plan.extraDays || 0);
       const endDate = new Date(now);
       endDate.setDate(endDate.getDate() + totalDays);
 
@@ -314,7 +314,10 @@ export class PlatformFeesService {
       const saved = await manager.save(subscription);
 
       this.activityLogsService
-        .log(userId, `Activated subscription '${plan.name}' via payment ${paymentId}`)
+        .log(
+          userId,
+          `Activated subscription '${plan.name}' via payment ${paymentId}`,
+        )
         .catch(() => {});
 
       return saved;
@@ -791,7 +794,10 @@ export class PlatformFeesService {
       const saved = await manager.save(membership);
 
       this.activityLogsService
-        .log(userId, `Activated membership '${plan.name}' via payment ${paymentId}`)
+        .log(
+          userId,
+          `Activated membership '${plan.name}' via payment ${paymentId}`,
+        )
         .catch(() => {});
 
       return saved;

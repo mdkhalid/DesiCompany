@@ -29,4 +29,7 @@ export class LoyaltyPoint extends BaseEntity {
 
   @Column({ default: 0 })
   bookingsCount: number;
+
+  @Column({ type: 'varchar', nullable: true, name: 'last_awarded_booking_id' })
+  lastAwardedBookingId?: string | null;
 }

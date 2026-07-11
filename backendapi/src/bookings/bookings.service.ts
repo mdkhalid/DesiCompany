@@ -264,13 +264,15 @@ export class BookingsService {
 
     if (dto.status === BookingStatus.COMPLETED) {
       const recalculated = await this.recalculateTotals(saved.id);
-      // Award loyalty points to customer for completed booking
-      this.loyaltyService
-        .awardPointsForBooking(
-          saved.customer.user.id,
-          Number(recalculated.totalAmount),
-        )
-        .catch((err) => console.error('Loyalty award failed:', err));
+      // Award loyalty points to customer for completed booking (retried,
+      // idempotent by booking id so transient failures don't lose points).
+      this.awardLoyaltyWithRetry(
+        saved.customer.user.id,
+        Number(recalculated.totalAmount),
+        saved.id,
+      ).catch((err) =>
+        this.logger.error('Loyalty award retry loop crashed:', err),
+      );
 
       // Close the associated job request if this booking was created from a quote
       if (saved.quote?.id) {
@@ -948,5 +950,41 @@ export class BookingsService {
     if (role === UserRole.PROVIDER && booking.provider.user.id !== userId) {
       throw new ForbiddenException('You can only access your own bookings');
     }
+  }
+
+  /**
+   * Awards loyalty points with a bounded retry. Safe to retry because
+   * `awardPointsForBooking` is idempotent per booking id, so a retried call
+   * after a transient failure will not double-award.
+   */
+  private async awardLoyaltyWithRetry(
+    userId: string,
+    amount: number,
+    bookingId: string,
+    attempts = 3,
+  ): Promise<void> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        await this.loyaltyService.awardPointsForBooking(
+          userId,
+          amount,
+          bookingId,
+        );
+        return;
+      } catch (err) {
+        lastError = err;
+        this.logger.warn(
+          `Loyalty award attempt ${attempt}/${attempts} failed for booking ${bookingId}: ${(err as Error).message}`,
+        );
+        if (attempt < attempts) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+        }
+      }
+    }
+    this.logger.error(
+      `Loyalty award permanently failed for booking ${bookingId} after ${attempts} attempts`,
+      lastError as Error,
+    );
   }
 }

@@ -63,20 +63,31 @@ export class ServicesService {
 
   private async annotateWithSubscriptionBenefits<T extends { id?: string }>(
     providers: (T & { isOnline?: boolean; userId?: string })[],
-  ): Promise<(T & { isOnline?: boolean; userId?: string; hasFeaturedBadge?: boolean; priorityBoost?: number })[]> {
+  ): Promise<
+    (T & {
+      isOnline?: boolean;
+      userId?: string;
+      hasFeaturedBadge?: boolean;
+      priorityBoost?: number;
+    })[]
+  > {
     const subs = await Promise.all(
       providers.map((p) =>
-        this.platformFeesService.getProviderSubscription(p.id!).catch(() => null),
+        this.platformFeesService
+          .getProviderSubscription(p.id!)
+          .catch(() => null),
       ),
     );
-    return providers.map((p, i) => {
-      const benefits = subs[i]?.plan?.benefits as Record<string, unknown> | undefined;
-      return {
-        ...p,
-        hasFeaturedBadge: benefits?.['featuredBadge'] === true,
-        priorityBoost: Number(benefits?.['priorityBoost']) || 0,
-      };
-    }).sort((a, b) => (b.priorityBoost || 0) - (a.priorityBoost || 0));
+    return providers
+      .map((p, i) => {
+        const benefits = subs[i]?.plan?.benefits;
+        return {
+          ...p,
+          hasFeaturedBadge: benefits?.['featuredBadge'] === true,
+          priorityBoost: Number(benefits?.['priorityBoost']) || 0,
+        };
+      })
+      .sort((a, b) => (b.priorityBoost || 0) - (a.priorityBoost || 0));
   }
 
   private annotateProvidersWithPresence<
@@ -234,11 +245,13 @@ export class ServicesService {
     const activeServiceCount = await this.providerServiceRepository.count({
       where: { provider: { id: dto.providerId } },
     });
-    const sub = await this.platformFeesService.getProviderSubscription(dto.providerId);
+    const sub = await this.platformFeesService.getProviderSubscription(
+      dto.providerId,
+    );
     const maxServices = sub?.plan?.benefits?.['maxServices'];
     if (maxServices && activeServiceCount >= Number(maxServices)) {
       throw new BadRequestException(
-        `Service limit reached (${maxServices}). Upgrade your subscription to add more services.`,
+        `Service limit reached (${Number(maxServices)}). Upgrade your subscription to add more services.`,
       );
     }
 

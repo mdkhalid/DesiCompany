@@ -74,7 +74,9 @@ export class AdminRefundsService {
     await this.paymentRepository.save(payment);
 
     if (!payment.booking) {
-      throw new BadRequestException('Refunds are only supported for booking payments');
+      throw new BadRequestException(
+        'Refunds are only supported for booking payments',
+      );
     }
     const customerUserId = payment.booking.customer.user.id;
     let wallet = await this.walletRepository.findOne({

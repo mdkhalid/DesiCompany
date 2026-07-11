@@ -12,13 +12,20 @@ export class SmsService {
     },
   ) {}
 
+  private maskPhone(phone: string): string {
+    if (phone.length <= 4) return '****';
+    return phone.slice(0, -4).replace(/\d/g, '*') + phone.slice(-4);
+  }
+
   async sendOtp(phone: string, otp: string): Promise<void> {
     const message = `Your DesiCompany verification code is: ${otp}. It expires in 5 minutes.`;
     try {
       await this.smsProvider.send(phone, message);
-      this.logger.log(`OTP sent to ${phone}`);
+      this.logger.log(`OTP sent to ${this.maskPhone(phone)}`);
     } catch (error) {
-      this.logger.error(`Failed to send OTP to ${phone}: ${error}`);
+      this.logger.error(
+        `Failed to send OTP to ${this.maskPhone(phone)}: ${error}`,
+      );
       throw error;
     }
   }
@@ -27,7 +34,9 @@ export class SmsService {
     try {
       await this.smsProvider.send(phone, message);
     } catch (error) {
-      this.logger.error(`Failed to send SMS to ${phone}: ${error}`);
+      this.logger.error(
+        `Failed to send SMS to ${this.maskPhone(phone)}: ${error}`,
+      );
       throw error;
     }
   }

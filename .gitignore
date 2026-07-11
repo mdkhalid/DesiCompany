@@ -41,6 +41,11 @@ adminweb/node_modules/
 adminweb/dist/
 adminweb/tsconfig.tsbuildinfo
 
+# Environment / secrets — never commit real env files
+.env
+.env.*
+!.env.example
+
 # Flutter tool state
 .flutter_tool_state
 
@@ -49,3 +54,10 @@ AGENTS.md
 
 # Planning documents
 project-docs/subscription-plan.md
+
+# Root tooling / build artifacts
+/coverage/
+
+# Keep the improvement roadmap tracked (reference for phased work)
+!project-docs/
+!project-docs/IMPROVEMENTS.md

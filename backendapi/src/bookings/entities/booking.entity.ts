@@ -1,4 +1,11 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { BookingStatus } from '../../common/enums/booking-status.enum';
 import { Customer } from '../../users/entities/customer.entity';
@@ -10,17 +17,20 @@ import { Quote } from '../../quotes/entities/quote.entity';
 import { PricingModel } from '../../common/enums/pricing-model.enum';
 
 @Entity('bookings')
+@Index(['createdAt'])
 export class Booking extends BaseEntity {
   @ManyToOne(() => Customer, (customer) => customer.bookings, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'customer_id' })
+  @Index()
   customer: Customer;
 
   @ManyToOne(() => Provider, (provider) => provider.bookings, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'provider_id' })
+  @Index()
   provider: Provider;
 
   @ManyToOne(() => ProviderService, { nullable: true })
@@ -32,6 +42,7 @@ export class Booking extends BaseEntity {
   quote: Quote;
 
   @Column({ default: BookingStatus.REQUESTED })
+  @Index()
   status: BookingStatus;
 
   @Column()

@@ -51,13 +51,18 @@ export class FirebasePushProvider {
       return;
     }
 
-    await this.messaging.send({
-      token: payload.token,
-      notification: {
-        title: payload.title,
-        body: payload.body,
-      },
-      data: payload.data,
-    });
+    try {
+      await this.messaging.send({
+        token: payload.token,
+        notification: {
+          title: payload.title,
+          body: payload.body,
+        },
+        data: payload.data,
+      });
+    } catch (error) {
+      // Push is best-effort; a failure must not break the calling flow.
+      this.logger.warn(`FCM send failed: ${(error as Error).message}`);
+    }
   }
 }

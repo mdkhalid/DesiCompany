@@ -139,13 +139,15 @@ export class CommissionService {
     providerId: string,
   ): Promise<ResolvedCommission> {
     try {
-      const sub = await this.platformFeesService.getProviderSubscription(providerId);
+      const sub =
+        await this.platformFeesService.getProviderSubscription(providerId);
       const discount = sub?.plan?.benefits?.['commissionDiscount'];
       if (!discount || Number(discount) <= 0) return base;
 
       if (base.type === CommissionType.PERCENTAGE) {
         const discountedValue = base.value * (1 - Number(discount) / 100);
-        const discountedAmount = Number(base.amount) * (1 - Number(discount) / 100);
+        const discountedAmount =
+          Number(base.amount) * (1 - Number(discount) / 100);
         return {
           ...base,
           value: discountedValue,
@@ -153,7 +155,9 @@ export class CommissionService {
           subscriptionDiscounted: true,
         };
       }
-    } catch {}
+    } catch {
+      // ignore discount calculation failures and fall back to base commission
+    }
     return base;
   }
 

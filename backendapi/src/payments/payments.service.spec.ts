@@ -59,6 +59,8 @@ describe('PaymentsService', () => {
   let walletRepo: jest.Mocked<Repository<Wallet>>;
   let txRepo: jest.Mocked<Repository<Transaction>>;
   let factory: jest.Mocked<PaymentGatewayFactory>;
+  let providerRepo: jest.Mocked<Repository<Provider>>;
+  let platformFeesService: jest.Mocked<PlatformFeesService>;
   const mockPaymentSave = jest.fn();
   const mockWalletSave = jest.fn();
 
@@ -70,6 +72,7 @@ describe('PaymentsService', () => {
           provide: getRepositoryToken(Payment),
           useValue: {
             findOne: jest.fn(),
+            find: jest.fn(),
             create: jest.fn(),
             save: mockPaymentSave,
           },
@@ -154,6 +157,8 @@ describe('PaymentsService', () => {
     walletRepo = module.get(getRepositoryToken(Wallet));
     txRepo = module.get(getRepositoryToken(Transaction));
     factory = module.get(PaymentGatewayFactory);
+    providerRepo = module.get(getRepositoryToken(Provider));
+    platformFeesService = module.get(PlatformFeesService);
   });
 
   afterEach(() => {
@@ -391,6 +396,89 @@ describe('PaymentsService', () => {
 
       expect(result.status).toBe(PaymentStatus.SUCCESS);
       expect(mockWalletSave).toHaveBeenCalled();
+    });
+  });
+
+  describe('reconcileStuckPayments', () => {
+    const basePayment = () => ({
+      id: 'pay-1',
+      status: PaymentStatus.PENDING,
+      gateway: PaymentGatewayType.RAZORPAY,
+      gatewayOrderId: 'order-1',
+      purposeType: 'booking',
+      purposeId: 'prov-1',
+      amount: 100,
+      metadata: {},
+    });
+
+    it('marks a successful gateway payment as SUCCESS and saves it', async () => {
+      (paymentRepo.find as jest.Mock).mockResolvedValue([basePayment()]);
+      (factory.getByType as jest.Mock).mockReturnValue(mockGateway);
+      (mockGateway.getStatus as jest.Mock).mockResolvedValue({
+        status: 'success',
+        gatewayPaymentId: 'pay_gw_1',
+      });
+
+      await service.reconcileStuckPayments();
+
+      expect(paymentRepo.find).toHaveBeenCalled();
+      expect(mockPaymentSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'pay-1',
+          status: PaymentStatus.SUCCESS,
+          transactionId: 'pay_gw_1',
+        }),
+      );
+      // booking-purpose payments don't activate subscriptions/memberships
+      expect(platformFeesService.activateSubscriptionPayment).not.toHaveBeenCalled();
+      expect(platformFeesService.activateMembershipPayment).not.toHaveBeenCalled();
+    });
+
+    it('marks a failed gateway payment as FAILED', async () => {
+      (paymentRepo.find as jest.Mock).mockResolvedValue([basePayment()]);
+      (factory.getByType as jest.Mock).mockReturnValue(mockGateway);
+      (mockGateway.getStatus as jest.Mock).mockResolvedValue({ status: 'failed' });
+
+      await service.reconcileStuckPayments();
+
+      expect(mockPaymentSave).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'pay-1', status: PaymentStatus.FAILED }),
+      );
+    });
+
+    it('does nothing when there are no stuck payments', async () => {
+      (paymentRepo.find as jest.Mock).mockResolvedValue([]);
+
+      await service.reconcileStuckPayments();
+
+      expect(factory.getByType).not.toHaveBeenCalled();
+      expect(mockPaymentSave).not.toHaveBeenCalled();
+    });
+
+    it('activates a subscription payment via platformFeesService on success', async () => {
+      const subPayment = {
+        ...basePayment(),
+        id: 'pay-sub',
+        purposeType: 'subscription',
+        metadata: { planId: 'plan-1' },
+      };
+      (paymentRepo.find as jest.Mock).mockResolvedValue([subPayment]);
+      (factory.getByType as jest.Mock).mockReturnValue(mockGateway);
+      (mockGateway.getStatus as jest.Mock).mockResolvedValue({ status: 'success' });
+      (providerRepo.findOne as jest.Mock).mockResolvedValue({
+        id: 'prov-1',
+        user: { id: 'user-1' },
+      });
+
+      await service.reconcileStuckPayments();
+
+      expect(platformFeesService.activateSubscriptionPayment).toHaveBeenCalledWith(
+        'prov-1',
+        'user-1',
+        'pay-sub',
+        100,
+        'plan-1',
+      );
     });
   });
 });

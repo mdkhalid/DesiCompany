@@ -1,0 +1,23 @@
+{
+  "name": "desicompany",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10"
+  },
+  "lint-staged": {
+    "backendapi/**/*.ts": [
+      "backendapi/node_modules/.bin/eslint --config backendapi/eslint.config.mjs --fix"
+    ],
+    "adminweb/**/*.{ts,tsx}": [
+      "adminweb/node_modules/.bin/eslint --config adminweb/eslint.config.js --fix --ext .ts,.tsx"
+    ],
+    "frontendapp/**/*.dart": [
+      "flutter analyze"
+    ]
+  }
+}
