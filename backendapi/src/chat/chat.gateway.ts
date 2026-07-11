@@ -172,7 +172,8 @@ export class ChatGateway
         }
         // Fallback to role-based label instead of exposing phone number
         if (!senderName) {
-          senderName = sender.role === 'provider' ? 'Provider' : 'Customer';
+          senderName =
+            sender.role === UserRole.PROVIDER ? 'Provider' : 'Customer';
         }
       }
       return {
@@ -228,9 +229,11 @@ export class ChatGateway
       });
       this.redisPub = this.redisSub.duplicate();
 
-      this.redisSub.subscribe(ChatGateway.PRESENCE_CHANNEL, (err) => {
+      void this.redisSub.subscribe(ChatGateway.PRESENCE_CHANNEL, (err) => {
         if (err) {
-          this.logger.warn('Presence pub/sub unavailable — instance-local only');
+          this.logger.warn(
+            'Presence pub/sub unavailable — instance-local only',
+          );
           this.cleanupRedis();
           return;
         }
@@ -240,9 +243,14 @@ export class ChatGateway
       this.redisSub.on('message', (channel, message) => {
         if (channel === ChatGateway.PRESENCE_CHANNEL) {
           try {
-            const event = JSON.parse(message);
+            const event = JSON.parse(message) as {
+              type: string;
+              payload: unknown;
+            };
             this.server.emit(event.type, event.payload);
-          } catch { /* ignore malformed messages */ }
+          } catch {
+            /* ignore malformed messages */
+          }
         }
       });
 
@@ -252,12 +260,17 @@ export class ChatGateway
     }
   }
 
-  private publishPresence(type: string, payload: Record<string, unknown>): void {
+  private publishPresence(
+    type: string,
+    payload: Record<string, unknown>,
+  ): void {
     if (this.redisPub) {
-      this.redisPub.publish(
-        ChatGateway.PRESENCE_CHANNEL,
-        JSON.stringify({ type, payload }),
-      ).catch(() => {});
+      this.redisPub
+        .publish(
+          ChatGateway.PRESENCE_CHANNEL,
+          JSON.stringify({ type, payload }),
+        )
+        .catch(() => {});
     }
   }
 
@@ -321,8 +334,6 @@ export class ChatGateway
           relations: { customer: true, provider: true },
         })
         .then((user) => {
-          if (!socket.connected) return;
-
           if (!user) {
             return next(new Error('User not found'));
           }
@@ -1053,7 +1064,7 @@ export class ChatGateway
 
     const templates = quickReplyMessages[payload.quickReplyType];
     const content = templates
-      ? senderRole === 'provider'
+      ? senderRole === UserRole.PROVIDER
         ? templates.provider
         : templates.customer
       : payload.value || payload.quickReplyType;
