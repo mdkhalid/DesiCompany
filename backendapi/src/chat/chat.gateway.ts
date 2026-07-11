@@ -542,7 +542,7 @@ export class ChatGateway
         where: { booking: { id: payload.bookingId } },
         relations: { sender: { customer: true, provider: true } },
         order: { createdAt: 'ASC' },
-        take: 50,
+        take: 100,
       });
 
       // Filter system messages by targetRole so each user only sees messages meant for their role
