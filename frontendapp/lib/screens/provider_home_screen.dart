@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../main.dart';
 import '../services/api_service.dart';
 import '../services/app_presence_service.dart';
@@ -25,9 +22,6 @@ class ProviderHomeContent extends StatefulWidget {
 
 class _ProviderHomeContentState extends State<ProviderHomeContent> {
   List _bookings = [];
-  int _todayJobs = 0;
-  double _todayEarnings = 0.0;
-  int _pendingCount = 0;
   int _unreadCount = 0;
   bool _hasMultipleRoles = false;
   User? _currentUser;
@@ -36,7 +30,6 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
   double? _latitude;
   double? _longitude;
   String _locationText = 'Set location';
-  bool _locating = false;
   StreamSubscription<int>? _unreadCountSub;
   Map<String, dynamic>? _graceStatus;
 
@@ -235,23 +228,6 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
     );
   }
 
-  Widget _buildIconButton(IconData icon, VoidCallback onTap, {String? tooltipKey}) {
-    final loc = DesiCompanyApp.localeProvider!;
-    final button = GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-    );
-    if (tooltipKey == null) return button;
-    return Tooltip(message: loc.tr(tooltipKey), child: button);
-  }
-
   Widget _buildNotificationButton() {
     final loc = DesiCompanyApp.localeProvider!;
     return Tooltip(
@@ -334,7 +310,7 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
             TextField(
               controller: cityController,
               decoration: InputDecoration(
-                hintText: 'Enter city name (e.g. Lucknow)',
+                hintText: 'Enter area, colony or landmark (e.g. Kanchan Kunj)',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -352,7 +328,7 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
                   backgroundColor: AppTheme.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Search in this city'),
+                child: const Text('Find precise location'),
               ),
             ),
           ],
@@ -363,7 +339,6 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
 
     if (result == null) return;
 
-    setState(() => _locating = true);
     try {
       if (result == 'gps') {
         final pos = await LocationService.getCurrentLocation();
@@ -379,19 +354,18 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
           }
           return;
         }
+        final geo = await LocationService.reverseGeocode(pos.latitude, pos.longitude);
         await ApiService.patch('/users/profile', body: {
           'latitude': pos.latitude,
           'longitude': pos.longitude,
+          'locality': geo['locality'] ?? '',
+          'city': geo['city'] ?? '',
         });
         if (mounted) {
           setState(() {
             _latitude = pos.latitude;
             _longitude = pos.longitude;
-            _locationText = 'Current location';
-          });
-          // Reverse geocode in background
-          LocationService.getAddressFromCoordinates(pos.latitude, pos.longitude).then((addr) {
-            if (mounted) setState(() => _locationText = addr);
+            _locationText = geo['label'] as String;
           });
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Location saved successfully!'),
@@ -399,37 +373,38 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
           ));
         }
       } else {
-        final url = Uri.parse(
-          'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(result)}&limit=1&countrycodes=in',
+        final resolved = await LocationService.searchAddress(
+          result,
+          biasLat: _latitude,
+          biasLng: _longitude,
         );
-        final response = await http.get(url, headers: {'User-Agent': 'DesiCompanyApp/1.0'});
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          if (data is List && data.isNotEmpty) {
-            final lat = double.parse(data[0]['lat']);
-            final lon = double.parse(data[0]['lon']);
-            await ApiService.patch('/users/profile', body: {
-              'latitude': lat,
-              'longitude': lon,
-            });
-            if (mounted) {
-              setState(() {
-                _latitude = lat;
-                _longitude = lon;
-                _locationText = result;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('Location set to $result'),
-                backgroundColor: Colors.green,
-              ));
-            }
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('City not found. Please try a different name.')),
-              );
-            }
+        if (resolved == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location not found. Try a nearby colony or landmark.')),
+            );
           }
+          return;
+        }
+        final lat = resolved['latitude'] as double;
+        final lon = resolved['longitude'] as double;
+        final label = resolved['label'] as String;
+        await ApiService.patch('/users/profile', body: {
+          'latitude': lat,
+          'longitude': lon,
+          'locality': resolved['locality'] ?? '',
+          'city': resolved['city'] ?? '',
+        });
+        if (mounted) {
+          setState(() {
+            _latitude = lat;
+            _longitude = lon;
+            _locationText = label;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Location set to $label'),
+            backgroundColor: Colors.green,
+          ));
         }
       }
     } catch (e) {
@@ -437,7 +412,7 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Location error: $e')));
       }
     } finally {
-      if (mounted) setState(() => _locating = false);
+      if (mounted) setState(() {});
     }
   }
 

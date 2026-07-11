@@ -39,6 +39,12 @@ export class Provider extends BaseEntity {
   address: string;
 
   @Column({ nullable: true })
+  locality: string;
+
+  @Column({ nullable: true })
+  landmark: string;
+
+  @Column({ nullable: true })
   city: string;
 
   @Column({ nullable: true })

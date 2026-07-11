@@ -126,6 +126,10 @@ export class UsersService {
         user.customer.lastName = updateProfileDto.lastName;
       if (updateProfileDto.address !== undefined)
         user.customer.address = updateProfileDto.address;
+      if (updateProfileDto.locality !== undefined)
+        user.customer.locality = updateProfileDto.locality;
+      if (updateProfileDto.landmark !== undefined)
+        user.customer.landmark = updateProfileDto.landmark;
       if (updateProfileDto.city !== undefined)
         user.customer.city = updateProfileDto.city;
       if (updateProfileDto.state !== undefined)
@@ -146,6 +150,10 @@ export class UsersService {
         user.provider.lastName = updateProfileDto.lastName;
       if (updateProfileDto.address !== undefined)
         user.provider.address = updateProfileDto.address;
+      if (updateProfileDto.locality !== undefined)
+        user.provider.locality = updateProfileDto.locality;
+      if (updateProfileDto.landmark !== undefined)
+        user.provider.landmark = updateProfileDto.landmark;
       if (updateProfileDto.city !== undefined)
         user.provider.city = updateProfileDto.city;
       if (updateProfileDto.state !== undefined)

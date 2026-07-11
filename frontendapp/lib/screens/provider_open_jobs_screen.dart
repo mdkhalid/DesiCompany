@@ -142,13 +142,15 @@ class _ProviderOpenJobsScreenState extends State<ProviderOpenJobsScreen> {
   }
 
   Widget _buildAppBar(LocalizationProvider loc) {
+    final canPop = ModalRoute.of(context)?.isFirst != true;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
       child: Row(children: [
-        IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => shellBack(context),
-        ),
+        if (canPop)
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => shellBack(context),
+          ),
         const SizedBox(width: 4),
         Text(
           loc.tr('open_jobs'),

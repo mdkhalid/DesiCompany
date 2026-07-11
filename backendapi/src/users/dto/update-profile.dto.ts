@@ -27,6 +27,14 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsString()
+  locality?: string;
+
+  @IsOptional()
+  @IsString()
+  landmark?: string;
+
+  @IsOptional()
+  @IsString()
   city?: string;
 
   @IsOptional()

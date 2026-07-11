@@ -24,6 +24,14 @@ export class CreateJobRequestDto {
   address?: string;
 
   @IsOptional()
+  @IsString()
+  locality?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
   @IsNumber()
   latitude?: number;
 

@@ -75,6 +75,8 @@ export class QuotesService {
       title: dto.title,
       description: dto.description,
       address: dto.address,
+      locality: dto.locality,
+      city: dto.city,
       latitude: dto.latitude,
       longitude: dto.longitude,
       budgetMin: dto.budgetMin,

@@ -153,17 +153,19 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
   }
 
   Widget _buildHeader(LocalizationProvider loc) {
+    final canPop = ModalRoute.of(context)?.isFirst != true;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 16, 20, 16),
       child: Row(
         children: [
-          Tooltip(
-            message: loc.tr('header_back'),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => shellBack(context),
+          if (canPop)
+            Tooltip(
+              message: loc.tr('header_back'),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => shellBack(context),
+              ),
             ),
-          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

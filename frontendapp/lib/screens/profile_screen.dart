@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/strings.dart';
@@ -6,8 +5,6 @@ import '../main.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 import '../services/location_service.dart';
 import '../theme.dart';
 import 'profile_picker_screen.dart';
@@ -28,8 +25,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   double? _latitude;
   double? _longitude;
   double? _serviceRadius;
-  String? _profileImageUrl;
-  bool _uploadingImage = false;
   String _selectedLanguage = 'en';
 
   final _formKey = GlobalKey<FormState>();
@@ -37,6 +32,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
+  final _localityController = TextEditingController();
+  final _landmarkController = TextEditingController();
   final _cityController = TextEditingController();
   final _stateController = TextEditingController();
   final _pincodeController = TextEditingController();
@@ -53,6 +50,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _lastNameController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _localityController.dispose();
+    _landmarkController.dispose();
     _cityController.dispose();
     _stateController.dispose();
     _pincodeController.dispose();
@@ -87,12 +86,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _lastNameController.text = userData['lastName'] ?? '';
     }
     _emailController.text = _profile!['email'] ?? '';
-    _profileImageUrl = _profile!['profileImage'] as String?;
     _selectedLanguage = _profile!['language'] ?? 'en';
     // Sync locale provider with saved language
     DesiCompanyApp.localeProvider?.setLocale(_selectedLanguage);
     if (userData != null) {
       _addressController.text = userData['address'] ?? '';
+      _localityController.text = userData['locality'] ?? '';
+      _landmarkController.text = userData['landmark'] ?? '';
       _cityController.text = userData['city'] ?? '';
       _stateController.text = userData['state'] ?? '';
       _pincodeController.text = userData['pincode'] ?? '';
@@ -116,6 +116,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (_lastNameController.text.isNotEmpty) 'lastName': _lastNameController.text,
         if (_emailController.text.isNotEmpty) 'email': _emailController.text,
         if (_addressController.text.isNotEmpty) 'address': _addressController.text,
+        if (_localityController.text.isNotEmpty) 'locality': _localityController.text,
+        if (_landmarkController.text.isNotEmpty) 'landmark': _landmarkController.text,
         if (_cityController.text.isNotEmpty) 'city': _cityController.text,
         if (_stateController.text.isNotEmpty) 'state': _stateController.text,
         if (_pincodeController.text.isNotEmpty) 'pincode': _pincodeController.text,
@@ -337,6 +339,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _infoTile(Icons.phone, loc.tr('phone'), _profile?['phone'] ?? loc.tr('not_provided')),
         _infoTile(Icons.language, loc.tr('language'), lang),
         _infoTile(Icons.location_on, loc.tr('address'), userData?['address'] ?? loc.tr('not_provided')),
+        _infoTile(Icons.location_on_outlined, loc.tr('locality'), userData?['locality'] ?? loc.tr('not_provided')),
+        _infoTile(Icons.place, loc.tr('landmark'), userData?['landmark'] ?? loc.tr('not_provided')),
         _infoTile(Icons.location_city, loc.tr('city'), userData?['city'] ?? loc.tr('not_provided')),
         _infoTile(Icons.map, loc.tr('state'), userData?['state'] ?? loc.tr('not_provided')),
         _infoTile(Icons.markunread_mailbox, loc.tr('pincode'), userData?['pincode'] ?? loc.tr('not_provided')),
@@ -433,45 +437,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 512, maxHeight: 512);
-    if (picked == null) return;
-    setState(() => _uploadingImage = true);
-    try {
-      final token = await ApiService.getToken();
-      if (token == null) throw Exception('Not authenticated');
-      final bytes = await picked.readAsBytes();
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${ApiService.baseUrl}/uploads/profile-image'),
-      );
-      request.headers['Authorization'] = 'Bearer $token';
-      request.files.add(http.MultipartFile.fromBytes(
-        'file', bytes,
-        filename: picked.name,
-        contentType: http.MediaType('image', picked.mimeType?.split('/').last ?? 'jpeg'),
-      ));
-      final response = await request.send();
-      if (response.statusCode == 201) {
-        final body = await response.stream.bytesToString();
-        final result = jsonDecode(body);
-        final url = result['url'] as String;
-        // Save URL to profile
-        await ApiService.patch('/users/profile', body: {'profileImage': url});
-        if (mounted) setState(() { _profileImageUrl = url; _uploadingImage = false; });
-      } else {
-        if (mounted) setState(() => _uploadingImage = false);
-        throw Exception('Upload failed: ${response.statusCode}');
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _uploadingImage = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image upload failed: $e')));
-      }
-    }
-  }
-
   Future<void> _detectLocation() async {
     final cityController = TextEditingController();
     final result = await showDialog<String>(
@@ -557,10 +522,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _latitude = pos.latitude;
           _longitude = pos.longitude;
         });
-        // Reverse geocode to fill address/city
-        LocationService.getAddressFromCoordinates(pos.latitude, pos.longitude).then((addr) {
-          if (mounted && addr.isNotEmpty) {
-            setState(() => _addressController.text = addr);
+        // Reverse geocode to fill address/locality/city precisely.
+        LocationService.reverseGeocode(pos.latitude, pos.longitude).then((geo) {
+          if (mounted) {
+            setState(() {
+              _addressController.text = geo['label'] as String;
+              _localityController.text = geo['locality'] as String? ?? '';
+              _cityController.text = geo['city'] as String? ?? '';
+            });
           }
         });
         if (mounted) {
@@ -570,34 +539,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ));
         }
       } else {
-        // City name search via Nominatim
-        final url = Uri.parse(
-          'https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(result)}&limit=1&countrycodes=in',
+        // Colony/landmark search biased to current coordinates.
+        final resolved = await LocationService.searchAddress(
+          result,
+          biasLat: _latitude,
+          biasLng: _longitude,
         );
-        final response = await http.get(url, headers: {'User-Agent': 'DesiCompanyApp/1.0'});
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          if (data is List && data.isNotEmpty) {
-            final lat = double.parse(data[0]['lat']);
-            final lon = double.parse(data[0]['lon']);
-            setState(() {
-              _latitude = lat;
-              _longitude = lon;
-              _cityController.text = result;
-            });
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('Location set to $result (${lat.toStringAsFixed(4)}, ${lon.toStringAsFixed(4)})'),
-                duration: const Duration(seconds: 2),
-              ));
-            }
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('City not found. Please try a different name.')),
-              );
-            }
+        if (resolved == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location not found. Try a nearby colony or landmark.')),
+            );
           }
+          return;
+        }
+        final lat = resolved['latitude'] as double;
+        final lon = resolved['longitude'] as double;
+        setState(() {
+          _latitude = lat;
+          _longitude = lon;
+          _localityController.text = resolved['locality'] as String? ?? '';
+          _cityController.text = resolved['city'] as String? ?? result;
+          _addressController.text = resolved['label'] as String;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Location set to ${resolved['label']} (${lat.toStringAsFixed(4)}, ${lon.toStringAsFixed(4)})'),
+            duration: const Duration(seconds: 2),
+          ));
         }
       }
     } catch (e) {
@@ -618,6 +587,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildTextField(_lastNameController, loc.tr('last_name'), Icons.person_outline),
           _buildTextField(_emailController, loc.tr('email'), Icons.email, keyboardType: TextInputType.emailAddress),
           _buildTextField(_addressController, loc.tr('address'), Icons.location_on),
+          _buildTextField(_localityController, loc.tr('locality'), Icons.location_on_outlined),
+          _buildTextField(_landmarkController, loc.tr('landmark'), Icons.place),
           _buildTextField(_cityController, loc.tr('city'), Icons.location_city),
           _buildTextField(_stateController, loc.tr('state'), Icons.map),
           _buildTextField(_pincodeController, loc.tr('pincode'), Icons.markunread_mailbox, keyboardType: TextInputType.number),

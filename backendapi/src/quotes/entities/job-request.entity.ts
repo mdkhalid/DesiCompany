@@ -24,6 +24,12 @@ export class JobRequest extends BaseEntity {
   @Column({ nullable: true })
   address: string;
 
+  @Column({ nullable: true })
+  locality: string;
+
+  @Column({ nullable: true })
+  city: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 6, nullable: true })
   latitude: number;
 

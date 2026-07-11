@@ -26,6 +26,8 @@ class _CustomerPostJobScreenState extends State<CustomerPostJobScreen> {
   DateTime? _preferredDate;
   double? _latitude;
   double? _longitude;
+  String? _locality;
+  String? _city;
   bool _loadingCategories = true;
   bool _locating = false;
   bool _submitting = false;
@@ -72,7 +74,7 @@ class _CustomerPostJobScreenState extends State<CustomerPostJobScreen> {
       );
       return;
     }
-    final address = await LocationService.getAddressFromCoordinates(
+    final geo = await LocationService.reverseGeocode(
       position.latitude,
       position.longitude,
     );
@@ -80,7 +82,9 @@ class _CustomerPostJobScreenState extends State<CustomerPostJobScreen> {
     setState(() {
       _latitude = position.latitude;
       _longitude = position.longitude;
-      _addressController.text = address;
+      _locality = geo['locality'] as String?;
+      _city = geo['city'] as String?;
+      _addressController.text = geo['label'] as String;
       _locating = false;
     });
   }
@@ -116,6 +120,8 @@ class _CustomerPostJobScreenState extends State<CustomerPostJobScreen> {
     if (_addressController.text.trim().isNotEmpty) {
       body['address'] = _addressController.text.trim();
     }
+    if (_locality != null && _locality!.isNotEmpty) body['locality'] = _locality;
+    if (_city != null && _city!.isNotEmpty) body['city'] = _city;
     if (_latitude != null) body['latitude'] = _latitude;
     if (_longitude != null) body['longitude'] = _longitude;
     if (_budgetMinController.text.trim().isNotEmpty) {
