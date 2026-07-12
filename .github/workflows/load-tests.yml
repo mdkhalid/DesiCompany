@@ -1,0 +1,15 @@
+name: Load Test / SLO
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * 1'
+
+jobs:
+  k6:
+    name: k6 API load
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - run: k6 run backendapi/load-tests/smoke.js

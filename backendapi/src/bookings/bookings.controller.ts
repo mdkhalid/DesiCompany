@@ -15,6 +15,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { BookingsService } from './bookings.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -40,6 +41,7 @@ export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new booking' })
   @ApiResponse({ status: 201, description: 'Booking created successfully' })
@@ -93,6 +95,7 @@ export class BookingsController {
   }
 
   @Patch(':id/status')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Roles(UserRole.CUSTOMER, UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Update booking status' })
   @ApiResponse({ status: 200, description: 'Booking status updated' })
@@ -157,6 +160,7 @@ export class BookingsController {
   }
 
   @Post('charges')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Roles(UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Add a charge to a booking' })
   @ApiResponse({ status: 201, description: 'Charge added successfully' })
@@ -165,6 +169,7 @@ export class BookingsController {
   }
 
   @Delete('charges/:id')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Roles(UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Remove a charge from a booking' })
   @ApiResponse({ status: 200, description: 'Charge removed successfully' })

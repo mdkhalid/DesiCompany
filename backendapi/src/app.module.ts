@@ -49,7 +49,13 @@ import { AdvertisementsModule } from './advertisements/advertisements.module';
 import { GrievancesModule } from './grievances/grievances.module';
 import { SettingsModule } from './settings/settings.module';
 import { ProviderGraceModule } from './provider-grace/provider-grace.module';
+import { LocationsModule } from './locations/locations.module';
+import { AccountsModule } from './accounts/accounts.module';
+import { JobsModule } from './jobs/jobs.module';
+import { IdempotencyKey } from './common/entities/idempotency-key.entity';
 import { User } from './users/entities/user.entity';
+import { CacheService } from './common/cache.service';
+import { LifecycleModule } from './lifecycle/lifecycle.module';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
 import { KycDocument } from './kyc/entities/kyc-document.entity';
@@ -67,6 +73,7 @@ import { Dispute } from './disputes/entities/dispute.entity';
 import { ActivityLog } from './activity-logs/entities/activity-log.entity';
 import { Message } from './chat/entities/message.entity';
 import { DirectMessage } from './chat/entities/direct-message.entity';
+import { City } from './locations/entities/city.entity';
 
 @Module({
   imports: [
@@ -123,6 +130,10 @@ import { DirectMessage } from './chat/entities/direct-message.entity';
     SettingsModule,
     ProviderGraceModule,
     ErrorLogsModule,
+    LocationsModule,
+    AccountsModule,
+    JobsModule,
+    LifecycleModule,
     TypeOrmModule.forFeature([
       User,
       Customer,
@@ -142,11 +153,14 @@ import { DirectMessage } from './chat/entities/direct-message.entity';
       ActivityLog,
       Message,
       DirectMessage,
+      City,
+      IdempotencyKey,
     ]),
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    CacheService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerBehindProxyGuard,

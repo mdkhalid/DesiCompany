@@ -10,6 +10,7 @@ import { Transaction } from './entities/transaction.entity';
 import { User } from '../users/entities/user.entity';
 import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 import { TransactionSource } from '../common/enums/transaction-source.enum';
+import { IdempotencyService } from '../common/idempotency.service';
 
 @Injectable()
 export class WalletsService {
@@ -21,6 +22,7 @@ export class WalletsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly platformFeesService: PlatformFeesService,
+    private readonly idempotencyService: IdempotencyService,
   ) {}
 
   async getWallet(userId: string) {
@@ -88,69 +90,68 @@ export class WalletsService {
     netAmount: number;
     remainingBalance: number;
   }> {
-    const wallet = await this.walletRepository.findOne({
-      where: { user: { id: userId } },
-    });
-    if (!wallet) {
-      throw new NotFoundException('Wallet not found');
-    }
+    const idempotencyKey = `payout:${userId}:${payoutAmount ?? 'all'}`;
+    return this.idempotencyService.withLock(idempotencyKey, 300, async () => {
+      const wallet = await this.walletRepository.findOne({
+        where: { user: { id: userId } },
+      });
+      if (!wallet) {
+        throw new NotFoundException('Wallet not found');
+      }
 
-    const currentBalance = Number(wallet.balance);
-    const amount = payoutAmount ?? currentBalance;
+      const currentBalance = Number(wallet.balance);
+      const amount = payoutAmount ?? currentBalance;
 
-    if (amount <= 0) {
-      throw new BadRequestException('Payout amount must be greater than 0');
-    }
+      if (amount <= 0) {
+        throw new BadRequestException('Payout amount must be greater than 0');
+      }
 
-    // Calculate instant payout fee
-    const feeResult =
-      await this.platformFeesService.calculateInstantPayoutFee(amount);
-    const totalDeduction = amount + feeResult.finalFee;
+      const feeResult =
+        await this.platformFeesService.calculateInstantPayoutFee(amount);
+      const totalDeduction = amount + feeResult.finalFee;
 
-    if (totalDeduction > currentBalance) {
-      throw new BadRequestException(
-        `Insufficient balance. Need ₹${totalDeduction.toLocaleString()} (₹${amount.toLocaleString()} payout + ₹${feeResult.finalFee.toLocaleString()} fee). Available: ₹${currentBalance.toLocaleString()}`,
-      );
-    }
+      if (totalDeduction > currentBalance) {
+        throw new BadRequestException(
+          `Insufficient balance. Need ₹${totalDeduction.toLocaleString()} (₹${amount.toLocaleString()} payout + ₹${feeResult.finalFee.toLocaleString()} fee). Available: ₹${currentBalance.toLocaleString()}`,
+        );
+      }
 
-    const netAmount = feeResult.netAmount;
+      const netAmount = feeResult.netAmount;
 
-    // Deduct total (payout amount + fee) from wallet
-    wallet.balance = Number(wallet.balance) - totalDeduction;
-    await this.walletRepository.save(wallet);
-    const balanceAfter = Number(wallet.balance);
+      wallet.balance = Number(wallet.balance) - totalDeduction;
+      await this.walletRepository.save(wallet);
+      const balanceAfter = Number(wallet.balance);
 
-    // Record payout debit
-    const payoutTx = this.transactionRepository.create({
-      wallet,
-      type: 'debit',
-      amount: amount,
-      reference: `instant_payout_${Date.now()}`,
-      description: 'Instant payout',
-      source: TransactionSource.PAYOUT,
-      balanceAfter,
-    });
-    await this.transactionRepository.save(payoutTx);
-
-    // Record platform fee
-    if (feeResult.finalFee > 0) {
-      const feeTx = this.transactionRepository.create({
+      const payoutTx = this.transactionRepository.create({
         wallet,
         type: 'debit',
-        amount: feeResult.finalFee,
-        reference: `payout_fee_${Date.now()}`,
-        description: 'Instant payout fee',
-        source: TransactionSource.PLATFORM_FEE,
+        amount: amount,
+        reference: `instant_payout_${wallet.id}_${Date.now()}`,
+        description: 'Instant payout',
+        source: TransactionSource.PAYOUT,
         balanceAfter,
       });
-      await this.transactionRepository.save(feeTx);
-    }
+      await this.transactionRepository.save(payoutTx);
 
-    return {
-      payoutAmount: amount,
-      fee: feeResult.finalFee,
-      netAmount,
-      remainingBalance: Number(wallet.balance),
-    };
+      if (feeResult.finalFee > 0) {
+        const feeTx = this.transactionRepository.create({
+          wallet,
+          type: 'debit',
+          amount: feeResult.finalFee,
+          reference: `payout_fee_${wallet.id}_${Date.now()}`,
+          description: 'Instant payout fee',
+          source: TransactionSource.PLATFORM_FEE,
+          balanceAfter,
+        });
+        await this.transactionRepository.save(feeTx);
+      }
+
+      return {
+        payoutAmount: amount,
+        fee: feeResult.finalFee,
+        netAmount,
+        remainingBalance: Number(wallet.balance),
+      };
+    });
   }
 }

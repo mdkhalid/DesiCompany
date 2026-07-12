@@ -4,6 +4,7 @@ import { Customer } from '../../users/entities/customer.entity';
 import { ServiceCategory } from '../../services/entities/service-category.entity';
 import { JobRequestStatus } from './job-request-status.enum';
 import { Quote } from './quote.entity';
+import { City } from '../../locations/entities/city.entity';
 
 @Entity('job_requests')
 export class JobRequest extends BaseEntity {
@@ -29,6 +30,10 @@ export class JobRequest extends BaseEntity {
 
   @Column({ nullable: true })
   city: string;
+
+  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'city_id' })
+  cityRef?: City;
 
   @Column({ type: 'decimal', precision: 10, scale: 6, nullable: true })
   latitude: number;

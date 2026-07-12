@@ -7,6 +7,7 @@ import { Wallet } from './entities/wallet.entity';
 import { Transaction } from './entities/transaction.entity';
 import { User } from '../users/entities/user.entity';
 import { PlatformFeesService } from '../platform-fees/platform-fees.service';
+import { IdempotencyService } from '../common/idempotency.service';
 
 describe('WalletsService', () => {
   let service: WalletsService;
@@ -43,6 +44,12 @@ describe('WalletsService', () => {
           provide: PlatformFeesService,
           useValue: {
             calculateInstantPayoutFee: jest.fn(),
+          },
+        },
+        {
+          provide: IdempotencyService,
+          useValue: {
+            withLock: jest.fn(async (_: string, __: number, fn: any) => fn()),
           },
         },
       ],

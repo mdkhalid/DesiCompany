@@ -10,11 +10,15 @@ jest.mock('ioredis', () => {
   }));
 });
 
+const mockSettings = () => ({
+  isRedisRequired: jest.fn().mockResolvedValue(false),
+});
+
 describe('OtpStoreService', () => {
   let service: OtpStoreService;
 
   beforeEach(() => {
-    service = new OtpStoreService();
+    service = new OtpStoreService(mockSettings() as any);
   });
 
   afterEach(() => jest.clearAllMocks());

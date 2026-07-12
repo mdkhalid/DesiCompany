@@ -7,6 +7,10 @@ import { ProviderService } from '../services/entities/provider-service.entity';
 import { ProviderAvailability } from '../services/entities/provider-availability.entity';
 import { Notification } from '../notifications/entities/notification.entity';
 import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config.entity';
+import { City } from '../locations/entities/city.entity';
+import { JobRequest } from '../quotes/entities/job-request.entity';
+import { Booking } from '../bookings/entities/booking.entity';
+import { Setting } from '../settings/entities/setting.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
 import { CommissionType } from '../common/enums/commission-type.enum';
@@ -760,6 +764,64 @@ async function seed() {
     if (!exists) {
       await feeConfigRepo.save(feeConfigRepo.create(cfg));
       console.log(`Fee config created: ${cfg.configKey}`);
+    }
+  }
+
+  const cityRepository = dataSource.getRepository(City);
+  const defaultCities = [
+    { nameEn: 'Delhi', nameHi: 'दिल्ली', state: 'Delhi', sortOrder: 1 },
+    { nameEn: 'Bangalore', nameHi: 'बेंगलुरु', state: 'Karnataka', sortOrder: 2 },
+    { nameEn: 'Mumbai', nameHi: 'मुंबई', state: 'Maharashtra', sortOrder: 3 },
+  ];
+  const cityMap = new Map<string, City>();
+  for (const c of defaultCities) {
+    const existing = await cityRepository.findOne({
+      where: { nameEn: c.nameEn },
+    });
+    if (!existing) {
+      const saved = await cityRepository.save(cityRepository.create(c));
+      cityMap.set(c.nameEn, saved);
+      console.log(`City created: ${c.nameEn}`);
+    } else {
+      cityMap.set(c.nameEn, existing);
+    }
+  }
+
+  const backfillCityRef = async (
+    repo: any,
+    cityColumn: string,
+  ): Promise<void> => {
+    const rows = await repo.find();
+    for (const row of rows) {
+      const textCity = (row as any)[cityColumn] as string | undefined;
+      const city = textCity ? cityMap.get(textCity) : undefined;
+      if (city && !(row as any).cityRef) {
+        (row as any).cityRef = city;
+        await repo.save(row);
+      }
+    }
+  };
+
+  if (cityMap.size > 0) {
+    await backfillCityRef(customerRepository, 'city');
+    await backfillCityRef(providerRepository, 'city');
+    await backfillCityRef(
+      dataSource.getRepository(JobRequest),
+      'city',
+    );
+    await backfillCityRef(dataSource.getRepository(Booking), 'serviceCity');
+    console.log('City backfill complete');
+  }
+
+  const settingsRepo = dataSource.getRepository(Setting);
+  const defaultSettings = [
+    { key: 'platform_redis_required', value: 'false' },
+  ];
+  for (const s of defaultSettings) {
+    const existing = await settingsRepo.findOne({ where: { key: s.key } });
+    if (!existing) {
+      await settingsRepo.save(settingsRepo.create(s));
+      console.log(`Setting created: ${s.key}`);
     }
   }
 

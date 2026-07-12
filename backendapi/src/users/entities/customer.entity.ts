@@ -1,7 +1,8 @@
-import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { User } from './user.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
+import { City } from '../../locations/entities/city.entity';
 
 @Entity('customers')
 export class Customer extends BaseEntity {
@@ -38,6 +39,10 @@ export class Customer extends BaseEntity {
 
   @Column({ type: 'decimal', precision: 10, scale: 6, nullable: true })
   longitude: number;
+
+  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'city_id' })
+  cityRef?: City;
 
   @OneToMany(() => Booking, (booking) => booking.customer)
   bookings?: Booking[];

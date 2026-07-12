@@ -56,4 +56,8 @@ export class SettingsService {
   async isProviderGraceCommissionWaiverEnabled(): Promise<boolean> {
     return this.getBoolean('provider_grace_period_commission_waiver', true);
   }
+
+  async isRedisRequired(): Promise<boolean> {
+    return this.getBoolean('platform_redis_required', false);
+  }
 }

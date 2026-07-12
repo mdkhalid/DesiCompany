@@ -41,4 +41,7 @@ export class DirectMessage extends BaseEntity {
 
   @Column({ default: false })
   deleted: boolean;
+
+  @Column({ default: false })
+  isArchived: boolean;
 }

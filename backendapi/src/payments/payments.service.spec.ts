@@ -26,6 +26,7 @@ import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config
 import { PlatformFeesService } from '../platform-fees/platform-fees.service';
 import { CustomerMembership } from '../platform-fees/entities/customer-membership.entity';
 import { CustomerMembershipPlan } from '../platform-fees/entities/customer-membership-plan.entity';
+import { AccountsService } from '../accounts/accounts.service';
 
 interface CreateOrderResult {
   gatewayOrderId: string;
@@ -146,6 +147,12 @@ describe('PaymentsService', () => {
             activateSubscriptionPayment: jest.fn(),
             assignCustomerMembership: jest.fn(),
             activateMembershipPayment: jest.fn(),
+          },
+        },
+        {
+          provide: AccountsService,
+          useValue: {
+            postEntry: jest.fn(),
           },
         },
       ],

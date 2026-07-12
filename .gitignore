@@ -4,6 +4,7 @@ dist/
 build/
 .env
 project-docs/
+project_docs/
 *.log
 server.log
 server-error.log

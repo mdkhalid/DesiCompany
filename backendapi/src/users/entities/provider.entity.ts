@@ -2,6 +2,7 @@ import {
   Column,
   Entity,
   JoinColumn,
+  ManyToOne,
   OneToMany,
   OneToOne,
   CreateDateColumn,
@@ -16,6 +17,7 @@ import { CustomerFeedback } from '../../feedbacks/entities/customer-feedback.ent
 import { ProviderAvailability } from '../../services/entities/provider-availability.entity';
 import { ProviderDateOverride } from '../../services/entities/provider-date-override.entity';
 import { VerificationStatus } from '../../common/enums/verification-status.enum';
+import { City } from '../../locations/entities/city.entity';
 
 @Entity('providers')
 export class Provider extends BaseEntity {
@@ -84,6 +86,10 @@ export class Provider extends BaseEntity {
 
   @Column({ default: 0 })
   totalReviews: number;
+
+  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'city_id' })
+  cityRef?: City;
 
   @OneToMany(() => KycDocument, (kycDocument) => kycDocument.provider)
   kycDocuments?: KycDocument[];

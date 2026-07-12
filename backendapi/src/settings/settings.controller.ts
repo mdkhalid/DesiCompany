@@ -31,6 +31,18 @@ export class SettingsController {
     return { enabled, days, commissionWaiver };
   }
 
+  @Get('platform')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get platform-wide operational flags' })
+  async getPlatform() {
+    const redisRequired =
+      await this.settingsService.isRedisRequired();
+    return {
+      redisRequired,
+      redisEnv: process.env.REDIS_REQUIRED || 'false',
+    };
+  }
+
   @Post('provider-grace-period')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Configure provider grace period' })

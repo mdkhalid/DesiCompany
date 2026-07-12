@@ -14,6 +14,7 @@ import { BookingStatus } from '../common/enums/booking-status.enum';
 import { SettingsService } from '../settings/settings.service';
 import { PresenceService } from '../chat/presence.service';
 import { PlatformFeesService } from '../platform-fees/platform-fees.service';
+import { CacheService } from '../common/cache.service';
 
 type MockRepo = {
   find: jest.Mock;
@@ -97,6 +98,14 @@ describe('ServicesService', () => {
         {
           provide: PlatformFeesService,
           useValue: { getProviderSubscription: jest.fn().mockResolvedValue(null) },
+        },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue(undefined),
+            del: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

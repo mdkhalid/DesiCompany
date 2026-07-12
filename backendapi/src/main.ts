@@ -227,8 +227,13 @@ async function bootstrap() {
     }
   }
 
-  // Apply Redis WebSocket adapter for horizontal scaling (fallback to in-memory)
-  app.useWebSocketAdapter(new RedisIoAdapter(app));
+  const redisRequired = process.env.REDIS_REQUIRED === 'true';
+  if (redisRequired) {
+    app
+      .get(Logger)
+      .log('Redis is REQUIRED in this environment');
+  }
+  app.useWebSocketAdapter(new RedisIoAdapter(app, redisRequired));
 
   await app.listen(process.env.PORT ?? 3000);
   app

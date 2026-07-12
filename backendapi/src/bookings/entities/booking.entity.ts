@@ -15,6 +15,7 @@ import { BookingCharge } from './booking-charge.entity';
 import { BookingServiceItem } from './booking-service-item.entity';
 import { Quote } from '../../quotes/entities/quote.entity';
 import { PricingModel } from '../../common/enums/pricing-model.enum';
+import { City } from '../../locations/entities/city.entity';
 
 @Entity('bookings')
 @Index(['createdAt'])
@@ -40,6 +41,10 @@ export class Booking extends BaseEntity {
   @ManyToOne(() => Quote, { nullable: true })
   @JoinColumn({ name: 'quote_id' })
   quote: Quote;
+
+  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'city_id' })
+  city?: City;
 
   @Column({ default: BookingStatus.REQUESTED })
   @Index()

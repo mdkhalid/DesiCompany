@@ -24,6 +24,7 @@ import { CreateDateOverrideDto } from './dto/date-override.dto';
 import { SettingsService } from '../settings/settings.service';
 import { PresenceService } from '../chat/presence.service';
 import { PlatformFeesService } from '../platform-fees/platform-fees.service';
+import { CacheService } from '../common/cache.service';
 
 interface CategoryInput {
   nameEn?: string;
@@ -59,6 +60,7 @@ export class ServicesService {
     private readonly settingsService: SettingsService,
     private readonly presenceService: PresenceService,
     private readonly platformFeesService: PlatformFeesService,
+    private readonly cacheService: CacheService,
   ) {}
 
   private async annotateWithSubscriptionBenefits<T extends { id?: string }>(
@@ -116,11 +118,20 @@ export class ServicesService {
   }
 
   async findAllCategories() {
-    return this.categoryRepository.find({
+    const cacheKey = 'categories:active';
+    const cached = await this.cacheService.get<any[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const categories = await this.categoryRepository.find({
       where: { isActive: true },
       relations: { children: true, parent: true },
       order: { nameEn: 'ASC' },
     });
+
+    await this.cacheService.set(cacheKey, categories, 300);
+    return categories;
   }
 
   async findSubcategories(parentId: string) {

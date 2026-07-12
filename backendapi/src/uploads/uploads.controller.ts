@@ -36,7 +36,7 @@ export class UploadsController {
 
     // Route through StorageService so files go to S3/CDN when configured
     const result = await this.uploadsService.uploadFile(file, 'chat');
-    
+
     return {
       url: result.url,
       filename: result.key,

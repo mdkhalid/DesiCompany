@@ -28,6 +28,8 @@ import { PlatformFeeConfig } from '../platform-fees/entities/platform-fee-config
 import { Provider } from '../users/entities/provider.entity';
 import { CustomerMembership } from '../platform-fees/entities/customer-membership.entity';
 import { CustomerMembershipPlan } from '../platform-fees/entities/customer-membership-plan.entity';
+import { AccountsService } from '../accounts/accounts.service';
+import { LedgerEntryType } from '../accounts/entities/ledger-entry.entity';
 
 @Injectable()
 export class PaymentsService {
@@ -57,6 +59,7 @@ export class PaymentsService {
     private readonly paymentGatewayFactory: PaymentGatewayFactory,
     private readonly softBlockService: SoftBlockService,
     private readonly platformFeesService: PlatformFeesService,
+    private readonly accountsService: AccountsService,
   ) {}
 
   async createOrderForSubscription(planId: string, userId: string) {
@@ -737,6 +740,75 @@ export class PaymentsService {
             `Soft-block check failed: ${(err as Error).message}`,
           ),
         );
+    }
+
+    try {
+      const gateway = payment.gateway || 'cash';
+      const gatewayAccount =
+        gateway === 'razorpay'
+          ? 'razorpay'
+          : gateway === 'stripe'
+            ? 'stripe'
+            : 'cash-on-hand';
+
+      await this.accountsService.postEntry({
+        accountCode: gatewayAccount,
+        type: LedgerEntryType.CREDIT,
+        amount: Number(payment.amount),
+        reference: `payment_${payment.id}`,
+        description: `Payment received for booking #${booking.id}`,
+        bookingId: booking.id,
+        paymentId: payment.id,
+        providerId: providerUserId,
+        customerId: booking.customer?.user?.id,
+        metadata: {gateway, method: payment.method},
+      });
+
+      if (Number(booking.providerAmount) > 0) {
+        await this.accountsService.postEntry({
+          accountCode: 'payout',
+          type: LedgerEntryType.DEBIT,
+          amount: Number(booking.providerAmount),
+          reference: `payout_${payment.id}`,
+          description: `Provider payout for booking #${booking.id}`,
+          bookingId: booking.id,
+          paymentId: payment.id,
+          providerId: providerUserId,
+          metadata: {bookingId: booking.id},
+        });
+      }
+
+      if (commissionAmount > 0) {
+        await this.accountsService.postEntry({
+          accountCode: 'commission',
+          type: LedgerEntryType.CREDIT,
+          amount: commissionAmount,
+          reference: `commission_${booking.id}_${payment.id}`,
+          description: `Platform commission for booking #${booking.id}`,
+          bookingId: booking.id,
+          paymentId: payment.id,
+          providerId: providerUserId,
+          metadata: {commissionType: booking.commissionWaived ? 'waived' : 'standard'},
+        });
+
+        if (!booking.commissionWaived) {
+          await this.accountsService.postEntry({
+            accountCode: 'platform-revenue',
+            type: LedgerEntryType.CREDIT,
+            amount: commissionAmount,
+            reference: `revenue_${booking.id}_${payment.id}`,
+            description: `Platform revenue - booking #${booking.id}`,
+            bookingId: booking.id,
+            paymentId: payment.id,
+            providerId: providerUserId,
+            metadata: {source: 'booking_commission'},
+          });
+        }
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Ledger posting failed for payment ${payment.id}: ${(err as Error).message}`,
+      );
     }
   }
 

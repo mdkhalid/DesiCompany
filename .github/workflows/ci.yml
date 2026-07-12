@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ['main', 'master']
+  push:
+    branches: ['main', 'master']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (NestJS)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backendapi
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: desicompany
+          POSTGRES_PASSWORD: desicompany123
+          POSTGRES_DB: desicompany
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U desicompany -d desicompany"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5433
+      DB_USERNAME: desicompany
+      DB_PASSWORD: desicompany123
+      DB_NAME: desicompany
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      JWT_SECRET: test-jwt-secret-64-char-hex-000000000000000000000000000000
+      JWT_REFRESH_SECRET: test-refresh-secret-64-char-hex-00000000000000000000000000
+      PAYMENT_GATEWAY_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+      OTP_MOCK: true
+      OTP_MOCK_CODE: 123456
+      STORAGE_PROVIDER: local
+      UPLOAD_DEST: ./uploads
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backendapi/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run test:e2e
+
+  adminweb:
+    name: Admin Web (React + Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: adminweb
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: adminweb/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build
+
+  flutter:
+    name: Flutter Mobile
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontendapp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.0'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
