@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 import 'customer_post_job_screen.dart';
 import 'customer_job_detail_screen.dart';
@@ -15,11 +17,40 @@ class CustomerRequestsScreen extends StatefulWidget {
 class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  io.Socket? _socket;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _connectSocket();
+  }
+
+  void _connectSocket() {
+    AuthService.getToken().then((token) {
+      if (token == null || !mounted) return;
+      try {
+        _socket = io.io(
+          '${ApiService.socketBaseUrl}/chat',
+          <String, dynamic>{
+            'transports': ['websocket'],
+            'autoConnect': true,
+            'auth': {'token': token},
+            'reconnection': true,
+          },
+        );
+        _socket!.on('new_quote', (_) {
+          if (mounted) _load();
+        });
+      } catch (_) {}
+    });
+  }
+
+  @override
+  void dispose() {
+    _socket?.disconnect();
+    _socket?.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -233,6 +264,15 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                             _formatDate(item['date']),
                                             style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                                           ),
+                                          if (isJob) ...[
+                                            const Spacer(),
+                                            const Icon(Icons.chat_bubble_outline, size: 12, color: AppTheme.textSecondary),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              '${((item['raw'] as Map<String, dynamic>?)?['quotes'] as List?)?.length ?? 0}',
+                                              style:                                             const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ],
