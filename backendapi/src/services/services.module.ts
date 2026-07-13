@@ -14,9 +14,12 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { SettingsModule } from '../settings/settings.module';
 import { ChatModule } from '../chat/chat.module';
 import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
+import { MonitoringModule } from '../monitoring/monitoring.module';
+import { CacheService } from '../common/cache.service';
 
 @Module({
   imports: [
+    MonitoringModule,
     TypeOrmModule.forFeature([
       ServiceCategory,
       ProviderService,
@@ -31,7 +34,7 @@ import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
     PlatformFeesModule,
   ],
   controllers: [ServicesController, ServiceAreaMapController],
-  providers: [ServicesService, ServiceAreaMapService],
+  providers: [ServicesService, ServiceAreaMapService, CacheService],
   exports: [ServicesService, ServiceAreaMapService],
 })
 export class ServicesModule {}
