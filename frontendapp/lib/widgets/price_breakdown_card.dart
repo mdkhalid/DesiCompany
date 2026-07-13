@@ -144,7 +144,9 @@ class _QuotePriceBreakdownState extends State<QuotePriceBreakdown> {
 
   void _load() {
     if (widget.amount <= 0) {
-      setState(() => _future = Future.value(null));
+      setState(() {
+        _future = Future.value(null);
+      });
       return;
     }
     setState(() {
