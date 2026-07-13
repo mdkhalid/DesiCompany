@@ -295,14 +295,32 @@ export class QuotesService {
       ),
     );
 
-    return this.quoteRepository.findOne({
+    const quoteWithRelations = await this.quoteRepository.findOne({
       where: { id: saved.id },
       relations: {
         items: true,
         provider: { user: true },
-        jobRequest: { category: true },
+        jobRequest: { category: true, customer: { user: true } },
       },
     });
+
+    // Real-time push: notify the customer that a new quote arrived so the
+    // customer-side screens can refresh immediately without a manual pull.
+    try {
+      const customerUserId = quoteWithRelations?.jobRequest?.customer?.user?.id;
+      if (customerUserId && quoteWithRelations) {
+        this.chatGateway.emitToUserPublic(customerUserId, 'new_quote', {
+          jobRequestId: jobRequest.id,
+          quote: quoteWithRelations,
+        });
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Failed to emit new_quote to customer: ${(err as Error).message}`,
+      );
+    }
+
+    return quoteWithRelations;
   }
 
   async findQuotesForJobRequest(jobRequestId: string) {

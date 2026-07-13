@@ -139,6 +139,18 @@ export class ChatGateway
     }
   }
 
+  /**
+   * Public wrapper so other services (e.g. QuotesService) can push events
+   * to every connected socket of a given user.
+   */
+  emitToUserPublic(
+    userId: string,
+    event: string,
+    data: Record<string, unknown>,
+  ) {
+    this.emitToUser(userId, event, data);
+  }
+
   private isUserOnline(userId: string): boolean {
     return this.presenceService.isUserOnline(userId);
   }
