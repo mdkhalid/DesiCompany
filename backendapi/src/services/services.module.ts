@@ -16,6 +16,7 @@ import { ChatModule } from '../chat/chat.module';
 import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 import { MonitoringModule } from '../monitoring/monitoring.module';
 import { CacheService } from '../common/cache.service';
+import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
@@ -32,6 +33,8 @@ import { CacheService } from '../common/cache.service';
     SettingsModule,
     ChatModule,
     PlatformFeesModule,
+    MonitoringModule,
+    CommonModule,
   ],
   controllers: [ServicesController, ServiceAreaMapController],
   providers: [ServicesService, ServiceAreaMapService, CacheService],

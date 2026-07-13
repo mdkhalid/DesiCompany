@@ -55,6 +55,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { LifecycleModule } from './lifecycle/lifecycle.module';
 import { ReadConnectionModule } from './database/read-connection.module';
 import { GdprModule } from './gdpr/gdpr.module';
+import { CommonModule } from './common/common.module';
 import { IdempotencyKey } from './common/entities/idempotency-key.entity';
 import { User } from './users/entities/user.entity';
 import { CacheService } from './common/cache.service';
@@ -138,6 +139,7 @@ import { City } from './locations/entities/city.entity';
     LifecycleModule,
     ReadConnectionModule,
     GdprModule,
+    CommonModule,
     TypeOrmModule.forFeature([
       User,
       Customer,

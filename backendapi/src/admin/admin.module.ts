@@ -29,6 +29,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { ReviewsModule } from '../reviews/reviews.module';
 import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 import { ErrorLogsModule } from '../error-logs/error-logs.module';
+import { MonitoringModule } from '../monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { ErrorLogsModule } from '../error-logs/error-logs.module';
     NotificationsModule,
     ReviewsModule,
     ErrorLogsModule,
+    MonitoringModule,
   ],
   controllers: [
     AdminController,

@@ -7,6 +7,6 @@ import { ErrorSpikeDetector } from './error-spike-detector.service';
 @Module({
   imports: [TypeOrmModule.forFeature([ErrorLog])],
   providers: [ErrorLogsService, ErrorSpikeDetector],
-  exports: [ErrorLogsService],
+  exports: [ErrorLogsService, ErrorSpikeDetector],
 })
 export class ErrorLogsModule {}

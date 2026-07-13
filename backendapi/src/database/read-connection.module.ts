@@ -5,20 +5,18 @@ import { readReplicaConfig } from '../config/database.config';
 import { Logger } from '@nestjs/common';
 
 const READ_DATA_SOURCE = 'READ_DATA_SOURCE';
+const hasReadReplica = !!readReplicaConfig();
 
 @Module({
-  imports: [
-    TypeOrmModule.forRootAsync({
-      name: READ_DATA_SOURCE,
-      useFactory: (): TypeOrmModuleOptions => {
-        const config = readReplicaConfig();
-        if (!config) {
-          return {};
-        }
-        return config;
-      },
-    }),
-  ],
+  imports: hasReadReplica
+    ? [
+        TypeOrmModule.forRootAsync({
+          name: READ_DATA_SOURCE,
+          useFactory: (): TypeOrmModuleOptions =>
+            readReplicaConfig() as TypeOrmModuleOptions,
+        }),
+      ]
+    : [],
   providers: [],
 })
 export class ReadConnectionModule implements OnModuleInit, OnModuleDestroy {

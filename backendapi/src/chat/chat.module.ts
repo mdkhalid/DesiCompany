@@ -14,6 +14,7 @@ import { Provider } from '../users/entities/provider.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { MonitoringModule } from '../monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TranslationModule,
     PushNotificationsModule,
     NotificationsModule,
+    MonitoringModule,
   ],
   providers: [ChatGateway, ChatService, PresenceService],
   controllers: [ChatController],

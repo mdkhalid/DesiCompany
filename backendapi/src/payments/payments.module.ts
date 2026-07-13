@@ -18,6 +18,7 @@ import { BookingsModule } from '../bookings/bookings.module';
 import { CommissionsModule } from '../commissions/commissions.module';
 import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
 import { AccountsModule } from '../accounts/accounts.module';
+import { CommonModule } from '../common/common.module';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
@@ -48,6 +49,7 @@ import { CustomerMembershipPlan } from '../platform-fees/entities/customer-membe
     CommissionsModule,
     PlatformFeesModule,
     AccountsModule,
+    CommonModule,
   ],
   controllers: [PaymentsController, WebhooksController, WalletsController],
   providers: [
