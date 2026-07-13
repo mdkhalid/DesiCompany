@@ -76,6 +76,12 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> with Wi
 
       final List<Map<String, dynamic>> merged = [];
       for (final j in jobs as List) {
+        // Skip job requests that have been accepted — a booking was
+        // created and will be shown instead. Showing both would duplicate
+        // the same request on the list.
+        if (j['status'] == 'accepted' && j['acceptedQuoteId'] != null) {
+          continue;
+        }
         merged.add({
           'id': j['id'],
           'type': 'job',
