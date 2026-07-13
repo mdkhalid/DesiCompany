@@ -131,12 +131,17 @@ export class QuotesService {
         'distance',
       );
       query.setParameters({ lat, lng });
+      // Jobs WITHOUT coordinates must still be visible to providers — only
+      // filter by distance when the job actually has coordinates. The whole
+      // condition is parenthesised so the ORs don't break the status filter
+      // (otherwise `(status) AND lat IS NULL OR lng IS NULL` lets null-coord
+      // jobs bypass the status check).
       query.andWhere(
-        `6371000 * acos(
+        `(jobRequest.latitude IS NULL OR jobRequest.longitude IS NULL OR 6371000 * acos(
           cos(radians(:lat)) * cos(radians(jobRequest.latitude)) *
           cos(radians(jobRequest.longitude) - radians(:lng)) +
           sin(radians(:lat)) * sin(radians(jobRequest.latitude))
-        ) <= :radius`,
+        ) <= :radius)`,
         { radius },
       );
       query.orderBy('distance', 'ASC');
