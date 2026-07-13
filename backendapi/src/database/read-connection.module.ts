@@ -20,7 +20,6 @@ const READ_DATA_SOURCE = 'READ_DATA_SOURCE';
     }),
   ],
   providers: [],
-  exports: [READ_DATA_SOURCE],
 })
 export class ReadConnectionModule implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ReadConnectionModule.name);
