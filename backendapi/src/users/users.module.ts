@@ -5,9 +5,13 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { Customer } from './entities/customer.entity';
 import { Provider } from './entities/provider.entity';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Customer, Provider])],
+  imports: [
+    TypeOrmModule.forFeature([User, Customer, Provider]),
+    ActivityLogsModule,
+  ],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],
