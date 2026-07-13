@@ -24,6 +24,14 @@ describe('MetricsService', () => {
     expect(metrics).toContain('http_request_duration_seconds');
   });
 
+  it('should expose new N6 observability metrics', () => {
+    expect(service.wsConnections).toBeDefined();
+    expect(service.queueDepth).toBeDefined();
+    expect(service.cacheHits).toBeDefined();
+    expect(service.cacheMisses).toBeDefined();
+    expect(service.dbPoolConnections).toBeDefined();
+  });
+
   it('should return content type', () => {
     const ct = service.getContentType();
     expect(ct).toContain('text');

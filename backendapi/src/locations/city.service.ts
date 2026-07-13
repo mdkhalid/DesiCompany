@@ -54,7 +54,8 @@ export class CityService {
     const city = await this.findOne(id);
     if (dto.nameEn !== undefined) (city as any).nameEn = dto.nameEn.trim();
     if (dto.nameHi !== undefined) (city as any).nameHi = dto.nameHi.trim();
-    if (dto.state !== undefined) (city as any).state = dto.state?.trim() || (null as any);
+    if (dto.state !== undefined)
+      (city as any).state = dto.state?.trim() || (null as any);
     if (dto.isActive !== undefined) city.isActive = dto.isActive;
     if (dto.sortOrder !== undefined) city.sortOrder = dto.sortOrder;
     return this.cityRepository.save(city);

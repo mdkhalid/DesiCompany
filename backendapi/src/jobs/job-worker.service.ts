@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Worker } from 'bullmq';
 import { JobType } from './constants';
 import { ModulesContainer } from '@nestjs/core';
@@ -23,11 +28,9 @@ export class JobWorker implements OnModuleInit, OnModuleDestroy {
           const handler = this.handlers.get(job.name as JobType);
           if (!handler) return;
           try {
-            await handler((job.data as any)?.payload || job.data);
+            await handler(job.data?.payload || job.data);
           } catch (err) {
-            this.logger.warn(
-              `Job ${job.id} (${job.name}) failed: ${err}`,
-            );
+            this.logger.warn(`Job ${job.id} (${job.name}) failed: ${err}`);
             throw err;
           }
         },

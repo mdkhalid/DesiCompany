@@ -2,12 +2,16 @@ import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
+import { CacheService } from '../common/cache.service';
+import { JobQueueService } from '../jobs/job-queue.service';
 
 @Controller('health')
 export class HealthController {
   constructor(
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly cacheService: CacheService,
+    private readonly jobQueueService: JobQueueService,
   ) {}
 
   /** Create a short-lived Redis client for a single probe, then disconnect. */
@@ -46,6 +50,8 @@ export class HealthController {
       services: {
         database: { status: 'unknown', responseTime: 0 },
         redis: { status: 'unknown', responseTime: 0 },
+        cache: { status: 'unknown', responseTime: 0 },
+        queue: { status: 'unknown', responseTime: 0 },
       },
     };
 
@@ -82,6 +88,44 @@ export class HealthController {
       };
     }
 
+    // Check cache service
+    const cacheStart = Date.now();
+    const cacheConnected = this.cacheService.isConnected();
+    checks.services.cache = {
+      status: cacheConnected ? 'connected' : 'disconnected',
+      responseTime: Date.now() - cacheStart,
+    };
+    if (!cacheConnected) hasError = true;
+
+    // Check job queue
+    const queueStart = Date.now();
+    try {
+      const q = this.jobQueueService.getQueue();
+      let count = 0;
+      if (typeof q === 'object' && q !== null) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (typeof (q as any).getWaitingCount === 'function') {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+          count = await (q as any).getWaitingCount();
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        } else if (typeof (q as any).size === 'number') {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          count = (q as any).size;
+        }
+      }
+      checks.services.queue = {
+        status: 'connected',
+        responseTime: Date.now() - queueStart,
+        waitingJobs: count,
+      };
+    } catch {
+      hasError = true;
+      checks.services.queue = {
+        status: 'disconnected',
+        responseTime: Date.now() - queueStart,
+      };
+    }
+
     if (hasError) {
       checks.status = 'error';
     }
@@ -104,6 +148,31 @@ export class HealthController {
     if (!redisProbe.ok) {
       throw new HttpException(
         { status: 'not ready' },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    if (!this.cacheService.isConnected()) {
+      throw new HttpException(
+        { status: 'not ready', reason: 'cache disconnected' },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    try {
+      const q = this.jobQueueService.getQueue();
+      const count =
+        typeof q.getWaitingCount === 'function'
+          ? await q.getWaitingCount()
+          : typeof q.size === 'number'
+            ? q.size
+            : 0;
+      if (count < 0) {
+        throw new Error('Queue not ready');
+      }
+    } catch {
+      throw new HttpException(
+        { status: 'not ready', reason: 'queue disconnected' },
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }

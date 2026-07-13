@@ -22,9 +22,7 @@ export class AddMessageArchive20260713015553 implements MigrationInterface {
     await queryRunner.query(
       `DROP INDEX IF EXISTS "IDX_direct_messages_is_archived"`,
     );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_messages_is_archived"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_messages_is_archived"`);
     await queryRunner.query(
       `ALTER TABLE "direct_messages" DROP COLUMN IF EXISTS "is_archived"`,
     );

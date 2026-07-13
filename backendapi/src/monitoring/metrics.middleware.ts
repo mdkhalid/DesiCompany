@@ -16,23 +16,12 @@ export class MetricsMiddleware implements NestMiddleware {
       const method = req.method;
       const statusCode = res.statusCode.toString();
 
-      this.metricsService.httpRequestDuration.observe(
-        { method, route, status_code: statusCode },
-        duration,
-      );
+      const labels = { method, route, status_code: statusCode };
 
-      this.metricsService.httpRequestTotal.inc({
-        method,
-        route,
-        status_code: statusCode,
-      });
-
+      this.metricsService.httpRequestDuration.observe(labels, duration);
+      this.metricsService.httpRequestTotal.inc(labels);
       if (res.statusCode >= 400) {
-        this.metricsService.httpRequestErrors.inc({
-          method,
-          route,
-          status_code: statusCode,
-        });
+        this.metricsService.httpRequestErrors.inc(labels);
       }
     });
 

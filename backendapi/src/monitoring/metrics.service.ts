@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import {
   Registry,
   Counter,
@@ -8,7 +8,7 @@ import {
 } from 'prom-client';
 
 @Injectable()
-export class MetricsService implements OnModuleInit {
+export class MetricsService implements OnModuleInit, OnModuleDestroy {
   private readonly registry: Registry;
 
   // HTTP request metrics
@@ -22,6 +22,15 @@ export class MetricsService implements OnModuleInit {
   public readonly bookingsTotal: Counter<string>;
   public readonly paymentsTotal: Counter<string>;
   public readonly paymentAmount: Histogram<string>;
+
+  // Infrastructure metrics
+  public readonly wsConnections: Gauge<string>;
+  public readonly queueDepth: Gauge<string>;
+  public readonly cacheHits: Counter<string>;
+  public readonly cacheMisses: Counter<string>;
+  public readonly dbPoolConnections: Gauge<string>;
+
+  private dbPoolInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.registry = new Registry();
@@ -92,12 +101,100 @@ export class MetricsService implements OnModuleInit {
       buckets: [100, 500, 1000, 2000, 5000, 10000, 25000, 50000],
       registers: [this.registry],
     });
+
+    // WebSocket connections gauge
+    this.wsConnections = new Gauge({
+      name: 'ws_connections',
+      help: 'Current number of WebSocket connections',
+      registers: [this.registry],
+    });
+
+    // Queue depth gauge
+    this.queueDepth = new Gauge({
+      name: 'queue_depth',
+      help: 'Current number of jobs waiting in the queue',
+      labelNames: ['queue_name'],
+      registers: [this.registry],
+    });
+
+    // Cache hit/miss counters
+    this.cacheHits = new Counter({
+      name: 'cache_hits_total',
+      help: 'Total number of cache hits',
+      registers: [this.registry],
+    });
+
+    this.cacheMisses = new Counter({
+      name: 'cache_misses_total',
+      help: 'Total number of cache misses',
+      registers: [this.registry],
+    });
+
+    // DB pool connections gauge
+    this.dbPoolConnections = new Gauge({
+      name: 'db_pool_connections',
+      help: 'Current number of active DB pool connections',
+      labelNames: ['state'],
+      registers: [this.registry],
+    });
   }
 
   onModuleInit() {
-    // Initialize gauges with 0
     this.activeBookings.set(0);
     this.activeUsers.set(0);
+    this.wsConnections.set(0);
+    this.queueDepth.set(0);
+    this.dbPoolConnections.set({ state: 'idle' }, 0);
+    this.dbPoolConnections.set({ state: 'waiting' }, 0);
+    this.dbPoolConnections.set({ state: 'active' }, 0);
+  }
+
+  onModuleDestroy() {
+    if (this.dbPoolInterval) {
+      clearInterval(this.dbPoolInterval);
+    }
+  }
+
+  updateDbPoolMetrics(dataSource: any): void {
+    // Best-effort DB pool probe; suppress unsafe-access for private TypeORM internals.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const pool = dataSource?.driver?.master?.pool;
+      // Best-effort DB pool probe; suppress unsafe-access for private TypeORM internals.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (pool && typeof pool.totalCount === 'function') {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+        const total = pool.totalCount();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const idle = pool.idleCount ?? 0;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const waiting = pool.waitingCount ?? 0;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        this.dbPoolConnections.set({ state: 'idle' }, idle);
+        this.dbPoolConnections.set({ state: 'waiting' }, waiting);
+        this.dbPoolConnections.set(
+          { state: 'active' },
+          Math.max(0, total - idle),
+        );
+      }
+    } catch {
+      // best-effort
+    }
+  }
+
+  startDbPoolPolling(dataSource: any, intervalMs = 5000): void {
+    this.updateDbPoolMetrics(dataSource);
+    this.dbPoolInterval = setInterval(() => {
+      this.updateDbPoolMetrics(dataSource);
+    }, intervalMs);
+  }
+
+  recordCacheHit(): void {
+    this.cacheHits.inc();
+  }
+
+  recordCacheMiss(): void {
+    this.cacheMisses.inc();
   }
 
   async getMetrics(): Promise<string> {

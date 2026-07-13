@@ -28,6 +28,7 @@ import { PushNotificationsService } from '../push-notifications/push-notificatio
 import { sanitizeText } from '../common/utils/input-sanitizer';
 import { PresenceService } from './presence.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MetricsService } from '../monitoring/metrics.service';
 
 interface AuthenticatedSocket extends Socket {
   data: {
@@ -214,6 +215,7 @@ export class ChatGateway
     private readonly pushNotificationsService: PushNotificationsService,
     private readonly presenceService: PresenceService,
     private readonly notificationsService: NotificationsService,
+    private readonly metricsService: MetricsService,
   ) {
     this.initRedisPresence();
   }
@@ -428,6 +430,7 @@ export class ChatGateway
   }
 
   handleConnection(client: AuthenticatedSocket) {
+    this.metricsService.wsConnections.inc();
     if (client.data.userId) {
       const userId = client.data.userId;
       const wasOffline = !this.isUserOnline(userId);
@@ -464,6 +467,7 @@ export class ChatGateway
   }
 
   handleDisconnect(client: AuthenticatedSocket) {
+    this.metricsService.wsConnections.dec();
     if (client.data.userId) {
       const userId = client.data.userId;
       this.unregisterSocket(userId, client.id);

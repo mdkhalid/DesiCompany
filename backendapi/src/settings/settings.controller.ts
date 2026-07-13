@@ -35,8 +35,7 @@ export class SettingsController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Get platform-wide operational flags' })
   async getPlatform() {
-    const redisRequired =
-      await this.settingsService.isRedisRequired();
+    const redisRequired = await this.settingsService.isRedisRequired();
     return {
       redisRequired,
       redisEnv: process.env.REDIS_REQUIRED || 'false',

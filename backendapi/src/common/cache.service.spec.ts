@@ -1,12 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CacheService } from './cache.service';
+import { MetricsService } from '../monitoring/metrics.service';
 
 describe('CacheService', () => {
   let service: CacheService;
 
+  const mockMetricsService = {
+    recordCacheHit: jest.fn(),
+    recordCacheMiss: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [CacheService],
+      providers: [
+        CacheService,
+        { provide: MetricsService, useValue: mockMetricsService },
+      ],
     }).compile();
 
     service = module.get(CacheService);

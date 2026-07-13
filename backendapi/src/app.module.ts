@@ -52,6 +52,8 @@ import { ProviderGraceModule } from './provider-grace/provider-grace.module';
 import { LocationsModule } from './locations/locations.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { JobsModule } from './jobs/jobs.module';
+import { LifecycleModule } from './lifecycle/lifecycle.module';
+import { ReadConnectionModule } from './database/read-connection.module';
 import { IdempotencyKey } from './common/entities/idempotency-key.entity';
 import { User } from './users/entities/user.entity';
 import { CacheService } from './common/cache.service';
@@ -133,6 +135,8 @@ import { City } from './locations/entities/city.entity';
     LocationsModule,
     AccountsModule,
     JobsModule,
+    LifecycleModule,
+    ReadConnectionModule,
     LifecycleModule,
     TypeOrmModule.forFeature([
       User,

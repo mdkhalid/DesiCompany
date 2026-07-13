@@ -10,6 +10,7 @@ import { AdminRefundsService } from './admin-refunds.service';
 import { AdminConfigController } from './admin-config.controller';
 import { AdminPlatformFeesController } from './admin-platform-fees.controller';
 import { AdminErrorLogsController } from './admin-error-logs.controller';
+import { AdminObservabilityController } from './admin-observability.controller';
 import { User } from '../users/entities/user.entity';
 import { Customer } from '../users/entities/customer.entity';
 import { Provider } from '../users/entities/provider.entity';
@@ -59,6 +60,7 @@ import { ErrorLogsModule } from '../error-logs/error-logs.module';
     AdminConfigController,
     AdminPlatformFeesController,
     AdminErrorLogsController,
+    AdminObservabilityController,
   ],
   providers: [
     AdminService,

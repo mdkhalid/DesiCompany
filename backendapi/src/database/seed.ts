@@ -770,7 +770,12 @@ async function seed() {
   const cityRepository = dataSource.getRepository(City);
   const defaultCities = [
     { nameEn: 'Delhi', nameHi: 'दिल्ली', state: 'Delhi', sortOrder: 1 },
-    { nameEn: 'Bangalore', nameHi: 'बेंगलुरु', state: 'Karnataka', sortOrder: 2 },
+    {
+      nameEn: 'Bangalore',
+      nameHi: 'बेंगलुरु',
+      state: 'Karnataka',
+      sortOrder: 2,
+    },
     { nameEn: 'Mumbai', nameHi: 'मुंबई', state: 'Maharashtra', sortOrder: 3 },
   ];
   const cityMap = new Map<string, City>();
@@ -793,10 +798,10 @@ async function seed() {
   ): Promise<void> => {
     const rows = await repo.find();
     for (const row of rows) {
-      const textCity = (row as any)[cityColumn] as string | undefined;
+      const textCity = row[cityColumn] as string | undefined;
       const city = textCity ? cityMap.get(textCity) : undefined;
-      if (city && !(row as any).cityRef) {
-        (row as any).cityRef = city;
+      if (city && !row.cityRef) {
+        row.cityRef = city;
         await repo.save(row);
       }
     }
@@ -805,18 +810,13 @@ async function seed() {
   if (cityMap.size > 0) {
     await backfillCityRef(customerRepository, 'city');
     await backfillCityRef(providerRepository, 'city');
-    await backfillCityRef(
-      dataSource.getRepository(JobRequest),
-      'city',
-    );
+    await backfillCityRef(dataSource.getRepository(JobRequest), 'city');
     await backfillCityRef(dataSource.getRepository(Booking), 'serviceCity');
     console.log('City backfill complete');
   }
 
   const settingsRepo = dataSource.getRepository(Setting);
-  const defaultSettings = [
-    { key: 'platform_redis_required', value: 'false' },
-  ];
+  const defaultSettings = [{ key: 'platform_redis_required', value: 'false' }];
   for (const s of defaultSettings) {
     const existing = await settingsRepo.findOne({ where: { key: s.key } });
     if (!existing) {

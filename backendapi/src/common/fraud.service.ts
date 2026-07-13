@@ -69,8 +69,6 @@ export class FraudService {
       throw new Error('Payout limit reached. Maximum 3 payouts per day.');
     }
 
-    const lastPayoutAt = this.payoutCooldowns.get(userId);
-
     if (lastPayoutAt && now - lastPayoutAt < minGapMs) {
       const waitMin = Math.ceil((minGapMs - (now - lastPayoutAt)) / 60000);
       throw new Error(

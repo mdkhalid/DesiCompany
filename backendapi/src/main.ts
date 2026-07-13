@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { DataSource } from 'typeorm';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { Logger } from 'nestjs-pino';
@@ -10,6 +11,7 @@ import * as Sentry from '@sentry/nestjs';
 import { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './chat/redis-io.adapter';
+import { MetricsService } from './monitoring/metrics.service';
 
 function validateEnv() {
   const required = ['JWT_SECRET', 'JWT_REFRESH_SECRET'];
@@ -37,7 +39,7 @@ function validateEnv() {
   }
   if (!process.env.CORS_ALLOWED_ORIGINS) {
     warnings.push(
-      'CORS_ALLOWED_ORIGINS not set — only localhost/LAN origins allowed in dev',
+      'CORS_ALLOWED_ORIGINS is not set — only localhost/LAN origins allowed in dev',
     );
   }
   if (warnings.length > 0) {
@@ -68,6 +70,22 @@ async function bootstrap() {
 
   // Use Pino logger
   app.useLogger(app.get(Logger));
+
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const traceId =
+      (req.headers['x-trace-id'] as string) || crypto.randomUUID();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    (req as any).traceId = traceId;
+    res.setHeader('X-Trace-Id', traceId);
+    if (process.env.SENTRY_DSN) {
+      try {
+        Sentry.setTag('traceId', traceId);
+      } catch {
+        // best-effort
+      }
+    }
+    next();
+  });
 
   // Ensure uploads directory exists
   const uploadsDir = join(process.cwd(), 'uploads', 'chat');
@@ -229,13 +247,17 @@ async function bootstrap() {
 
   const redisRequired = process.env.REDIS_REQUIRED === 'true';
   if (redisRequired) {
-    app
-      .get(Logger)
-      .log('Redis is REQUIRED in this environment');
+    app.get(Logger).log('Redis is REQUIRED in this environment');
   }
   app.useWebSocketAdapter(new RedisIoAdapter(app, redisRequired));
 
   await app.listen(process.env.PORT ?? 3000);
+
+  const metrics = app.get(MetricsService);
+  if (app.get(DataSource)) {
+    metrics.startDbPoolPolling(app.get(DataSource), 5000);
+  }
+
   app
     .get(Logger)
     .log(

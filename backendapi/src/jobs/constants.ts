@@ -16,3 +16,10 @@ export interface JobOptions {
   backoff?: { type: 'exponential'; delay: number };
   delay?: number;
 }
+
+export interface QueueLike {
+  add(type: JobType, payload: JobPayload, options?: JobOptions): Promise<void>;
+  getWaitingCount?(): Promise<number> | number;
+  readonly size?: number;
+  close?(): Promise<void>;
+}

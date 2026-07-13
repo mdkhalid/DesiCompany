@@ -6,9 +6,7 @@ import { Message } from '../chat/entities/message.entity';
 import { DirectMessage } from '../chat/entities/direct-message.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Notification, Message, DirectMessage]),
-  ],
+  imports: [TypeOrmModule.forFeature([Notification, Message, DirectMessage])],
   providers: [LifecycleService],
   exports: [LifecycleService],
 })

@@ -12,6 +12,7 @@ import { Customer } from '../users/entities/customer.entity';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PresenceService } from './presence.service';
+import { MetricsService } from '../monitoring/metrics.service';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
@@ -55,6 +56,10 @@ describe('ChatGateway', () => {
     markBookingNotificationsAsRead: jest.fn().mockResolvedValue(undefined),
   };
 
+  const mockMetricsService = {
+    wsConnections: { inc: jest.fn(), dec: jest.fn() },
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -85,6 +90,7 @@ describe('ChatGateway', () => {
             getOnlineUserIds: jest.fn().mockReturnValue([]),
           },
         },
+        { provide: MetricsService, useValue: mockMetricsService },
       ],
     }).compile();
 

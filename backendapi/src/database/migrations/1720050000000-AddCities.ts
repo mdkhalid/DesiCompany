@@ -1,4 +1,9 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
 export class AddCities1720050000000 implements MigrationInterface {
   name = 'AddCities1720050000000';
@@ -20,8 +25,16 @@ export class AddCities1720050000000 implements MigrationInterface {
           { name: 'state', type: 'varchar', isNullable: true },
           { name: 'is_active', type: 'boolean', default: true },
           { name: 'sort_order', type: 'integer', default: 0 },
-          { name: 'created_at', type: 'timestamp', default: 'CURRENT_TIMESTAMP' },
-          { name: 'updated_at', type: 'timestamp', default: 'CURRENT_TIMESTAMP' },
+          {
+            name: 'created_at',
+            type: 'timestamp',
+            default: 'CURRENT_TIMESTAMP',
+          },
+          {
+            name: 'updated_at',
+            type: 'timestamp',
+            default: 'CURRENT_TIMESTAMP',
+          },
         ],
       }),
       true,

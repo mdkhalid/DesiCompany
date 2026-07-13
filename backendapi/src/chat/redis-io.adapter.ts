@@ -46,7 +46,7 @@ export class RedisIoAdapter extends IoAdapter {
       this.logger.log('[RedisIoAdapter] Connected to Redis successfully');
     } catch {
       this.adapterConstructor = null;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
       this.logger.warn(
         '[RedisIoAdapter] Redis unavailable; cross-instance chat disabled',
       );

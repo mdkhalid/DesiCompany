@@ -21,6 +21,7 @@ const CustomerFeedback = lazy(() => import('./pages/CustomerFeedback'));
 const Advertisements = lazy(() => import('./pages/Advertisements'));
 const Grievances = lazy(() => import('./pages/Grievances'));
 const ErrorLogs = lazy(() => import('./pages/ErrorLogs'));
+const Observability = lazy(() => import('./pages/Observability'));
 
 function NotFound() {
   return (
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/advertisements" element={<ProtectedRoute><Layout><Advertisements /></Layout></ProtectedRoute>} />
           <Route path="/grievances" element={<ProtectedRoute><Layout><Grievances /></Layout></ProtectedRoute>} />
           <Route path="/error-logs" element={<ProtectedRoute><Layout><ErrorLogs /></Layout></ProtectedRoute>} />
+          <Route path="/observability" element={<ProtectedRoute><Layout><Observability /></Layout></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><Layout><NotFound /></Layout></ProtectedRoute>} />
         </Routes>

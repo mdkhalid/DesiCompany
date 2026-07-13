@@ -16,6 +16,7 @@ const links = [
   { to: '/advertisements', label: 'Advertisements', icon: '📢' },
   { to: '/grievances', label: 'Grievances', icon: '🎧' },
   { to: '/error-logs', label: 'Error Logs', icon: '🛑' },
+  { to: '/observability', label: 'Observability', icon: '📈' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 

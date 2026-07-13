@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { MetricsService } from '../monitoring/metrics.service';
 import Redis from 'ioredis';
 
 export interface CacheOptions {
@@ -10,7 +11,7 @@ export class CacheService {
   private readonly logger = new Logger(CacheService.name);
   private redis: Redis | null = null;
 
-  constructor() {
+  constructor(private readonly metrics: MetricsService) {
     try {
       this.redis = new Redis({
         host: process.env.REDIS_HOST || 'localhost',
@@ -34,12 +35,20 @@ export class CacheService {
   }
 
   async get<T>(key: string): Promise<T | null> {
-    if (!this.redis) return null;
+    if (!this.redis) {
+      this.metrics.recordCacheMiss();
+      return null;
+    }
     try {
       const raw = await this.redis.get(key);
-      if (!raw) return null;
+      if (!raw) {
+        this.metrics.recordCacheMiss();
+        return null;
+      }
+      this.metrics.recordCacheHit();
       return JSON.parse(raw) as T;
     } catch {
+      this.metrics.recordCacheMiss();
       return null;
     }
   }

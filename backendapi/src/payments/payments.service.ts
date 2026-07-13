@@ -761,7 +761,7 @@ export class PaymentsService {
         paymentId: payment.id,
         providerId: providerUserId,
         customerId: booking.customer?.user?.id,
-        metadata: {gateway, method: payment.method},
+        metadata: { gateway, method: payment.method },
       });
 
       if (Number(booking.providerAmount) > 0) {
@@ -774,7 +774,7 @@ export class PaymentsService {
           bookingId: booking.id,
           paymentId: payment.id,
           providerId: providerUserId,
-          metadata: {bookingId: booking.id},
+          metadata: { bookingId: booking.id },
         });
       }
 
@@ -788,7 +788,9 @@ export class PaymentsService {
           bookingId: booking.id,
           paymentId: payment.id,
           providerId: providerUserId,
-          metadata: {commissionType: booking.commissionWaived ? 'waived' : 'standard'},
+          metadata: {
+            commissionType: booking.commissionWaived ? 'waived' : 'standard',
+          },
         });
 
         if (!booking.commissionWaived) {
@@ -801,7 +803,7 @@ export class PaymentsService {
             bookingId: booking.id,
             paymentId: payment.id,
             providerId: providerUserId,
-            metadata: {source: 'booking_commission'},
+            metadata: { source: 'booking_commission' },
           });
         }
       }

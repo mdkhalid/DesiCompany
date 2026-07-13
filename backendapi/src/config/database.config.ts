@@ -12,6 +12,14 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
   synchronize: process.env.NODE_ENV === 'development',
   migrationsRun: process.env.NODE_ENV === 'production',
   logging: process.env.NODE_ENV !== 'production',
+  extra: {
+    max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+    idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000', 10),
+    connectionTimeoutMillis: parseInt(
+      process.env.DB_CONNECTION_TIMEOUT || '5000',
+      10,
+    ),
+  },
 });
 
 export const readReplicaConfig = (): TypeOrmModuleOptions | null => {
@@ -29,5 +37,13 @@ export const readReplicaConfig = (): TypeOrmModuleOptions | null => {
     synchronize: false,
     migrationsRun: false,
     logging: false,
+    extra: {
+      max: parseInt(process.env.DB_READ_POOL_MAX || '40', 10),
+      idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000', 10),
+      connectionTimeoutMillis: parseInt(
+        process.env.DB_CONNECTION_TIMEOUT || '5000',
+        10,
+      ),
+    },
   };
 };

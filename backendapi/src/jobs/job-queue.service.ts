@@ -1,12 +1,12 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { JOB_QUEUE } from '../jobs/constants.provider';
-import { JobType } from '../jobs/constants';
+import { JobType, QueueLike } from '../jobs/constants';
 
 @Injectable()
 export class JobQueueService {
   private readonly logger = new Logger(JobQueueService.name);
 
-  constructor(@Inject(JOB_QUEUE) private readonly queue: any) {}
+  constructor(@Inject(JOB_QUEUE) private readonly queue: QueueLike) {}
 
   async enqueueLoyaltyAward(
     userId: string,
@@ -24,5 +24,9 @@ export class JobQueueService {
     } catch (err) {
       this.logger.warn(`Enqueue ${type} failed: ${err}`);
     }
+  }
+
+  getQueue(): QueueLike {
+    return this.queue;
   }
 }

@@ -62,3 +62,9 @@ project-docs/subscription-plan.md
 # Keep the improvement roadmap tracked (reference for phased work)
 !project-docs/
 !project-docs/IMPROVEMENTS.md
+
+# New scale docs — kept local, not committed
+project-docs/CHAT_SCALE_IMPROVEMENTS.md
+project-docs/SCALE_ROADMAP.md
+project-docs/PARTITIONING_STRATEGY.md
+project-docs/QUEUE_CONSUMER_SCALING.md
