@@ -1,8 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 import 'customer_post_job_screen.dart';
 import 'customer_job_detail_screen.dart';
@@ -15,14 +17,53 @@ class CustomerJobsScreen extends StatefulWidget {
   State<CustomerJobsScreen> createState() => _CustomerJobsScreenState();
 }
 
-class _CustomerJobsScreenState extends State<CustomerJobsScreen> {
+class _CustomerJobsScreenState extends State<CustomerJobsScreen> with WidgetsBindingObserver {
   List<dynamic> _jobs = [];
   bool _loading = true;
+  io.Socket? _socket;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadJobs();
+    _connectSocket();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadJobs();
+      _connectSocket();
+    }
+  }
+
+  void _connectSocket() {
+    AuthService.getToken().then((token) {
+      if (token == null || !mounted) return;
+      try {
+        _socket = io.io(
+          '${ApiService.socketBaseUrl}/chat',
+          <String, dynamic>{
+            'transports': ['websocket'],
+            'autoConnect': true,
+            'auth': {'token': token},
+            'reconnection': true,
+          },
+        );
+        _socket!.on('new_quote', (_) {
+          if (mounted) _loadJobs();
+        });
+      } catch (_) {}
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _socket?.disconnect();
+    _socket?.dispose();
+    super.dispose();
   }
 
   Future<void> _loadJobs() async {

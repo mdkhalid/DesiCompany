@@ -17,7 +17,7 @@ class CustomerJobDetailScreen extends StatefulWidget {
   State<CustomerJobDetailScreen> createState() => _CustomerJobDetailScreenState();
 }
 
-class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
+class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> with WidgetsBindingObserver {
   Map<String, dynamic>? _job;
   bool _loading = true;
   bool _cancelling = false;
@@ -27,8 +27,17 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadJob();
     _connectQuoteSocket();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadJob();
+      _connectQuoteSocket();
+    }
   }
 
   /// Listen for real-time `new_quote` events so the customer sees the
@@ -61,6 +70,7 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _socket?.disconnect();
     _socket?.dispose();
     _promoController.dispose();

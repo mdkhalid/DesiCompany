@@ -14,7 +14,7 @@ class CustomerRequestsScreen extends StatefulWidget {
   State<CustomerRequestsScreen> createState() => _CustomerRequestsScreenState();
 }
 
-class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
+class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> with WidgetsBindingObserver {
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
   io.Socket? _socket;
@@ -22,8 +22,21 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
     _connectSocket();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when app comes to foreground — this handles the
+      // scenario where the user switched to a different account (logged
+      // out and back in as a different role) and the screen stayed
+      // mounted with stale data.
+      _load();
+      _connectSocket();
+    }
   }
 
   void _connectSocket() {
@@ -48,6 +61,7 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _socket?.disconnect();
     _socket?.dispose();
     super.dispose();
