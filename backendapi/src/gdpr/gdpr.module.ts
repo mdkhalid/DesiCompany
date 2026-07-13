@@ -15,11 +15,11 @@ import { ActivityLog } from '../activity-logs/entities/activity-log.entity';
 import { Dispute } from '../disputes/entities/dispute.entity';
 import { CustomerFeedback } from '../feedbacks/entities/customer-feedback.entity';
 import { KycDocument } from '../kyc/entities/kyc-document.entity';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
-  controllers: [GdprController],
-  providers: [UsersService],
   imports: [
+    ActivityLogsModule,
     TypeOrmModule.forFeature([
       User,
       Customer,
@@ -36,5 +36,7 @@ import { KycDocument } from '../kyc/entities/kyc-document.entity';
       KycDocument,
     ]),
   ],
+  controllers: [GdprController],
+  providers: [UsersService],
 })
 export class GdprModule {}
