@@ -49,9 +49,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       );
       if (!mounted) return;
       PushNotificationService.reconnect();
-      Navigator.pushReplacementNamed(
-        context,
+      Navigator.of(context, rootNavigator: true).pushReplacementNamed(
         user.isProvider ? '/provider-home' : '/customer-home',
+        arguments: user.isProvider ? const {'initialIndex': 1} : null,
       );
     } catch (e) {
       if (!mounted) return;
@@ -261,91 +261,108 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isSelected ? color : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border(
-            left: BorderSide(color: color, width: 4),
-            top: BorderSide(color: isSelected ? color : Colors.grey.shade200, width: 1),
-            right: BorderSide(color: isSelected ? color : Colors.grey.shade200, width: 1),
-            bottom: BorderSide(color: isSelected ? color : Colors.grey.shade200, width: 1),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected
-                  ? color.withValues(alpha: 0.3)
-                  : Colors.black.withValues(alpha: 0.04),
-              blurRadius: isSelected ? 16 : 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Flexible(
-              fit: FlexFit.loose,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
+      child: Stack(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isSelected ? color : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected ? color : Colors.grey.shade200,
+                width: isSelected ? 2 : 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
                   color: isSelected
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
+                      ? color.withValues(alpha: 0.3)
+                      : Colors.black.withValues(alpha: 0.04),
+                  blurRadius: isSelected ? 16 : 8,
+                  offset: const Offset(0, 4),
                 ),
-                child: Icon(
-                  icon,
-                  size: 32,
-                  color: isSelected ? Colors.white : color,
-                ),
-              ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : const Color(0xFF1E1E2E),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 13,
+            child: Row(
+              children: [
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
                       color: isSelected
-                          ? Colors.white.withValues(alpha: 0.85)
-                          : Colors.grey.shade600,
+                          ? Colors.white.withValues(alpha: 0.2)
+                          : color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 32,
+                      color: isSelected ? Colors.white : color,
                     ),
                   ),
-                ],
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? Colors.white : const Color(0xFF1E1E2E),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.85)
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isSelected)
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(
+              width: 5,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  bottomLeft: Radius.circular(20),
+                ),
               ),
             ),
-            if (isSelected)
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.25),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 18,
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

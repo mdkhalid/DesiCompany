@@ -1,0 +1,56 @@
+# Production docker-compose (single host).
+# For AWS ECS/Fargate use ecs-task-definition.json instead — secrets go to Secrets Manager there.
+# This file keeps secrets in a local .env (already git-ignored). DO NOT commit .env.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-desicompany}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-desicompany123}
+      POSTGRES_DB: ${DB_NAME:-desicompany}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-desicompany} -d ${DB_NAME:-desicompany}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: desicompany-backend:latest   # build locally with: docker build -t desicompany-backend ./backendapi
+    restart: always
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      REDIS_HOST: redis
+    env_file:
+      - ./backendapi/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

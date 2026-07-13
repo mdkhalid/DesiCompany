@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { sendOtp, verifyOtp } from '../services/auth.service';
 
+// Optional hint shown on the login screen. Set VITE_ADMIN_PHONE_HINT in the env file.
+// Leave empty to avoid exposing any real number in the deployed bundle.
+const ADMIN_PHONE_HINT = import.meta.env.VITE_ADMIN_PHONE_HINT || '';
+
 export default function Login() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -58,16 +62,18 @@ export default function Login() {
               <input
                 id="phone"
                 className="w-full border rounded-lg px-3 py-2"
-                placeholder="9999999999"
+                placeholder={ADMIN_PHONE_HINT || 'Enter registered phone number'}
                 type="tel"
                 inputMode="numeric"
                 maxLength={10}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Default admin: <span className="font-mono">9999999999</span>
-              </p>
+              {ADMIN_PHONE_HINT && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Admin phone: <span className="font-mono">{ADMIN_PHONE_HINT}</span>
+                </p>
+              )}
             </div>
             <button
               onClick={handleSendOtp}

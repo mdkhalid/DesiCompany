@@ -23,7 +23,7 @@ class ProviderHomeContent extends StatefulWidget {
 class _ProviderHomeContentState extends State<ProviderHomeContent> {
   List _bookings = [];
   int _unreadCount = 0;
-  bool _hasMultipleRoles = false;
+  bool _showSwitchProfile = false;
   User? _currentUser;
   bool _loading = true;
   String _providerName = '';
@@ -72,7 +72,7 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
       final roles = profile['roles'];
       final parsedRoles = roles is List ? roles.cast<String>() : <String>[];
       setState(() {
-        _hasMultipleRoles = parsedRoles.length > 1;
+        _showSwitchProfile = parsedRoles.isNotEmpty;
         _currentUser = User.fromJson(Map<String, dynamic>.from(profile));
       });
     } catch (e, st) {
@@ -183,7 +183,7 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
           ),
           Row(
             children: [
-              if (_hasMultipleRoles) ...[
+              if (_showSwitchProfile) ...[
                 GestureDetector(
                   onTap: () {
                     Navigator.of(context, rootNavigator: true).push(

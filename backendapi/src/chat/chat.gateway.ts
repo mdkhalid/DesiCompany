@@ -124,6 +124,28 @@ export class ChatGateway
     this.presenceService.registerSocket(userId, socketId);
   }
 
+  /**
+   * Updates the user's `lastActiveAt` timestamp, throttled to at most once
+   * per minute so frequent socket reconnects don't hammer the database.
+   */
+  private async touchLastActive(userId: string): Promise<void> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+        select: { id: true, lastActiveAt: true },
+      });
+      if (!user) return;
+      const now = Date.now();
+      const last = user.lastActiveAt ? user.lastActiveAt.getTime() : 0;
+      if (now - last < 60_000) return;
+      await this.userRepository.update(userId, { lastActiveAt: new Date(now) });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to update lastActiveAt for ${userId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
   private unregisterSocket(userId: string, socketId: string) {
     this.presenceService.unregisterSocket(userId, socketId);
   }
@@ -448,6 +470,12 @@ export class ChatGateway
       const wasOffline = !this.isUserOnline(userId);
 
       this.registerSocket(userId, client.id);
+
+      // Capture "last active" at the user level (covers both customer and
+      // provider activity — a dual-role user is treated as one user).
+      // Throttled to once per minute to avoid redundant writes on every
+      // reconnect.
+      this.touchLastActive(userId).catch(() => {});
 
       // Notify partners that this user is now online
       this.getPartnerIds(userId)

@@ -29,7 +29,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   int _unreadCount = 0;
-  bool _hasMultipleRoles = false;
+  bool _showSwitchProfile = false;
   User? _currentUser;
   String _locationText = 'Set location';
   String? _error;
@@ -194,7 +194,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
       final roles = data['roles'];
       final parsedRoles = roles is List ? roles.cast<String>() : <String>[];
       setState(() {
-        _hasMultipleRoles = parsedRoles.length > 1;
+        _showSwitchProfile = parsedRoles.isNotEmpty;
         _currentUser = User.fromJson(Map<String, dynamic>.from(data));
       });
     } catch (e, st) { AppLogger.e('customer_home_screen', 'Operation failed', e, st); }
@@ -511,7 +511,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
           ),
           Row(
             children: [
-              if (_hasMultipleRoles) ...[
+              if (_showSwitchProfile) ...[
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -1084,6 +1084,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
                         ],
                       ),
                       const SizedBox(height: 4),
+                      _buildActiveStatus(p),
                       if (p['city'] != null)
                         Row(
                           children: [
@@ -1131,6 +1132,50 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildActiveStatus(Map<String, dynamic> p) {
+    final bool online = p['isOnline'] == true;
+    final String? lastActive = p['lastActiveAt'] as String?;
+
+    String label;
+    Color dotColor;
+    if (online) {
+      label = 'Active Today';
+      dotColor = const Color(0xFF4CAF50);
+    } else if (lastActive != null) {
+      final dt = DateTime.tryParse(lastActive);
+      if (dt == null) return const SizedBox.shrink();
+      final days = DateTime.now().difference(dt).inDays;
+      if (days <= 0) {
+        label = 'Active Today';
+        dotColor = const Color(0xFF4CAF50);
+      } else {
+        label = 'Last active ${days}d ago';
+        dotColor = Colors.grey.shade400;
+      }
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: dotColor,
+          ),
+        ),
+      ],
     );
   }
 

@@ -97,12 +97,19 @@ export class QuotesService {
     lng?: number,
     radiusKm?: number,
   ) {
+    // Load the provider once — used both for category resolution and to
+    // exclude jobs the provider has already quoted on.
+    const provider = await this.providerRepository.findOne({
+      where: { user: { id: userId } },
+      relations: { services: { category: true } },
+    });
+
     // If no specific category was requested, limit results to the
     // provider's own active service categories so they don't see
     // irrelevant jobs (e.g. an Electrician shouldn't see Plumber
     // requests unless they actually offer both).
     const effectiveCategoryIds =
-      categoryId ?? (await this.resolveProviderCategoryIds(userId));
+      categoryId ?? this.resolveCategoryIdsFromProvider(provider ?? undefined);
 
     const query = this.jobRequestRepository
       .createQueryBuilder('jobRequest')
@@ -123,6 +130,15 @@ export class QuotesService {
           );
         }),
       );
+
+    // Exclude jobs the current provider has already quoted on — once they
+    // submit a quote the job should no longer appear as "open to quote".
+    if (provider) {
+      query.andWhere(
+        `NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.job_request_id = jobRequest.id AND qq.provider_id = :providerId)`,
+        { providerId: provider.id },
+      );
+    }
 
     if (effectiveCategoryIds) {
       if (typeof effectiveCategoryIds === 'string') {
@@ -169,22 +185,19 @@ export class QuotesService {
   }
 
   /**
-   * Returns the list of active service category IDs for the given user.
+   * Returns the list of active service category IDs for the given provider.
    * When no explicit category filter is passed, this list is used to
    * ensure providers only see jobs that match their own offerings.
    */
-  private async resolveProviderCategoryIds(
-    userId: string,
-  ): Promise<string[] | undefined> {
+  private resolveCategoryIdsFromProvider(
+    provider?: Provider,
+  ): string[] | undefined {
+    if (!provider) return undefined;
     try {
-      const provider = await this.providerRepository.findOne({
-        where: { user: { id: userId } },
-        relations: { services: { category: true } },
-      });
-      const ids = provider?.services
+      const ids = provider.services
         ?.filter((s) => s.isActive)
-        .map((s) => s.category.id)
-        .filter(Boolean);
+        .map((s) => s.category?.id)
+        .filter((id): id is string => id != null);
       return ids && ids.length > 0 ? ids : undefined;
     } catch {
       return undefined;
@@ -516,7 +529,8 @@ export class QuotesService {
       description: jobRequest.description,
       estimatedHours: quote.estimatedHours ?? undefined,
       totalAmount: serviceAmount,
-      status: BookingStatus.REQUESTED,
+      providerAmount: serviceAmount,
+      status: BookingStatus.ACCEPTED,
     });
 
     const savedBooking = await this.bookingRepository.save(booking);

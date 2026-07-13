@@ -101,7 +101,12 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
           routes: {
             '/login': (_) => const LoginScreen(),
             '/customer-home': (_) => const AppShell(role: 'customer'),
-            '/provider-home': (_) => const AppShell(role: 'provider'),
+            '/provider-home': (context) {
+              final args =
+                  ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+              final initialIndex = args?['initialIndex'] as int? ?? 0;
+              return AppShell(role: 'provider', initialIndex: initialIndex);
+            },
             '/admin-home': (_) => const AdminHomeScreen(),
             '/admin-users': (_) => const AdminUsersScreen(),
             '/admin-kyc': (_) => const AdminKycScreen(),

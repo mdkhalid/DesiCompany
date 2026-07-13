@@ -44,6 +44,9 @@ export class User extends BaseEntity {
   @Column({ default: 'en' })
   language: string;
 
+  @Column({ nullable: true, type: 'timestamp' })
+  lastActiveAt?: Date;
+
   @OneToOne(() => Customer, (customer) => customer.user)
   customer?: Customer;
 

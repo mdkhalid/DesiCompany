@@ -103,7 +103,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     if (_booking == null || _updating) return;
     setState(() => _updating = true);
     try {
-      await ApiService.patch('/bookings/${widget.bookingId}', body: {
+      await ApiService.patch('/bookings/${widget.bookingId}/status', body: {
         'status': newStatus,
       });
       await _load();
@@ -640,7 +640,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     if (confirm != true) return;
     setState(() => _updating = true);
     try {
-      await ApiService.patch('/bookings/${widget.bookingId}', body: {'status': 'cancelled'});
+      await ApiService.patch('/bookings/${widget.bookingId}/status', body: {'status': 'cancelled'});
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking cancelled')));

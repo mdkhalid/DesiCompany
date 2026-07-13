@@ -285,6 +285,10 @@ export class AuthService {
       await this.userRepository.save(user);
     }
 
+    // Capture "last active" on successful login (user-level, not per-profile).
+    user.lastActiveAt = new Date();
+    await this.userRepository.save(user);
+
     const userResponse = {
       id: user.id,
       phone: user.phone,

@@ -510,6 +510,7 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
                       Text(p['city'], style: const TextStyle(color: Colors.white70, fontSize: 14)),
                     ],
                   ]),
+                  _buildHeaderActiveStatus(p),
                   const SizedBox(height: 20),
                 ]),
               ),
@@ -761,6 +762,45 @@ class _ProviderDetailScreenState extends State<ProviderDetailScreen> {
         }
         return Icon(Icons.star_outline_rounded, size: 16, color: Colors.grey.shade300);
       }),
+    );
+  }
+
+  Widget _buildHeaderActiveStatus(Map p) {
+    final bool online = p['isOnline'] == true;
+    final String? lastActive = p['lastActiveAt'] as String?;
+    String label;
+    Color dotColor;
+    if (online) {
+      label = 'Active Today';
+      dotColor = const Color(0xFF4CAF50);
+    } else if (lastActive != null) {
+      final dt = DateTime.tryParse(lastActive);
+      if (dt == null) return const SizedBox.shrink();
+      final days = DateTime.now().difference(dt).inDays;
+      if (days <= 0) {
+        label = 'Active Today';
+        dotColor = const Color(0xFF4CAF50);
+      } else {
+        label = 'Last active ${days}d ago';
+        dotColor = Colors.white70;
+      }
+    } else {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
+        ],
+      ),
     );
   }
 

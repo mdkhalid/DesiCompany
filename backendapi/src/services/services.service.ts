@@ -64,11 +64,16 @@ export class ServicesService {
   ) {}
 
   private async annotateWithSubscriptionBenefits<T extends { id?: string }>(
-    providers: (T & { isOnline?: boolean; userId?: string })[],
+    providers: (T & {
+      isOnline?: boolean;
+      userId?: string;
+      lastActiveAt?: string | null;
+    })[],
   ): Promise<
     (T & {
       isOnline?: boolean;
       userId?: string;
+      lastActiveAt?: string | null;
       hasFeaturedBadge?: boolean;
       priorityBoost?: number;
     })[]
@@ -94,21 +99,33 @@ export class ServicesService {
 
   private annotateProvidersWithPresence<
     T extends {
-      user?: { id?: string } | null;
+      user?: { id?: string; lastActiveAt?: Date | null } | null;
       id?: string;
       firstName?: string;
     },
-  >(providers: T[]): (T & { isOnline?: boolean; userId?: string })[] {
+  >(
+    providers: T[],
+  ): (T & {
+    isOnline?: boolean;
+    userId?: string;
+    lastActiveAt?: string | null;
+  })[] {
     return providers.map((p) => {
       const userId = p.user?.id;
       const annotated = { ...p } as T & {
         isOnline?: boolean;
         userId?: string;
+        lastActiveAt?: string | null;
       };
       annotated.userId = userId;
       annotated.isOnline = userId
         ? this.presenceService.isUserOnline(userId)
         : false;
+      // Surface last-active at the user level so customers can see a
+      // provider's recent activity regardless of which profile they used.
+      annotated.lastActiveAt = p.user?.lastActiveAt
+        ? p.user.lastActiveAt.toISOString()
+        : null;
       const onlineIds = this.presenceService.getOnlineUserIds();
       this.logger.log(
         `[PRESENCE] annotate provider=${p.firstName ?? '?'} userId=${userId} isOnline=${annotated.isOnline} currentlyOnlineUserIds=${JSON.stringify(onlineIds)}`,
@@ -119,7 +136,7 @@ export class ServicesService {
 
   async findAllCategories() {
     const cacheKey = 'categories:active';
-    const cached = await this.cacheService.get<any[]>(cacheKey);
+    const cached = await this.cacheService.get<ServiceCategory[]>(cacheKey);
     if (cached) {
       return cached;
     }

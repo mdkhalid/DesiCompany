@@ -48,9 +48,10 @@ class ShellTab {
 /// Persistent bottom-navigation shell shared by Customer and Provider.
 /// Uses a single shared Navigator so sub-screens always keep the bar visible.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.role});
+  const AppShell({super.key, required this.role, this.initialIndex = 0});
 
   final String role;
+  final int initialIndex;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -110,6 +111,10 @@ class _AppShellState extends State<AppShell> {
               initialRoute: '/my-account',
             ),
           ];
+    _currentIndex =
+        widget.initialIndex >= 0 && widget.initialIndex < _tabs.length
+            ? widget.initialIndex
+            : 0;
   }
 
   void _onTabTapped(int index) => goToTab(index);

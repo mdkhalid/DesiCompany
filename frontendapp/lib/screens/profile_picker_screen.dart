@@ -52,9 +52,9 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
       }
       if (!mounted) return;
       PushNotificationService.reconnect();
-      Navigator.pushReplacementNamed(
-        context,
+      Navigator.of(context, rootNavigator: true).pushReplacementNamed(
         user.isProvider ? '/provider-home' : '/customer-home',
+        arguments: user.isProvider ? const {'initialIndex': 1} : null,
       );
     } catch (e) {
       if (!mounted) return;
