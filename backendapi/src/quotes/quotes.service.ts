@@ -91,11 +91,19 @@ export class QuotesService {
   }
 
   async findOpenJobRequests(
+    userId: string,
     categoryId?: string,
     lat?: number,
     lng?: number,
     radiusKm?: number,
   ) {
+    // If no specific category was requested, limit results to the
+    // provider's own active service categories so they don't see
+    // irrelevant jobs (e.g. an Electrician shouldn't see Plumber
+    // requests unless they actually offer both).
+    const effectiveCategoryIds =
+      categoryId ?? (await this.resolveProviderCategoryIds(userId));
+
     const query = this.jobRequestRepository
       .createQueryBuilder('jobRequest')
       .leftJoinAndSelect('jobRequest.category', 'category')
@@ -116,8 +124,16 @@ export class QuotesService {
         }),
       );
 
-    if (categoryId) {
-      query.andWhere('category.id = :categoryId', { categoryId });
+    if (effectiveCategoryIds) {
+      if (typeof effectiveCategoryIds === 'string') {
+        query.andWhere('category.id = :categoryId', {
+          categoryId: effectiveCategoryIds,
+        });
+      } else if (effectiveCategoryIds.length > 0) {
+        query.andWhere('category.id IN (:...categoryIds)', {
+          categoryIds: effectiveCategoryIds,
+        });
+      }
     }
 
     if (lat !== undefined && lng !== undefined && radiusKm) {
@@ -150,6 +166,29 @@ export class QuotesService {
     }
 
     return query.getMany();
+  }
+
+  /**
+   * Returns the list of active service category IDs for the given user.
+   * When no explicit category filter is passed, this list is used to
+   * ensure providers only see jobs that match their own offerings.
+   */
+  private async resolveProviderCategoryIds(
+    userId: string,
+  ): Promise<string[] | undefined> {
+    try {
+      const provider = await this.providerRepository.findOne({
+        where: { user: { id: userId } },
+        relations: { services: { category: true } },
+      });
+      const ids = provider?.services
+        ?.filter((s) => s.isActive)
+        .map((s) => s.category.id)
+        .filter(Boolean);
+      return ids && ids.length > 0 ? ids : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   async findMyJobRequests(userId: string) {

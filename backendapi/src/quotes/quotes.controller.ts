@@ -43,6 +43,7 @@ export class QuotesController {
   @Get('job-requests/open')
   @Roles(UserRole.PROVIDER, UserRole.ADMIN)
   findOpenJobRequests(
+    @Req() req: AuthRequest,
     @Query('categoryId') categoryId?: string,
     @Query('lat') lat?: string,
     @Query('lng') lng?: string,
@@ -52,6 +53,7 @@ export class QuotesController {
     const lngNum = lng !== undefined ? Number(lng) : undefined;
     const radiusNum = radiusKm !== undefined ? Number(radiusKm) : undefined;
     return this.quotesService.findOpenJobRequests(
+      req.user.id,
       categoryId,
       latNum,
       lngNum,
