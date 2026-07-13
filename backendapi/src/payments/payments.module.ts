@@ -17,6 +17,7 @@ import { SoftBlockService } from './soft-block.service';
 import { BookingsModule } from '../bookings/bookings.module';
 import { CommissionsModule } from '../commissions/commissions.module';
 import { PlatformFeesModule } from '../platform-fees/platform-fees.module';
+import { AccountsModule } from '../accounts/accounts.module';
 import { User } from '../users/entities/user.entity';
 import { Provider } from '../users/entities/provider.entity';
 import { Booking } from '../bookings/entities/booking.entity';
@@ -46,6 +47,7 @@ import { CustomerMembershipPlan } from '../platform-fees/entities/customer-membe
     BookingsModule,
     CommissionsModule,
     PlatformFeesModule,
+    AccountsModule,
   ],
   controllers: [PaymentsController, WebhooksController, WalletsController],
   providers: [
