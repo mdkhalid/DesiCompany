@@ -51,7 +51,11 @@ export class HealthController {
         database: { status: 'unknown', responseTime: 0 },
         redis: { status: 'unknown', responseTime: 0 },
         cache: { status: 'unknown', responseTime: 0 },
-        queue: { status: 'unknown', responseTime: 0 },
+        queue: { status: 'unknown', responseTime: 0 } as {
+          status: string;
+          responseTime: number;
+          waitingJobs?: number;
+        },
       },
     };
 

@@ -7,6 +7,7 @@ import { Provider } from './entities/provider.entity';
 import { UserStatus } from '../common/enums/user-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class UsersService {
@@ -17,6 +18,7 @@ export class UsersService {
     private readonly customerRepository: Repository<Customer>,
     @InjectRepository(Provider)
     private readonly providerRepository: Repository<Provider>,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   async getProfile(userId: string) {
@@ -219,5 +221,75 @@ export class UsersService {
 
     user.status = status;
     return this.userRepository.save(user);
+  }
+
+  sanitizeForExport(profile: Record<string, unknown>) {
+    const sensitiveKeys = new Set([
+      'password',
+      'fcmToken',
+      'token',
+      'accessToken',
+      'refreshToken',
+    ]);
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(profile)) {
+      if (sensitiveKeys.has(key)) continue;
+      sanitized[key] = value;
+    }
+    return sanitized;
+  }
+
+  async anonymizeUser(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: { customer: true, provider: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const anonymisedId = `anon_${user.id.slice(-8)}`;
+    user.email = `${anonymisedId}@deleted.local`;
+    user.phone = `0000000000`;
+    user.fcmToken = undefined;
+    user.profileImage = '';
+    await this.userRepository.save(user);
+
+    if (user.customer) {
+      user.customer.firstName = 'Deleted';
+      user.customer.lastName = 'User';
+      user.customer.address = '';
+      user.customer.locality = '';
+      user.customer.landmark = '';
+      user.customer.city = '';
+      user.customer.state = '';
+      user.customer.pincode = '';
+      user.customer.latitude = 0;
+      user.customer.longitude = 0;
+      await this.customerRepository.save(user.customer);
+    }
+
+    if (user.provider) {
+      user.provider.firstName = 'Deleted';
+      user.provider.lastName = 'User';
+      user.provider.bio = '';
+      user.provider.address = '';
+      user.provider.locality = '';
+      user.provider.landmark = '';
+      user.provider.city = '';
+      user.provider.state = '';
+      user.provider.pincode = '';
+      user.provider.latitude = 0;
+      user.provider.longitude = 0;
+      await this.providerRepository.save(user.provider);
+    }
+
+    await this.activityLogsService.log(
+      'gdpr.anonymized',
+      'User',
+      user.id,
+      user.id,
+      { reason: 'user_request' },
+    );
   }
 }

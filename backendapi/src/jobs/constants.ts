@@ -18,8 +18,12 @@ export interface JobOptions {
 }
 
 export interface QueueLike {
-  add(type: JobType, payload: JobPayload, options?: JobOptions): Promise<void>;
+  add(
+    type: JobType,
+    payload: JobPayload,
+    options?: JobOptions,
+  ): void | Promise<void>;
   getWaitingCount?(): Promise<number> | number;
   readonly size?: number;
-  close?(): Promise<void>;
+  close?(): void | Promise<void>;
 }

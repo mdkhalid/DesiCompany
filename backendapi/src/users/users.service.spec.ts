@@ -8,6 +8,7 @@ import { Customer } from './entities/customer.entity';
 import { Provider } from './entities/provider.entity';
 import { UserRole } from '../common/enums/user-role.enum';
 import { UserStatus } from '../common/enums/user-status.enum';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 type MockRepo = {
   find: jest.Mock;
@@ -44,6 +45,7 @@ describe('UsersService', () => {
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(Customer), useValue: customerRepo },
         { provide: getRepositoryToken(Provider), useValue: providerRepo },
+        { provide: ActivityLogsService, useValue: { log: jest.fn() } },
       ],
     }).compile();
 

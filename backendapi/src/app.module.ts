@@ -54,10 +54,10 @@ import { AccountsModule } from './accounts/accounts.module';
 import { JobsModule } from './jobs/jobs.module';
 import { LifecycleModule } from './lifecycle/lifecycle.module';
 import { ReadConnectionModule } from './database/read-connection.module';
+import { GdprModule } from './gdpr/gdpr.module';
 import { IdempotencyKey } from './common/entities/idempotency-key.entity';
 import { User } from './users/entities/user.entity';
 import { CacheService } from './common/cache.service';
-import { LifecycleModule } from './lifecycle/lifecycle.module';
 import { Customer } from './users/entities/customer.entity';
 import { Provider } from './users/entities/provider.entity';
 import { KycDocument } from './kyc/entities/kyc-document.entity';
@@ -137,7 +137,7 @@ import { City } from './locations/entities/city.entity';
     JobsModule,
     LifecycleModule,
     ReadConnectionModule,
-    LifecycleModule,
+    GdprModule,
     TypeOrmModule.forFeature([
       User,
       Customer,

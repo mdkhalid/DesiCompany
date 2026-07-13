@@ -8,10 +8,6 @@ export class BullMQJobQueue implements OnModuleInit, QueueLike {
   private readonly logger = new Logger(BullMQJobQueue.name);
   private queue: Queue | null = null;
 
-  get size(): number {
-    return 0;
-  }
-
   constructor() {}
 
   onModuleInit() {

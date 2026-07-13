@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { JOB_QUEUE } from '../jobs/constants.provider';
-import { JobType, QueueLike } from '../jobs/constants';
+import { JobType } from '../jobs/constants';
+import type { QueueLike } from '../jobs/constants';
 
 @Injectable()
 export class JobQueueService {
