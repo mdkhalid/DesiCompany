@@ -288,11 +288,15 @@ export class AuthService {
     const userResponse = {
       id: user.id,
       phone: user.phone,
-      firstName: user.customer?.firstName,
-      lastName: user.customer?.lastName || user.provider?.lastName,
+      firstName: user.customer?.firstName ?? user.provider?.firstName,
+      lastName: user.customer?.lastName ?? user.provider?.lastName ?? undefined,
       email: user.email,
       role: user.role,
       roles: availableRoles,
+      customerId: user.customer?.id ?? null,
+      customer: user.customer ?? null,
+      providerId: user.provider?.id ?? null,
+      provider: user.provider ?? null,
     };
 
     return {
