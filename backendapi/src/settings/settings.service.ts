@@ -60,4 +60,12 @@ export class SettingsService {
   async isRedisRequired(): Promise<boolean> {
     return this.getBoolean('platform_redis_required', false);
   }
+
+  async isFeatureEnabled(key: string, defaultValue = false): Promise<boolean> {
+    return this.getBoolean(`feature_${key}`, defaultValue);
+  }
+
+  async getFeatureFlag(key: string, defaultValue = false): Promise<boolean> {
+    return this.isFeatureEnabled(key, defaultValue);
+  }
 }
