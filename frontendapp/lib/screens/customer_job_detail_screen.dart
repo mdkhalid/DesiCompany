@@ -1,8 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../theme.dart';
 import '../widgets/price_breakdown_card.dart';
 
@@ -20,11 +22,49 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
   bool _loading = true;
   bool _cancelling = false;
   bool _acceptingId = false;
+  io.Socket? _socket;
 
   @override
   void initState() {
     super.initState();
     _loadJob();
+    _connectQuoteSocket();
+  }
+
+  /// Listen for real-time `new_quote` events so the customer sees the
+  /// provider's quote immediately without needing to pull-to-refresh.
+  void _connectQuoteSocket() {
+    AuthService.getToken().then((token) {
+      if (token == null || !mounted) return;
+      final baseWsUrl = ApiService.socketBaseUrl;
+      try {
+        _socket = io.io(
+          '$baseWsUrl/chat',
+          <String, dynamic>{
+            'transports': ['websocket'],
+            'autoConnect': true,
+            'auth': {'token': token},
+            'reconnection': true,
+          },
+        );
+        _socket!.on('new_quote', (data) {
+          if (!mounted) return;
+          if (data is Map && data['jobRequestId'] == widget.jobRequestId) {
+            _loadJob();
+          }
+        });
+      } catch (_) {
+        // Socket is optional; pull-to-refresh still works.
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _socket?.disconnect();
+    _socket?.dispose();
+    _promoController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadJob() async {
@@ -79,12 +119,6 @@ class _CustomerJobDetailScreenState extends State<CustomerJobDetailScreen> {
   Map<String, dynamic>? _promoResult;
   bool _validatingPromo = false;
   final _promoController = TextEditingController();
-
-  @override
-  void dispose() {
-    _promoController.dispose();
-    super.dispose();
-  }
 
   double _firstQuoteAmount(List<dynamic> quotes) {
     if (quotes.isEmpty) return 0;
