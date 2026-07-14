@@ -56,7 +56,7 @@ export class UploadsController {
     if (!file) {
       throw new BadRequestException('File is required');
     }
-    const url = this.uploadsService.getFileUrl(file.filename);
+    const url = this.uploadsService.getFileUrl(`misc/${file.filename}`);
     return {
       url,
       filename: file.filename,

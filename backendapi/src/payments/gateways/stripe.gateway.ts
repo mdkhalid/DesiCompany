@@ -24,7 +24,7 @@ export class StripeGateway implements PaymentGateway {
     if (!secretKey) {
       throw new Error('StripeGateway requires secret_key in credentials');
     }
-    this.client = new Stripe(secretKey, { apiVersion: '2026-05-27.dahlia' });
+    this.client = new Stripe(secretKey, { apiVersion: '2026-06-24.dahlia' });
   }
 
   getName(): string {

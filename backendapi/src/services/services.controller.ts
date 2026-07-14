@@ -10,6 +10,7 @@ import {
   UseGuards,
   Query,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,7 +18,10 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ServicesService } from './services.service';
+import { Provider } from '../users/entities/provider.entity';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -40,7 +44,29 @@ interface AuthRequest {
 @Controller('services')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ServicesController {
-  constructor(private readonly servicesService: ServicesService) {}
+  constructor(
+    private readonly servicesService: ServicesService,
+    @InjectRepository(Provider)
+    private readonly providerRepository: Repository<Provider>,
+  ) {}
+
+  /**
+   * Resolves a providerId from a query param or the authenticated user's provider entity.
+   * Throws BadRequestException if neither source yields a valid providerId.
+   */
+  private async resolveProviderId(
+    req: AuthRequest,
+    queryProviderId?: string,
+  ): Promise<string> {
+    if (queryProviderId) return queryProviderId;
+
+    const provider = await this.providerRepository.findOne({
+      where: { user: { id: req.user.id } },
+    });
+    if (provider) return provider.id;
+
+    throw new BadRequestException('providerId is required');
+  }
 
   @Get('providers')
   @Roles(UserRole.CUSTOMER, UserRole.ADMIN)
@@ -136,8 +162,13 @@ export class ServicesController {
   @Get('provider-services')
   @Roles(UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get current provider services' })
-  findProviderServices(@Query('providerId') providerId: string) {
-    return this.servicesService.findProviderServices(providerId);
+  async findProviderServices(
+    @Query('providerId') providerId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.servicesService.findProviderServices(
+      await this.resolveProviderId(req, providerId),
+    );
   }
 
   @Get('provider-services/:id')
@@ -174,8 +205,13 @@ export class ServicesController {
   @Get('availabilities')
   @Roles(UserRole.PROVIDER, UserRole.CUSTOMER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get provider availability schedule' })
-  findProviderAvailability(@Query('providerId') providerId: string) {
-    return this.servicesService.findProviderAvailability(providerId);
+  async findProviderAvailability(
+    @Query('providerId') providerId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.servicesService.findProviderAvailability(
+      await this.resolveProviderId(req, providerId),
+    );
   }
 
   @Post('availabilities')
@@ -196,61 +232,87 @@ export class ServicesController {
   @Roles(UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Replace entire weekly schedule (batch set)' })
   @ApiResponse({ status: 200, description: 'Weekly schedule updated' })
-  setWeeklySchedule(
+  async setWeeklySchedule(
     @Query('providerId') providerId: string,
     @Body() dto: SetWeeklyScheduleDto,
+    @Req() req: AuthRequest,
   ) {
-    return this.servicesService.setWeeklySchedule(providerId, dto.slots);
+    return this.servicesService.setWeeklySchedule(
+      await this.resolveProviderId(req, providerId),
+      dto.slots,
+    );
   }
 
   @Get('date-overrides')
   @Roles(UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get date overrides for provider' })
-  getDateOverrides(@Query('providerId') providerId: string) {
-    return this.servicesService.getDateOverrides(providerId);
+  async getDateOverrides(
+    @Query('providerId') providerId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.servicesService.getDateOverrides(
+      await this.resolveProviderId(req, providerId),
+    );
   }
 
   @Post('date-overrides')
   @Roles(UserRole.PROVIDER)
   @ApiOperation({ summary: 'Create date override (holiday/special hours)' })
   @ApiResponse({ status: 201, description: 'Date override created' })
-  createDateOverride(
+  async createDateOverride(
     @Query('providerId') providerId: string,
     @Body() dto: CreateDateOverrideDto,
+    @Req() req: AuthRequest,
   ) {
-    return this.servicesService.createDateOverride(providerId, dto);
+    return this.servicesService.createDateOverride(
+      await this.resolveProviderId(req, providerId),
+      dto,
+    );
   }
 
   @Patch('date-overrides/:id')
   @Roles(UserRole.PROVIDER)
   @ApiOperation({ summary: 'Update date override' })
-  updateDateOverride(
+  async updateDateOverride(
     @Query('providerId') providerId: string,
     @Param('id') id: string,
     @Body() dto: Partial<CreateDateOverrideDto>,
+    @Req() req: AuthRequest,
   ) {
-    return this.servicesService.updateDateOverride(providerId, id, dto);
+    return this.servicesService.updateDateOverride(
+      await this.resolveProviderId(req, providerId),
+      id,
+      dto,
+    );
   }
 
   @Delete('date-overrides/:id')
   @Roles(UserRole.PROVIDER)
   @ApiOperation({ summary: 'Delete date override' })
-  deleteDateOverride(
+  async deleteDateOverride(
     @Query('providerId') providerId: string,
     @Param('id') id: string,
+    @Req() req: AuthRequest,
   ) {
-    return this.servicesService.deleteDateOverride(providerId, id);
+    return this.servicesService.deleteDateOverride(
+      await this.resolveProviderId(req, providerId),
+      id,
+    );
   }
 
   @Get('available-slots')
   @Roles(UserRole.CUSTOMER, UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get available time slots for a date' })
   @ApiResponse({ status: 200, description: 'Returns available slots' })
-  getAvailableSlots(
+  async getAvailableSlots(
     @Query('providerId') providerId: string,
     @Query('date') date: string,
+    @Req() req: AuthRequest,
   ) {
-    return this.servicesService.getAvailableSlots(providerId, date);
+    return this.servicesService.getAvailableSlots(
+      await this.resolveProviderId(req, providerId),
+      date,
+    );
   }
 
   // ─── Busy Slots (Provider-managed unavailable time slots) ─────

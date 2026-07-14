@@ -96,7 +96,7 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unexpected response from server')),
+        const SnackBar(content: const Text('Unexpected response from server')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -241,8 +241,8 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
 
   Widget _buildPlanCard(Map<String, dynamic> plan, LocalizationProvider loc) {
     final name = plan['name'] ?? '';
-    final monthly = (plan['monthlyPrice'] ?? 0).toDouble();
-    final yearly = (plan['yearlyPrice'] ?? 0).toDouble();
+    final monthly = num.tryParse('${plan['monthlyPrice'] ?? 0}')?.toDouble() ?? 0;
+    final yearly = num.tryParse('${plan['yearlyPrice'] ?? 0}')?.toDouble() ?? 0;
     final benefits = plan['benefits'] as Map<String, dynamic>? ?? {};
     final isActive = plan['isActive'] ?? true;
     final isCurrentPlan = _activeMembership?['plan']?['id'] == plan['id'];

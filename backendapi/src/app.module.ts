@@ -3,9 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { databaseConfig } from './config/database.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { DecimalSerializerInterceptor } from './common/interceptors/decimal-serializer.interceptor';
 import { ErrorLogsModule } from './error-logs/error-logs.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -174,6 +175,10 @@ import { City } from './locations/entities/city.entity';
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: DecimalSerializerInterceptor,
     },
   ],
 })

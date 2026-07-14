@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -291,6 +292,7 @@ export class AdvertisementsService {
     };
   }
 
+  @Cron(CronExpression.EVERY_MINUTE)
   async processScheduledAds(): Promise<void> {
     const now = new Date();
 

@@ -7,6 +7,7 @@ import '../models/user.dart';
 import '../theme.dart';
 import '../l10n/strings.dart';
 import '../widgets/distance_badge.dart';
+import '../widgets/ad_banner.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -448,6 +449,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
             children: [
               _buildHeader(),
               _buildSearchBar(),
+              const AdBanner(placement: 'home_banner'),
               _buildRadiusFilter(),
               Expanded(
                 child: _loading
@@ -533,7 +535,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.swap_horiz, color: Colors.white, size: 14),
+                        const Icon(Icons.swap_horiz, color: Colors.white, size: 14),
                         const SizedBox(width: 4),
                         Text(
                           loc.tr('switch_profile'),
@@ -733,11 +735,11 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.close, size: 14, color: AppTheme.primary),
+                      const Icon(Icons.close, size: 14, color: AppTheme.primary),
                       const SizedBox(width: 4),
                       Text(
                         loc.tr('clear_filter'),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.primary,
@@ -1182,11 +1184,15 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
   Widget _buildProviderAvatar(Map<String, dynamic> p) {
     final firstName = (p['firstName'] ?? '').toString();
     final initial = firstName.isNotEmpty ? firstName[0] : '?';
+    final user = p['user'] as Map<String, dynamic>?;
+    final profileImage = user?['profileImage'] as String?;
+    final hasImage = profileImage != null && profileImage.isNotEmpty;
+
     return Container(
       width: 64,
       height: 64,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: hasImage ? null : LinearGradient(
           colors: [
             AppTheme.primary,
             AppTheme.primary.withValues(alpha: 0.7),
@@ -1195,6 +1201,10 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
+        image: hasImage ? DecorationImage(
+          image: NetworkImage(profileImage),
+          fit: BoxFit.cover,
+        ) : null,
         boxShadow: [
           BoxShadow(
             color: AppTheme.primary.withValues(alpha: 0.3),
@@ -1203,7 +1213,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
           ),
         ],
       ),
-      child: Center(
+      child: hasImage ? null : Center(
         child: Text(
           initial.toUpperCase(),
           style: const TextStyle(

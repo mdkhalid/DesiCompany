@@ -93,7 +93,7 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
         } else if (paymentStatus == 'pending') {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Payment received. Activating subscription...')),
+            const SnackBar(content: const Text('Payment received. Activating subscription...')),
           );
           _load();
         }
@@ -101,7 +101,7 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unexpected response from server')),
+        const SnackBar(content: const Text('Unexpected response from server')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -246,7 +246,7 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
 
   Widget _buildPlanCard(Map<String, dynamic> plan, LocalizationProvider loc) {
     final name = plan['name'] ?? '';
-    final price = (plan['price'] ?? 0).toDouble();
+    final price = num.tryParse('${plan['price'] ?? 0}')?.toDouble() ?? 0;
     final durationMonths = plan['durationMonths'] ?? 1;
     final extraDays = plan['extraDays'] ?? 0;
     final benefits = plan['benefits'] as Map<String, dynamic>? ?? {};

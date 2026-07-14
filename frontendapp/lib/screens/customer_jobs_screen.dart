@@ -9,7 +9,6 @@ import '../theme.dart';
 import 'customer_post_job_screen.dart';
 import 'customer_job_detail_screen.dart';
 
-import 'package:desicompany/services/app_logger.dart';
 class CustomerJobsScreen extends StatefulWidget {
   const CustomerJobsScreen({super.key});
 
@@ -91,12 +90,18 @@ class _CustomerJobsScreenState extends State<CustomerJobsScreen> with WidgetsBin
     };
   }
 
-  String _formatDate(String? iso) {
-    if (iso == null) return '';
+  String _formatDate(dynamic val) {
+    String? iso;
+    if (val is String) {
+      iso = val;
+    } else if (val is Map) {
+      iso = val['iso']?.toString() ?? val['toISOString']?.toString();
+    }
+    if (iso == null || iso.isEmpty) return '';
     try {
       final dt = DateTime.parse(iso);
       return intl.DateFormat('d MMM yyyy').format(dt);
-    } catch (e, st) { AppLogger.e('customer_jobs_screen', 'Operation failed', e, st);
+    } catch (_) {
       return '';
     }
   }

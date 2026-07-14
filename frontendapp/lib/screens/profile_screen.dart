@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/strings.dart';
 import '../main.dart';
@@ -18,6 +22,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _profile;
+  String? _profileImageUrl;
   bool _loading = true;
   bool _editing = false;
   bool _saving = false;
@@ -64,6 +69,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       setState(() {
         _profile = data;
+        _profileImageUrl = data?['profileImage'];
         _populateFields();
         _loading = false;
       });
@@ -211,6 +217,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '?';
   }
 
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 512);
+    if (picked == null) return;
+
+    try {
+      final token = await AuthService.getToken();
+      if (token == null) return;
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiService.baseUrl}/uploads/profile-image'),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        await picked.readAsBytes(),
+        filename: picked.name,
+        contentType: MediaType.parse(picked.mimeType ?? 'image/jpeg'),
+      ));
+      final response = await request.send();
+      if (response.statusCode == 201) {
+        final body = await response.stream.bytesToString();
+        final json = jsonDecode(body) as Map<String, dynamic>;
+        final imageUrl = json['url'] as String;
+
+        await ApiService.patch('/users/profile', body: {'profileImage': imageUrl});
+        setState(() => _profileImageUrl = imageUrl);
+      }
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = LocalizationProvider.of(context);
@@ -277,26 +315,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: ListView(
                           padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
                           children: [
-                            Center(
-                              child: Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF66A3FF),
-                                  borderRadius: BorderRadius.circular(50),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    _getInitials(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.bold,
+                          Center(
+                            child: GestureDetector(
+                              onTap: _pickAndUploadImage,
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF66A3FF),
+                                      borderRadius: BorderRadius.circular(50),
+                                      image: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                                          ? DecorationImage(
+                                              image: NetworkImage(_profileImageUrl!),
+                                              fit: BoxFit.cover,
+                                            )
+                                          : null,
+                                    ),
+                                    child: _profileImageUrl == null || _profileImageUrl!.isEmpty
+                                        ? Center(
+                                            child: Text(
+                                              _getInitials(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 36,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [const BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                      ),
+                                      child: const Icon(Icons.camera_alt, size: 16, color: Color(0xFF66A3FF)),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
+                          ),
                             const SizedBox(height: 16),
                             Center(
                               child: Text(

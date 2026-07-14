@@ -93,11 +93,6 @@ async function bootstrap() {
     mkdirSync(uploadsDir, { recursive: true });
   }
 
-  // Serve uploaded files statically
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
-  });
-
   app.setGlobalPrefix(process.env.API_PREFIX || '/api/v1');
 
   // Security headers via Helmet
@@ -123,6 +118,7 @@ async function bootstrap() {
             'data:',
             'blob:',
             'http://localhost:3000',
+            'http://10.0.2.2:3000',
             'http://192.168.*:*',
             'http://172.20.*:*',
             'http://172.28.*:*',
@@ -215,6 +211,11 @@ async function bootstrap() {
         'CORS_ALLOWED_ORIGINS is not set. All localhost and LAN origins are allowed in development.',
       );
   }
+
+  // Serve uploaded files statically (after CORS so Access-Control headers apply)
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+  });
 
   const config = new DocumentBuilder()
     .setTitle('DesiCompany API')

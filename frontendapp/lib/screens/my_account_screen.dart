@@ -225,17 +225,25 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFF66A3FF),
               borderRadius: BorderRadius.circular(32),
+              image: _profile != null && _profile!['profileImage'] != null && (_profile!['profileImage'] as String).isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(_profile!['profileImage'] as String),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: Center(
-              child: Text(
-                _getInitials(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            child: _profile != null && _profile!['profileImage'] != null && (_profile!['profileImage'] as String).isNotEmpty
+                ? null
+                : Center(
+                    child: Text(
+                      _getInitials(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(width: 16),
           Expanded(
