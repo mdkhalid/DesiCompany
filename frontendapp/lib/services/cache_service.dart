@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../models/hive_chat_message.dart';
 
 class CacheService {
   static const String _userBox = 'user_cache';
@@ -10,6 +11,7 @@ class CacheService {
 
   static Future<void> init() async {
     await Hive.initFlutter();
+    Hive.registerAdapter(HiveChatMessageAdapter());
     await Hive.openBox(_userBox);
     await Hive.openBox(_bookingsBox);
     await Hive.openBox(_servicesBox);

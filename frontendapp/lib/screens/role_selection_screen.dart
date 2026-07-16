@@ -51,7 +51,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       PushNotificationService.reconnect();
       Navigator.of(context, rootNavigator: true).pushReplacementNamed(
         user.isProvider ? '/provider-home' : '/customer-home',
-        arguments: user.isProvider ? const {'initialIndex': 1} : null,
+        arguments: user.isProvider ? const {'initialIndex': 0} : null,
       );
     } catch (e) {
       if (!mounted) return;

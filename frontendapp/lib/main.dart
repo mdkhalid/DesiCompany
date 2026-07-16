@@ -7,6 +7,7 @@ import 'theme.dart';
 import 'services/cache_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/error_handler.dart';
+import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/app_shell.dart';
 import 'screens/admin_home_screen.dart';
@@ -97,8 +98,9 @@ class _DesiCompanyAppState extends State<DesiCompanyApp> {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          initialRoute: '/login',
+          initialRoute: '/splash',
           routes: {
+            '/splash': (_) => const SplashScreen(),
             '/login': (_) => const LoginScreen(),
             '/customer-home': (_) => const AppShell(role: 'customer'),
             '/provider-home': (context) {

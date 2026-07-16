@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../theme.dart';
+import '../services/push_notification_service.dart';
+import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import 'customer_home_screen.dart';
 import 'provider_home_screen.dart';
 import 'provider_detail_screen.dart';
@@ -57,7 +62,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
   late final List<ShellTab> _tabs;
   final GlobalKey<NavigatorState> _navigatorKey =
@@ -115,6 +120,126 @@ class _AppShellState extends State<AppShell> {
         widget.initialIndex >= 0 && widget.initialIndex < _tabs.length
             ? widget.initialIndex
             : 0;
+
+    WidgetsBinding.instance.addObserver(this);
+    _handlePendingNotification();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _handlePendingNotification();
+    }
+  }
+
+  void _handlePendingNotification() {
+    final info = PushNotificationService.consumeChatNotification();
+    if (info == null) return;
+
+    // Wait for the navigator to be ready, then push the chat screen
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      final roomId = info['roomId'] as String?;
+      final bookingId = info['bookingId'] as String?;
+      final senderName = info['senderName'] as String?;
+
+      String? resolvedName = senderName;
+
+      if (roomId != null && roomId.startsWith('direct_')) {
+        final parts = roomId.split('_');
+        final customerUserId = parts.length > 1 ? parts[1] : null;
+        final providerEntityId = parts.length > 2 ? parts[2] : null;
+        final userRole = await AuthService.getUserRole();
+        final partnerId = userRole == 'provider' ? customerUserId : providerEntityId;
+
+        // Resolve name if not available
+        if (resolvedName == null && partnerId != null) {
+          try {
+            final data = await ApiService.get('/users/$partnerId');
+            if (data is Map) {
+              final customer = data['customer'] as Map?;
+              final provider = data['provider'] as Map?;
+              resolvedName = customer != null
+                  ? '${customer['firstName'] ?? ''} ${customer['lastName'] ?? ''}'.trim()
+                  : provider != null
+                      ? '${provider['firstName'] ?? ''} ${provider['lastName'] ?? ''}'.trim()
+                      : null;
+              if (resolvedName?.isEmpty == true) resolvedName = null;
+            }
+          } catch (_) {}
+        }
+
+        if (partnerId != null && mounted) {
+          _switchToTabAndNavigate(
+            ChatScreen(
+              providerId: partnerId,
+              mode: 'direct',
+              providerName: resolvedName,
+            ),
+          );
+        }
+      } else if (bookingId != null) {
+        // Resolve name if not available
+        if (resolvedName == null) {
+          try {
+            final data = await ApiService.get('/bookings/$bookingId');
+            if (data is Map) {
+              final userRole = await AuthService.getUserRole();
+              Map? partner;
+              if (userRole == 'provider') {
+                partner = (data['customer'] as Map?)?['user'] as Map?;
+              } else {
+                partner = (data['provider'] as Map?)?['user'] as Map?;
+              }
+              if (partner != null) {
+                resolvedName = '${partner['firstName'] ?? ''} ${partner['lastName'] ?? ''}'.trim();
+                if (resolvedName.isEmpty) resolvedName = null;
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (mounted) {
+          _switchToTabAndNavigate(
+            ChatScreen(
+              bookingId: bookingId,
+              mode: 'booking',
+              providerName: resolvedName,
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  void _switchToTabAndNavigate(Widget screen) {
+    // Find chat tab index
+    final chatIndex = _tabs.indexWhere(
+      (t) => t.initialRoute == '/conversations',
+    );
+    if (chatIndex >= 0 && _currentIndex != chatIndex) {
+      setState(() => _currentIndex = chatIndex);
+      _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        _tabs[chatIndex].initialRoute,
+        (route) => false,
+      );
+    }
+
+    // Push the chat screen after a tiny delay to let the tab switch settle
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (_) => screen),
+        );
+      }
+    });
   }
 
   void _onTabTapped(int index) => goToTab(index);

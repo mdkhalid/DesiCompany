@@ -10,6 +10,11 @@ class PushNotificationService {
   static StreamSubscription<int>? _unreadCountSub;
   static bool _initialized = false;
 
+  /// Stores the payload from the last system-tray notification tap so the
+  /// splash screen (or app shell) can route to the correct screen after
+  /// auth state is confirmed.
+  static String? pendingNotificationPayload;
+
   static Future<void> initialize() async {
     if (_initialized) return;
     _initialized = true;
@@ -83,13 +88,46 @@ class PushNotificationService {
 
   static void _handleNotificationTap(String? payload) {
     if (payload != null) {
-      try {
-        final data = jsonDecode(payload) as Map<String, dynamic>;
-        final type = data['type'] as String?;
-        final metadata = data['metadata'];
-        // Navigation is handled in main.dart via the notifications screen
-        // when the app resumes. For now, just ensure we store the payload.
-      } catch (_) {}
+      pendingNotificationPayload = payload;
+    }
+  }
+
+  /// Parses and consumes the pending notification payload, returning a
+  /// route that should be opened. Returns null if no pending notification
+  /// or the payload cannot be routed.
+  ///
+  /// Must be called from the app shell after the navigator is ready.
+  static Map<String, dynamic>? consumeChatNotification() {
+    if (pendingNotificationPayload == null) return null;
+
+    try {
+      final data = jsonDecode(pendingNotificationPayload!) as Map<String, dynamic>;
+      final metadata = data['metadata'];
+      if (metadata is! Map) return null;
+
+      final type = metadata['type'] as String?;
+      final isChatNotif = type == 'chat_quick_reply' ||
+          type == 'chat_message' ||
+          type == 'chat_image' ||
+          type == 'chat_file' ||
+          type == 'chat_quote' ||
+          type == 'direct_message';
+
+      if (!isChatNotif) return null;
+
+      final roomId = metadata['roomId'] as String?;
+      final bookingId = metadata['bookingId'] as String?;
+      final senderName = metadata['senderName'] as String?;
+
+      return {
+        'roomId': roomId,
+        'bookingId': bookingId,
+        'senderName': senderName,
+      };
+    } catch (_) {
+      return null;
+    } finally {
+      pendingNotificationPayload = null;
     }
   }
 

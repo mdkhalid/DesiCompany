@@ -56,7 +56,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       try {
         final data = await ApiService.get('/bookings/$bookingId');
         if (data is Map) {
-          final currentUserId = await AuthService.getUserId();
           final userRole = await AuthService.getUserRole();
           Map? partner;
           if (userRole == 'provider') {
@@ -118,7 +117,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final isDirect = roomId != null && roomId.startsWith('direct_');
         final effectiveBookingId = bookingId ?? (roomId != null && roomId.startsWith('booking_') ? roomId.replaceFirst('booking_', '') : null);
 
-        if (isDirect && roomId != null) {
+        if (isDirect) {
           final parts = roomId.split('_');
           final customerUserId = parts.length > 1 ? parts[1] : null;
           final providerEntityId = parts.length > 2 ? parts[2] : null;

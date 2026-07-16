@@ -40,7 +40,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
   String? _directRoomId;
-  bool _isTyping = false;
   final Set<String> _typingUsers = {};
   String? _currentUserId;
   String? _userRole;
@@ -50,6 +49,11 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _translating = false;
   String? _partnerName;
   bool _showEmojiPicker = false;
+  bool _showScrollFab = false;
+
+  // Typing debounce
+  Timer? _typingTimer;
+  bool _typingSent = false;
 
   // Pagination state
   int _currentPage = 1;
@@ -60,6 +64,9 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _reconnecting = false;
   bool _connectionFailed = false;
   int _reconnectAttempt = 0;
+
+  // Loading state
+  bool _isInitialLoading = true;
 
   // Booking info for header card
   Map<String, dynamic>? _bookingInfo;
@@ -76,6 +83,9 @@ class _ChatScreenState extends State<ChatScreen> {
   // Retry timer
   Timer? _retryTimer;
 
+  // Loading timeout
+  Timer? _loadingTimeout;
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +95,16 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    // Show scroll-to-bottom FAB when scrolled up more than 200px from bottom
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final showFab = (maxScroll - currentScroll) > 200;
+    if (showFab != _showScrollFab && mounted) {
+      setState(() => _showScrollFab = showFab);
+    }
+
     if (_scrollController.position.pixels <= 0 && _hasMoreMessages && !_isLoadingMore) {
       _loadMoreMessages();
     }
@@ -112,9 +132,8 @@ class _ChatScreenState extends State<ChatScreen> {
         final newMessages = olderMessages.where((m) => !existingIds.contains(m.id)).toList();
         
         if (newMessages.isNotEmpty) {
-          // Prepend older messages
+          // Prepend older messages (server returns them in chronological order)
           _messages.insertAll(0, newMessages);
-          _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           
           if (mounted) {
             setState(() {
@@ -390,6 +409,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _socket.disconnect();
     _socket.dispose();
     _retryTimer?.cancel();
+    _loadingTimeout?.cancel();
+    _typingTimer?.cancel();
     _messagesBox?.close();
     _pendingBox?.close();
     super.dispose();
@@ -420,12 +441,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _reconnectAttempt = 0;
         });
       }
-      if (_isDirect) {
-        _socket.emit('start_direct_chat', {'providerId': widget.providerId});
-      } else if (widget.bookingId != null) {
-        _socket.emit('join', {'bookingId': widget.bookingId});
-      }
-      _fetchHistoricalMessages();
+      _rejoinRooms();
     });
 
     _socket.onReconnectAttempt((attempt) {
@@ -445,6 +461,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _connectionFailed = false;
         });
       }
+      _rejoinRooms();
     });
 
     _socket.onReconnectFailed((_) {
@@ -486,60 +503,63 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('direct_chat_started', (data) {
+      if (!mounted) return;
       final roomId = data['roomId'] as String;
       _directRoomId = roomId;
-      if (mounted) {
-        setState(() {
-          _partnerOnline = _knownOnlineUserIds.contains(_resolvePartnerUserId() ?? '');
-        });
-      }
+      setState(() {
+        _partnerOnline = _knownOnlineUserIds.contains(_resolvePartnerUserId() ?? '');
+      });
       _loadCachedMessages();
       _fetchHistoricalMessages();
       _socket.emit('join_direct_chat', {'roomId': roomId});
     });
 
     _socket.on('online_status', (data) {
+      if (!mounted) return;
       final raw = data is Map ? data['onlineUserIds'] : null;
       if (raw is List) {
         _knownOnlineUserIds
           ..clear()
           ..addAll(raw.map((id) => id.toString()));
         final partnerId = _resolvePartnerUserId();
-        if (mounted) {
-          setState(() {
-            if (partnerId != null) {
-              _partnerOnline = _knownOnlineUserIds.contains(partnerId);
-            }
-          });
-        }
+        setState(() {
+          if (partnerId != null) {
+            _partnerOnline = _knownOnlineUserIds.contains(partnerId);
+          }
+        });
       }
     });
 
     _socket.on('user_online', (data) {
+      if (!mounted) return;
       final raw = data is Map ? data['userId'] : null;
       if (raw == null) return;
       final userId = raw.toString();
       _knownOnlineUserIds.add(userId);
       final partnerId = _resolvePartnerUserId();
-      if (partnerId != null && userId == partnerId && mounted) {
+      if (partnerId != null && userId == partnerId) {
         setState(() => _partnerOnline = true);
       }
     });
 
     _socket.on('user_offline', (data) {
+      if (!mounted) return;
       final raw = data is Map ? data['userId'] : null;
       if (raw == null) return;
       final userId = raw.toString();
       _knownOnlineUserIds.remove(userId);
       final partnerId = _resolvePartnerUserId();
-      if (partnerId != null && userId == partnerId && mounted) {
+      if (partnerId != null && userId == partnerId) {
         setState(() => _partnerOnline = false);
       }
     });
 
     _socket.on('direct_chat_history', (data) {
-      final msgs = data.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
+      if (!mounted) return;
+      final raw = (data as List).cast<Map<String, dynamic>>();
+      final msgs = raw.map((m) => ChatMessage.fromJson(m)).toList();
       setState(() {
+        _isInitialLoading = false;
         _messages.clear();
         _messages.addAll(msgs);
       });
@@ -548,8 +568,11 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('history', (data) {
-      final msgs = data.map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m))).toList();
+      if (!mounted) return;
+      final raw = (data as List).cast<Map<String, dynamic>>();
+      final msgs = raw.map((m) => ChatMessage.fromJson(m)).toList();
       setState(() {
+        _isInitialLoading = false;
         _messages.clear();
         _messages.addAll(msgs);
       });
@@ -558,18 +581,21 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('new_direct_message', (data) {
+      if (!mounted) return;
       final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
       _replaceOrAdd(msg);
       _saveMessagesToCache();
     });
 
     _socket.on('new_message', (data) {
+      if (!mounted) return;
       final msg = ChatMessage.fromJson(Map<String, dynamic>.from(data));
       _replaceOrAdd(msg);
       _saveMessagesToCache();
     });
 
     _socket.on('user_typing', (data) {
+      if (!mounted) return;
       final userId = data['userId'] as String;
       final isTyping = data['isTyping'] as bool;
       if (userId == _currentUserId) return;
@@ -583,6 +609,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('messages_read', (data) {
+      if (!mounted) return;
       final messageIds = data['messageIds'] as List<dynamic>?;
       setState(() {
         if (messageIds != null) {
@@ -604,6 +631,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('message_edited', (data) {
+      if (!mounted) return;
       final id = data['id'] as String?;
       final content = data['content'] as String?;
       if (id != null && content != null) {
@@ -618,6 +646,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _socket.on('message_deleted', (data) {
+      if (!mounted) return;
       final id = data['id'] as String?;
       if (id != null) {
         final idx = _messages.indexWhere((m) => m.id == id);
@@ -633,6 +662,21 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
     });
+
+    // Fallback: if history doesn't arrive within 8 seconds, stop showing loading spinner
+    _loadingTimeout = Timer(const Duration(seconds: 8), () {
+      if (mounted && _isInitialLoading) {
+        setState(() => _isInitialLoading = false);
+      }
+    });
+  }
+
+  void _rejoinRooms() {
+    if (_isDirect && widget.providerId != null) {
+      _socket.emit('start_direct_chat', {'providerId': widget.providerId});
+    } else if (widget.bookingId != null) {
+      _socket.emit('join', {'bookingId': widget.bookingId});
+    }
   }
 
   void _addMessage(ChatMessage msg) {
@@ -693,8 +737,9 @@ class _ChatScreenState extends State<ChatScreen> {
   void _sendMessage() {
     if (_controller.text.trim().isEmpty) return;
     final content = _controller.text.trim();
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
     final tempMsg = ChatMessage(
-      id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      id: tempId,
       content: content,
       senderId: _currentUserId ?? '',
       senderName: 'You',
@@ -706,7 +751,6 @@ class _ChatScreenState extends State<ChatScreen> {
     
     if (_socket.connected) {
       if (_isDirect && _directRoomId != null) {
-
         _socket.emit('send_direct_message', {
           'roomId': _directRoomId,
           'content': content,
@@ -717,22 +761,55 @@ class _ChatScreenState extends State<ChatScreen> {
           'content': content,
         });
       }
-    } else {
 
+      // 10-second timeout: if temp message hasn't been replaced, mark as failed
+      Timer(const Duration(seconds: 10), () {
+        if (!mounted) return;
+        final idx = _messages.indexWhere((m) => m.id == tempId);
+        if (idx != -1) {
+          setState(() {
+            _messages[idx] = _messages[idx].copyWith(status: MessageStatus.failed);
+          });
+        }
+      });
+    } else {
       _addPendingMessage(tempMsg);
     }
     _controller.clear();
   }
 
   void _sendTyping(bool typing) {
+    if (!typing) {
+      _typingTimer?.cancel();
+      _typingTimer = null;
+      if (_typingSent) {
+        _typingSent = false;
+        _emitTypingEvent(false);
+      }
+      return;
+    }
+
+    if (!_typingSent) {
+      _typingSent = true;
+      _emitTypingEvent(true);
+    }
+
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 3), () {
+      _typingSent = false;
+      _emitTypingEvent(false);
+    });
+  }
+
+  void _emitTypingEvent(bool isTyping) {
     if (_isDirect && _directRoomId != null) {
       _socket.emit('typing', {
-        'isTyping': typing,
+        'isTyping': isTyping,
         'roomId': _directRoomId,
       });
     } else if (widget.bookingId != null) {
       _socket.emit('typing', {
-        'isTyping': typing,
+        'isTyping': isTyping,
         'bookingId': widget.bookingId,
       });
     }
@@ -1123,37 +1200,60 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         Expanded(
-          child: _messages.isEmpty
-              ? Center(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, size: 48, color: Colors.grey.shade400),
-                        const SizedBox(height: 12),
-                        Text('No messages yet', style: TextStyle(color: Colors.grey.shade600)),
-                        const SizedBox(height: 16),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: _isProvider
-                              ? [
-                                  ActionChip(label: const Text('Hello'), onPressed: () => _sendQuickReply('need_more_info')),
-                                  ActionChip(label: const Text('Confirm booking'), onPressed: () => _sendQuickReply('confirm_booking')),
-                                  ActionChip(label: const Text('On my way'), onPressed: () => _sendQuickReply('on_my_way')),
-                                ]
-                              : [
-                                  ActionChip(label: const Text('Hello'), onPressed: () => _sendQuickReply('need_more_info')),
-                                  ActionChip(label: const Text('Price?'), onPressed: () => _sendQuickReply('price_negotiate')),
-                                  ActionChip(label: const Text('Discount?'), onPressed: () => _sendQuickReply('need_discount')),
-                                ],
+          child: RefreshIndicator(
+            onRefresh: () async {
+              if (_socket.connected) {
+                _rejoinRooms();
+              } else {
+                _socket.disconnect();
+                _socket.dispose();
+                _connectSocket();
+              }
+              await Future.delayed(const Duration(milliseconds: 800));
+            },
+            child: _isInitialLoading
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 300, child: Center(child: CircularProgressIndicator())),
+                    ],
+                  )
+                : _messages.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      Center(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.chat_bubble_outline, size: 48, color: Colors.grey.shade400),
+                              const SizedBox(height: 12),
+                              Text('No messages yet', style: TextStyle(color: Colors.grey.shade600)),
+                              const SizedBox(height: 16),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.center,
+                                children: _isProvider
+                                    ? [
+                                        ActionChip(label: const Text('Hello'), onPressed: () => _sendQuickReply('need_more_info')),
+                                        ActionChip(label: const Text('Confirm booking'), onPressed: () => _sendQuickReply('confirm_booking')),
+                                        ActionChip(label: const Text('On my way'), onPressed: () => _sendQuickReply('on_my_way')),
+                                      ]
+                                    : [
+                                        ActionChip(label: const Text('Hello'), onPressed: () => _sendQuickReply('need_more_info')),
+                                        ActionChip(label: const Text('Price?'), onPressed: () => _sendQuickReply('price_negotiate')),
+                                        ActionChip(label: const Text('Discount?'), onPressed: () => _sendQuickReply('need_discount')),
+                                      ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
-                )
-              : ListView.builder(
+                      ),
+                    ],
+                  )
+                : ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(12),
                   itemCount: _messages.length + (_typingUsers.isNotEmpty ? 1 : 0),
@@ -1224,6 +1324,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     );
                   },
                 ),
+        ),
         ),
         Container(
           padding: const EdgeInsets.all(8),
@@ -1301,12 +1402,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
-                        onChanged: (v) {
-                          if (v.isNotEmpty != _isTyping) {
-                            _isTyping = v.isNotEmpty;
-                            _sendTyping(v.isNotEmpty);
-                          }
-                        },
+                        onChanged: (_) => _sendTyping(true),
                         onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
@@ -1321,6 +1417,16 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
       ]),
+      floatingActionButton: _showScrollFab
+          ? FloatingActionButton.small(
+              heroTag: 'scrollToBottom',
+              onPressed: () {
+                _showScrollFab = false;
+                _scrollToBottom();
+              },
+              child: const Icon(Icons.keyboard_arrow_down),
+            )
+          : null,
     );
   }
 

@@ -54,7 +54,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
       PushNotificationService.reconnect();
       Navigator.of(context, rootNavigator: true).pushReplacementNamed(
         user.isProvider ? '/provider-home' : '/customer-home',
-        arguments: user.isProvider ? const {'initialIndex': 1} : null,
+        arguments: user.isProvider ? const {'initialIndex': 0} : null,
       );
     } catch (e) {
       if (!mounted) return;
@@ -224,8 +224,8 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
           boxShadow: [
             BoxShadow(
               color: isActive
-                  ? color.withOpacity(0.25)
-                  : Colors.black.withOpacity(0.06),
+                  ? color.withValues(alpha: 0.25)
+                  : Colors.black.withValues(alpha: 0.06),
               blurRadius: isActive ? 16 : 8,
               offset: const Offset(0, 4),
             ),
@@ -237,8 +237,8 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: isActive
-                    ? Colors.white.withOpacity(0.2)
-                    : color.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, size: 32, color: isActive ? Colors.white : color),
@@ -269,7 +269,7 @@ class _ProfilePickerScreenState extends State<ProfilePickerScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(

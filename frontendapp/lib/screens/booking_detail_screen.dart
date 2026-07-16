@@ -19,7 +19,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   String? _error;
   bool _updating = false;
   bool _isProvider = false;
-  String? _currentUserId;
 
   static const _timelineSteps = [
     'requested',
@@ -50,7 +49,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       final providerUserId = providerUser?['id'] as String?;
       if (mounted) setState(() {
         _booking = booking;
-        _currentUserId = uid;
         _isProvider = uid == providerUserId;
         _loading = false;
       });
@@ -173,7 +171,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final address = b['serviceAddress'] as String?;
     final city = b['serviceCity'] as String?;
     final description = b['description'] as String? ?? '';
-    final total = b['totalAmount'] ?? b['total'] ?? 'N/A';
     final sched = b['scheduledDate'] as String?;
     final color = _statusColor(status);
 
@@ -505,7 +502,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   context,
                   MaterialPageRoute(builder: (_) => ChatScreen(
                     bookingId: widget.bookingId,
-                    mode: 'provider',
+                    mode: 'booking',
                   )),
                 );
               },
@@ -555,7 +552,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             child: OutlinedButton.icon(
               onPressed: _updating ? null : () => _cancelBooking(),
               icon: const Icon(Icons.cancel_outlined, size: 18),
-              label: Text('Cancel Booking'),
+              label: const Text('Cancel Booking'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
                 side: const BorderSide(color: Colors.red),
