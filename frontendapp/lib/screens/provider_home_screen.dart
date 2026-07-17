@@ -526,15 +526,7 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(Icons.currency_rupee, size: 16, color: AppTheme.textSecondary),
-                                Text(
-                                  '${b['providerAmount'] ?? b['totalAmount'] ?? 0}',
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-                                ),
-                              ],
-                            ),
+                            _buildEarningsRow(b),
                             const SizedBox(height: 4),
                             Row(
                               children: [
@@ -721,6 +713,72 @@ class _ProviderHomeContentState extends State<ProviderHomeContent> {
           ),
         ],
       ),
+    );
+  }
+
+  String _fmtAmount(dynamic v) {
+    final n = double.tryParse('$v') ?? 0;
+    return n == n.roundToDouble() ? n.toInt().toString() : n.toStringAsFixed(2);
+  }
+
+  Widget _buildEarningsRow(Map b) {
+    final providerAmount = double.tryParse('${b['providerAmount']}') ?? 0;
+    final commission = double.tryParse('${b['commissionAmount']}') ?? 0;
+    final totalAmount = double.tryParse('${b['totalAmount']}') ?? 0;
+
+    // If booking has no providerAmount yet (e.g. just requested), show total
+    if (providerAmount <= 0 && commission <= 0) {
+      return Row(
+        children: [
+          const Icon(Icons.currency_rupee, size: 14, color: AppTheme.textSecondary),
+          Text(
+            ' Total: ₹${_fmtAmount(totalAmount)}',
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+          ),
+        ],
+      );
+    }
+
+    final serviceAmount = providerAmount + commission;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.currency_rupee, size: 14, color: AppTheme.primary),
+            Text(
+              ' Service: ₹${_fmtAmount(serviceAmount)}',
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            const SizedBox(width: 14),
+            if (commission > 0)
+              Text(
+                '- Commission: ₹${_fmtAmount(commission)}',
+                style: TextStyle(color: Colors.red.shade600, fontSize: 12, fontWeight: FontWeight.w500),
+              )
+            else
+              const Text(
+                'Commission waived',
+                style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            const Icon(Icons.arrow_right, size: 18, color: Colors.green),
+            Text(
+              ' ₹${_fmtAmount(providerAmount)}',
+              style: const TextStyle(color: Colors.green, fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

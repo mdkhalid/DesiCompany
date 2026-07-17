@@ -332,6 +332,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final fee = double.tryParse('${b['convenienceFee']}') ?? 0;
     final gst = double.tryParse('${b['gstAmount']}') ?? 0;
     final base = total - fee - gst;
+    final providerAmount = double.tryParse('${b['providerAmount']}') ?? 0;
+    final commission = double.tryParse('${b['commissionAmount']}') ?? 0;
+    final serviceAmount = providerAmount + commission;
 
     // Derive GST rate from the stored amounts (graceful if zero)
     final taxable = base + fee;
@@ -340,7 +343,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     String fmt(double v) =>
         v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
 
-    Widget row(String label, String value, {bool bold = false}) {
+    Widget row(String label, String value, {bool bold = false, Color? color}) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
@@ -359,7 +362,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               style: TextStyle(
                 fontSize: bold ? 15 : 13,
                 fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-                color: bold ? AppTheme.primary : AppTheme.textPrimary,
+                color: color ?? (bold ? AppTheme.primary : AppTheme.textPrimary),
               ),
             ),
           ],
@@ -384,6 +387,28 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           ),
           const Divider(height: 16, thickness: 1),
           row(loc.tr('total_amount'), '₹${fmt(total)}', bold: true),
+          if (_isProvider && providerAmount > 0) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 16, thickness: 1),
+            const SizedBox(height: 4),
+            const Text(
+              'Your Earnings',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            row('Service Amount', '₹${fmt(serviceAmount)}'),
+            row(
+              'Commission',
+              commission > 0 ? '-₹${fmt(commission)}' : 'Waived',
+              color: commission > 0 ? Colors.red.shade600 : Colors.green,
+            ),
+            const Divider(height: 16, thickness: 1),
+            row('You Earn', '₹${fmt(providerAmount)}', bold: true, color: Colors.green.shade700),
+          ],
         ],
       ),
     );

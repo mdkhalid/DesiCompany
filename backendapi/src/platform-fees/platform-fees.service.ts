@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -183,6 +184,14 @@ export class PlatformFeesService {
   async createSubscriptionPlan(
     dto: CreateSubscriptionPlanDto,
   ): Promise<ProviderSubscriptionPlan> {
+    const existing = await this.planRepository.findOne({
+      where: { name: dto.name },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `A subscription plan named "${dto.name}" already exists`,
+      );
+    }
     const plan = this.planRepository.create(dto);
     return this.planRepository.save(plan);
   }

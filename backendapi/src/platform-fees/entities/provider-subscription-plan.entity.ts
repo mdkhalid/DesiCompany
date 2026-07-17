@@ -3,7 +3,7 @@ import { BaseEntity } from '../../common/entities/base.entity';
 
 @Entity('provider_subscription_plans')
 export class ProviderSubscriptionPlan extends BaseEntity {
-  @Column()
+  @Column({ unique: true })
   name: string;
 
   @Column({ nullable: true })
