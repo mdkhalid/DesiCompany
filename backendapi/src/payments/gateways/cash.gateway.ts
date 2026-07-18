@@ -67,12 +67,11 @@ export class CashGateway implements PaymentGateway {
 
   // eslint-disable-next-line @typescript-eslint/require-await
   async getStatus(gatewayPaymentId: string): Promise<PaymentStatusResult> {
-    // Cash payments settle synchronously when provider confirms receipt;
-    // any status query from the customer side returns 'succeeded'.
+    // Cash payments settle only when the provider confirms receipt via the app.
     return {
       gatewayPaymentId,
       gatewayOrderId: gatewayPaymentId,
-      status: 'success',
+      status: 'pending',
       amount: 0, // amount unknown to the gateway; caller reads from Payment row
       method: 'cash',
     };

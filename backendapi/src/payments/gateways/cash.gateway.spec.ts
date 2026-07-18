@@ -177,9 +177,9 @@ describe('CashGateway', () => {
   // ── getStatus ──────────────────────────────────────────────────────────────
 
   describe('getStatus', () => {
-    it('always returns status "success"', async () => {
+    it('returns status "pending" until provider confirms receipt', async () => {
       const res = await gateway.getStatus('cash_123');
-      expect(res.status).toBe('success');
+      expect(res.status).toBe('pending');
     });
 
     it('echoes the gatewayPaymentId passed in', async () => {

@@ -5,13 +5,11 @@ import '../services/location_service.dart';
 import '../services/notification_websocket_service.dart';
 import '../models/user.dart';
 import '../theme.dart';
-import '../l10n/strings.dart';
+import '../main.dart';
 import '../widgets/distance_badge.dart';
 import '../widgets/ad_banner.dart';
 
 import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'profile_picker_screen.dart';
 import 'package:desicompany/services/app_logger.dart';
 class CustomerHomeContent extends StatefulWidget {
@@ -202,7 +200,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
   }
 
   Future<void> _showLocationPicker() async {
-    final loc = LocalizationProvider.of(context);
+    final loc = DesiCompanyApp.localeProvider!;
     final cityController = TextEditingController();
     final result = await showDialog<String>(
       context: context,
@@ -280,10 +278,15 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
         }
         return;
       }
+      final address = await LocationService.getAddressFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      if (!mounted) return;
       setState(() {
         _latitude = position.latitude;
         _longitude = position.longitude;
-        _locationText = 'Current location';
+        _locationText = address;
         _loading = true;
       });
       await ApiService.patch('/users/profile', body: {
@@ -291,8 +294,6 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
         'longitude': position.longitude,
       });
       _loadProviders();
-      LocationService.getAddressFromCoordinates(position.latitude, position.longitude)
-          .then((addr) { if (mounted) setState(() => _locationText = addr); });
     } else {
       // Search by city name
       try {
@@ -301,38 +302,32 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
           _loading = true;
           _error = null;
         });
-        final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=$cityName&limit=1&countrycodes=in');
-        final response = await http.get(url, headers: {'User-Agent': 'DesiCompanyApp/1.0'});
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          if (data is List && data.isNotEmpty) {
-            final lat = double.parse(data[0]['lat']);
-            final lon = double.parse(data[0]['lon']);
-            if (!mounted) return;
-            setState(() {
-              _latitude = lat;
-              _longitude = lon;
-              _locationText = cityName;
-              _radiusKm = 10;
-              _loading = true;
-            });
-            await ApiService.patch('/users/profile', body: {
-              'latitude': lat,
-              'longitude': lon,
-            });
-            _loadProviders();
-          } else {
-            if (!mounted) return;
-            setState(() {
-              _loading = false;
-              _error = 'City "$cityName" not found. Try another name.';
-            });
-          }
+        final resolved = await LocationService.searchAddress(
+          cityName,
+          biasLat: _latitude,
+          biasLng: _longitude,
+        );
+        if (!mounted) return;
+        if (resolved != null) {
+          final lat = resolved['latitude'] as double;
+          final lon = resolved['longitude'] as double;
+          final label = resolved['label'] as String? ?? cityName;
+          setState(() {
+            _latitude = lat;
+            _longitude = lon;
+            _locationText = label.isNotEmpty ? label : cityName;
+            _radiusKm = 10;
+            _loading = true;
+          });
+          await ApiService.patch('/users/profile', body: {
+            'latitude': lat,
+            'longitude': lon,
+          });
+          _loadProviders();
         } else {
-          if (!mounted) return;
           setState(() {
             _loading = false;
-            _error = 'Failed to search for city. Try again.';
+            _error = 'City "$cityName" not found. Try another name.';
           });
         }
       } catch (_) {
@@ -445,72 +440,80 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
       body: Container(
         color: const Color(0xFF66A3FF),
         child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildSearchBar(),
-              const AdBanner(placement: 'home_banner'),
-              _buildRadiusFilter(),
-              Expanded(
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                    : _buildContent(),
-              ),
-            ],
-          ),
+        child: Column(
+          children: [
+            _buildHeader(),
+            _buildSearchBar(),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  : _buildContent(),
+            ),
+          ],
+        ),
         ),
       ),
     );
   }
 
   Widget _buildHeader() {
-    final loc = LocalizationProvider.of(context);
+    final loc = DesiCompanyApp.localeProvider!;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
-            onTap: _showLocationPicker,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
+          Expanded(
+            child: GestureDetector(
+              onTap: _showLocationPicker,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.location_on, color: Colors.white, size: 18),
                       ),
-                      child: const Icon(Icons.location_on, color: Colors.white, size: 18),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _locationText == 'Set location' ? loc.tr('set_location') : _locationText,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 12,
-                          ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _locationText == 'Set location' ? loc.tr('set_location') : _locationText,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              loc.tr('find_services'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
-                        Text(
-                          loc.tr('find_services'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Row(
             children: [
               if (_showSwitchProfile) ...[
@@ -556,7 +559,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
   }
 
   Widget _buildNotificationButton() {
-    final loc = LocalizationProvider.of(context);
+    final loc = DesiCompanyApp.localeProvider!;
     return Tooltip(
       message: loc.tr('header_notifications'),
       child: GestureDetector(
@@ -598,7 +601,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
   }
 
   Widget _buildSearchBar() {
-    final loc = LocalizationProvider.of(context);
+    final loc = DesiCompanyApp.localeProvider!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Container(
@@ -647,7 +650,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
   }
 
   Widget _buildRadiusFilter() {
-    final loc = LocalizationProvider.of(context);
+    final loc = DesiCompanyApp.localeProvider!;
     final options = [
       {'label': loc.tr('km_2'), 'value': 2.0},
       {'label': loc.tr('km_5'), 'value': 5.0},
@@ -697,6 +700,9 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
         children: [
+          const AdBanner(placement: 'home_banner'),
+          _buildRadiusFilter(),
+          const SizedBox(height: 16),
           _buildCategoriesSection(),
           const SizedBox(height: 24),
           _buildProvidersSection(),
@@ -706,7 +712,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
   }
 
   Widget _buildCategoriesSection() {
-    final loc = LocalizationProvider.of(context);
+    final loc = DesiCompanyApp.localeProvider!;
 
     // When a category is selected, show compact horizontal chip row
     if (_selectedCategoryId != null) {
@@ -927,7 +933,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
   }
 
   Widget _buildProvidersSection() {
-    final loc = LocalizationProvider.of(context);
+    final loc = DesiCompanyApp.localeProvider!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -962,7 +968,7 @@ class _CustomerHomeContentState extends State<CustomerHomeContent> {
   }
 
   Widget _buildEmptyState() {
-    final loc = LocalizationProvider.of(context);
+    final loc = DesiCompanyApp.localeProvider!;
     final noLocation = _latitude == null || _longitude == null;
     return Container(
       padding: const EdgeInsets.all(40),

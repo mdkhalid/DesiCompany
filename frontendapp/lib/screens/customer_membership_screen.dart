@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
@@ -6,11 +6,13 @@ import '../theme.dart';
 import '../widgets/payment_method_selector.dart';
 
 import 'package:desicompany/services/app_logger.dart';
+
 class CustomerMembershipScreen extends StatefulWidget {
   const CustomerMembershipScreen({super.key});
 
   @override
-  State<CustomerMembershipScreen> createState() => _CustomerMembershipScreenState();
+  State<CustomerMembershipScreen> createState() =>
+      _CustomerMembershipScreenState();
 }
 
 class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
@@ -33,7 +35,9 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
         if (result is Map && result['membership'] != null) {
           active = result['membership'] as Map<String, dynamic>?;
         }
-      } catch (e, st) { AppLogger.e('customer_membership_screen', 'Operation failed', e, st); }
+      } catch (e, st) {
+        AppLogger.e('customer_membership_screen', 'Operation failed', e, st);
+      }
       if (!mounted) return;
       setState(() {
         _plans = plans as List;
@@ -78,7 +82,8 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
             amountPaise: order['amount'] as int,
             amount: (order['amount'] as int) / 100,
             planId: planId,
-            preferredMethod: order['preferredMethod'] as String?,
+            purpose: 'membership',
+            billingCycle: billingCycle,
           ),
         );
 
@@ -113,10 +118,13 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
       builder: (ctx) => AlertDialog(
         title: Text(loc.tr('cancel')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(loc.tr('back'))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(loc.tr('back'))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(loc.tr('subscription_cancelled'), style: const TextStyle(color: AppTheme.error)),
+            child: Text(loc.tr('subscription_cancelled'),
+                style: const TextStyle(color: AppTheme.error)),
           ),
         ],
       ),
@@ -126,7 +134,9 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
       await ApiService.delete('/membership-plans/cancel');
       if (!mounted) return;
       _load();
-    } catch (e, st) { AppLogger.e('customer_membership_screen', 'Operation failed', e, st); }
+    } catch (e, st) {
+      AppLogger.e('customer_membership_screen', 'Operation failed', e, st);
+    }
   }
 
   String _formatBenefit(String key, dynamic value) {
@@ -155,25 +165,26 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                 ),
                 child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: _plans.isEmpty
-                        ? ListView(children: [
-                            const SizedBox(height: 80),
-                            _buildEmptyState(loc),
-                          ])
-                        : ListView(
-                            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-                            children: [
-                              if (_activeMembership != null)
-                                _buildActiveBanner(loc),
-                              if (_activeMembership != null)
-                                const SizedBox(height: 16),
-                              ..._plans.map((p) => _buildPlanCard(p, loc)),
-                            ],
-                          ),
-                    ),
+                    ? const Center(child: CircularProgressIndicator())
+                    : RefreshIndicator(
+                        onRefresh: _load,
+                        child: _plans.isEmpty
+                            ? ListView(children: [
+                                const SizedBox(height: 80),
+                                _buildEmptyState(loc),
+                              ])
+                            : ListView(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                                children: [
+                                  if (_activeMembership != null)
+                                    _buildActiveBanner(loc),
+                                  if (_activeMembership != null)
+                                    const SizedBox(height: 16),
+                                  ..._plans.map((p) => _buildPlanCard(p, loc)),
+                                ],
+                              ),
+                      ),
               ),
             ),
           ]),
@@ -193,7 +204,8 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
         const SizedBox(width: 4),
         Text(
           loc.tr('membership_plans'),
-          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ]),
     );
@@ -220,20 +232,29 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
             children: [
               Text(
                 '${plan?['name'] ?? ''} ${loc.tr('subscription_active')}',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15),
               ),
               const SizedBox(height: 4),
               Row(children: [
-                Icon(Icons.check_circle, size: 14, color: Colors.white.withValues(alpha: 0.8)),
+                Icon(Icons.check_circle,
+                    size: 14, color: Colors.white.withValues(alpha: 0.8)),
                 const SizedBox(width: 4),
-                Text(loc.tr('fee_waived'), style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12)),
+                Text(loc.tr('fee_waived'),
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 12)),
               ]),
             ],
           ),
         ),
         TextButton(
           onPressed: () => _cancel(_activeMembership!['id']),
-          child: Text(loc.tr('cancel_subscription'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          child: Text(loc.tr('cancel_subscription'),
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w600)),
         ),
       ]),
     );
@@ -241,7 +262,8 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
 
   Widget _buildPlanCard(Map<String, dynamic> plan, LocalizationProvider loc) {
     final name = plan['name'] ?? '';
-    final monthly = num.tryParse('${plan['monthlyPrice'] ?? 0}')?.toDouble() ?? 0;
+    final monthly =
+        num.tryParse('${plan['monthlyPrice'] ?? 0}')?.toDouble() ?? 0;
     final yearly = num.tryParse('${plan['yearlyPrice'] ?? 0}')?.toDouble() ?? 0;
     final benefits = plan['benefits'] as Map<String, dynamic>? ?? {};
     final isActive = plan['isActive'] ?? true;
@@ -255,8 +277,15 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isCurrentPlan ? Border.all(color: const Color(0xFF6C3FB4), width: 2) : null,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+        border: isCurrentPlan
+            ? Border.all(color: const Color(0xFF6C3FB4), width: 2)
+            : null,
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4))
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -272,7 +301,10 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary),
                       ),
                       const SizedBox(height: 8),
                       if (monthly > 0) ...[
@@ -281,9 +313,15 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
                           children: [
                             Text(
                               '₹${monthly.toStringAsFixed(0)}',
-                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                              style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primary),
                             ),
-                            Text(loc.tr('billing_monthly'), style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                            Text(loc.tr('billing_monthly'),
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.textSecondary)),
                           ],
                         ),
                       ],
@@ -294,9 +332,15 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
                           children: [
                             Text(
                               '₹${yearly.toStringAsFixed(0)}',
-                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.teal),
+                              style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.teal),
                             ),
-                            Text(loc.tr('billing_yearly'), style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+                            Text(loc.tr('billing_yearly'),
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.textSecondary)),
                           ],
                         ),
                       ],
@@ -305,14 +349,18 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
                 ),
                 if (isCurrentPlan)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: AppTheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       loc.tr('subscription_active'),
-                      style: const TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          color: AppTheme.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
               ],
@@ -322,18 +370,23 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
             if (hasFeeWaiver && !isCurrentPlan) ...[
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFF43A047).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.check_circle, size: 16, color: Color(0xFF43A047)),
+                  const Icon(Icons.check_circle,
+                      size: 16, color: Color(0xFF43A047)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       loc.tr('fee_waived'),
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF43A047), fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF43A047),
+                          fontWeight: FontWeight.w600),
                     ),
                   ),
                 ]),
@@ -345,29 +398,34 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
               const Divider(height: 1),
               const SizedBox(height: 12),
               ...benefits.entries.map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      width: 20, height: 20,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.check, size: 14, color: AppTheme.primary),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 2),
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.check,
+                              size: 14, color: AppTheme.primary),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _formatBenefit(e.key, e.value),
+                            style: const TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textPrimary,
+                                height: 1.3),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _formatBenefit(e.key, e.value),
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, height: 1.3),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+                  )),
             ],
             const SizedBox(height: 16),
 
@@ -380,15 +438,18 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
                       onPressed: () => _join(plan['id'], 'monthly'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: Text('${loc.tr('join_membership')} ${loc.tr('monthly')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      child: Text(
+                          '${loc.tr('join_membership')} ${loc.tr('monthly')}',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
-                if (monthly > 0 && yearly > 0)
-                  const SizedBox(width: 8),
+                if (monthly > 0 && yearly > 0) const SizedBox(width: 8),
                 if (yearly > 0) ...[
                   Expanded(
                     child: OutlinedButton(
@@ -396,10 +457,14 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.teal,
                         side: const BorderSide(color: Colors.teal),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: Text('${loc.tr('join_membership')} ${loc.tr('yearly')}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      child: Text(
+                          '${loc.tr('join_membership')} ${loc.tr('yearly')}',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -416,11 +481,18 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
       child: Padding(
         padding: const EdgeInsets.all(40),
         child: Column(children: [
-          Icon(Icons.card_giftcard_outlined, size: 80, color: Colors.grey.shade300),
+          Icon(Icons.card_giftcard_outlined,
+              size: 80, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          Text(loc.tr('no_memberships'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+          Text(loc.tr('no_memberships'),
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary)),
           const SizedBox(height: 8),
-          Text(loc.tr('membership_details'), style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+          Text(loc.tr('membership_details'),
+              style:
+                  const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
         ]),
       ),
     );

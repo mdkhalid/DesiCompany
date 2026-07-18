@@ -7,6 +7,7 @@ import { PaymentGatewayType } from '../../common/enums/payment-gateway-type.enum
 // ---------------------------------------------------------------------------
 
 const mockOrdersCreate = jest.fn();
+const mockOrdersFetchPayments = jest.fn();
 const mockPaymentsFetch = jest.fn();
 const mockPaymentsRefund = jest.fn();
 
@@ -14,6 +15,7 @@ jest.mock('razorpay', () => {
   return jest.fn().mockImplementation(() => ({
     orders: {
       create: mockOrdersCreate,
+      fetchPayments: mockOrdersFetchPayments,
     },
     payments: {
       fetch: mockPaymentsFetch,
@@ -407,6 +409,43 @@ describe('RazorpayGateway', () => {
           amount: 9000,
         }),
       );
+    });
+
+    it('fetches payment status by order id', async () => {
+      const gateway = new RazorpayGateway(validCredentials());
+      mockOrdersFetchPayments.mockResolvedValue({
+        items: [
+          {
+            id: 'pay_order_1',
+            order_id: 'order_abc',
+            status: 'captured',
+            amount: 12000,
+            method: 'upi',
+          },
+        ],
+      });
+
+      const result = await gateway.getStatus('order_abc');
+
+      expect(mockOrdersFetchPayments).toHaveBeenCalledWith('order_abc');
+      expect(result).toEqual({
+        gatewayPaymentId: 'pay_order_1',
+        gatewayOrderId: 'order_abc',
+        status: 'success',
+        amount: 12000,
+        method: 'upi',
+      });
+    });
+
+    it('returns pending when an order has no payments yet', async () => {
+      const gateway = new RazorpayGateway(validCredentials());
+      mockOrdersFetchPayments.mockResolvedValue({ items: [] });
+
+      const result = await gateway.getStatus('order_empty');
+
+      expect(result.status).toBe('pending');
+      expect(result.gatewayOrderId).toBe('order_empty');
+      expect(result.gatewayPaymentId).toBe('');
     });
   });
 

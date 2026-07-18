@@ -102,17 +102,48 @@ export class RazorpayGateway implements PaymentGateway {
   }
 
   async getStatus(gatewayPaymentId: string): Promise<PaymentStatusResult> {
-    // Razorpay payments.fetch returns the payment with its order_id and status
-    const payment = await this.client.payments.fetch(gatewayPaymentId);
+    const payment = gatewayPaymentId.startsWith('pay_')
+      ? await this.client.payments.fetch(gatewayPaymentId)
+      : await this.fetchPaymentForOrder(gatewayPaymentId);
     const paymentStatus = payment.status ?? '';
-    // Map Razorpay payment status to our unified status
     const status = this.mapPaymentStatus(paymentStatus);
     return {
-      gatewayPaymentId: payment.id,
-      gatewayOrderId: payment.order_id ?? '',
+      gatewayPaymentId: payment.id ?? '',
+      gatewayOrderId: payment.order_id ?? gatewayPaymentId,
       status,
       amount: Number(payment.amount) || 0,
+      method: payment.method,
     };
+  }
+
+  private async fetchPaymentForOrder(orderId: string): Promise<{
+    id?: string;
+    order_id?: string;
+    status?: string;
+    amount?: number;
+    method?: string;
+  }> {
+    const response = (await this.client.orders.fetchPayments(orderId)) as {
+      items?: Array<{
+        id?: string;
+        order_id?: string;
+        status?: string;
+        amount?: number;
+        method?: string;
+      }>;
+    };
+
+    const payments = response.items ?? [];
+    if (payments.length === 0) {
+      return { order_id: orderId, status: 'created', amount: 0 };
+    }
+
+    return (
+      payments.find((payment) => payment.status === 'captured') ??
+      payments.find((payment) => payment.status === 'authorized') ??
+      payments.find((payment) => payment.status === 'failed') ??
+      payments[0]
+    );
   }
 
   async refund(req: RefundRequest): Promise<RefundResult> {

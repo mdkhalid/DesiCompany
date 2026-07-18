@@ -95,6 +95,7 @@ describe('PaymentsService', () => {
         {
           provide: getRepositoryToken(Transaction),
           useValue: {
+            findOne: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
           },

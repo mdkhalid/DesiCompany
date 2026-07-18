@@ -16,3 +16,14 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
+
+# Razorpay SDK
+-keepattributes *Annotation*
+-keepattributes SourceFile,LineNumberTable
+-keep class com.razorpay.** { *; }
+-dontwarn com.razorpay.**
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+

@@ -21,7 +21,8 @@ class ApiException implements Exception {
 }
 
 /// Whether Android emulator 10.0.2.2 routing is applicable.
-bool get _isAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+bool get _isAndroid =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
 class ApiService {
   /// Base URL for the backend API.
@@ -116,13 +117,19 @@ class ApiService {
     return ApiException(res.statusCode, message, body);
   }
 
+  static dynamic _decodeResponse(http.Response res) {
+    final body = res.body.trim();
+    if (body.isEmpty) return null;
+    return jsonDecode(body);
+  }
+
   static Future<dynamic> get(String path) async {
     final res = await _sendWithRefresh(
       () async => http.get(_uri(path), headers: await _headers()),
     );
     if (res.statusCode == 304) return null;
     if (res.statusCode >= 400) throw _buildException(res);
-    return jsonDecode(res.body);
+    return _decodeResponse(res);
   }
 
   static Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
@@ -135,7 +142,7 @@ class ApiService {
       allowRefresh: !path.endsWith('/auth/refresh'),
     );
     if (res.statusCode >= 400) throw _buildException(res);
-    return jsonDecode(res.body);
+    return _decodeResponse(res);
   }
 
   static Future<dynamic> put(String path, {Map<String, dynamic>? body}) async {
@@ -147,10 +154,11 @@ class ApiService {
       ),
     );
     if (res.statusCode >= 400) throw _buildException(res);
-    return jsonDecode(res.body);
+    return _decodeResponse(res);
   }
 
-  static Future<dynamic> patch(String path, {Map<String, dynamic>? body}) async {
+  static Future<dynamic> patch(String path,
+      {Map<String, dynamic>? body}) async {
     final res = await _sendWithRefresh(
       () async => http.patch(
         _uri(path),
@@ -159,10 +167,11 @@ class ApiService {
       ),
     );
     if (res.statusCode >= 400) throw _buildException(res);
-    return jsonDecode(res.body);
+    return _decodeResponse(res);
   }
 
-  static Future<dynamic> delete(String path, {Map<String, dynamic>? body}) async {
+  static Future<dynamic> delete(String path,
+      {Map<String, dynamic>? body}) async {
     final res = await _sendWithRefresh(
       () async => http.delete(
         _uri(path),
@@ -171,6 +180,6 @@ class ApiService {
       ),
     );
     if (res.statusCode >= 400) throw _buildException(res);
-    return jsonDecode(res.body);
+    return _decodeResponse(res);
   }
 }

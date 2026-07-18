@@ -77,7 +77,7 @@ class _ProviderSubscriptionScreenState extends State<ProviderSubscriptionScreen>
             amountPaise: order['amount'] as int,
             amount: (order['amount'] as int) / 100,
             planId: planId,
-            preferredMethod: order['preferredMethod'] as String?,
+            purpose: 'subscription',
           ),
         );
 

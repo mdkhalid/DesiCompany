@@ -19,6 +19,11 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
       process.env.DB_CONNECTION_TIMEOUT || '5000',
       10,
     ),
+    ...(process.env.DB_SSL === 'true'
+      ? {
+          ssl: { rejectUnauthorized: false },
+        }
+      : {}),
   },
 });
 

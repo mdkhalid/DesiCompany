@@ -142,12 +142,14 @@ class _AdBannerState extends State<AdBanner> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (imageUrl.isNotEmpty)
-                  Image.network(
-                    imageUrl,
-                    height: 120,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox(height: 4),
+                  AspectRatio(
+                    aspectRatio: 3 / 1,
+                    child: Image.network(
+                      imageUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
                   ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 40, 12),

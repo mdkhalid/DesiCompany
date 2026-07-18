@@ -432,6 +432,7 @@ export class PaymentsService {
         gatewayOrderId: Not(IsNull()),
         createdAt: LessThan(new Date(Date.now() - 10 * 60 * 1000)),
       },
+      relations: { booking: true },
     });
 
     for (const payment of stuckPayments) {
@@ -468,8 +469,7 @@ export class PaymentsService {
             }
           } else if (payment.purposeType === 'membership') {
             const meta = payment.metadata as
-              | Record<string, unknown>
-              | undefined;
+              Record<string, unknown> | undefined;
             const planId = meta?.planId as string | undefined;
             const billingCycle =
               (meta?.billingCycle as 'monthly' | 'yearly') || 'monthly';
@@ -483,6 +483,8 @@ export class PaymentsService {
                 billingCycle,
               );
             }
+          } else if (payment.booking) {
+            await this.creditProviderWallet(payment);
           }
 
           this.logger.log(`Reconciled payment ${payment.id} — activated`);
@@ -693,6 +695,17 @@ export class PaymentsService {
     });
     if (!booking) return;
 
+    const payoutReference = `booking_${booking.id}_payment_${payment.id}`;
+    const existingPayout = await this.transactionRepository.findOne({
+      where: { reference: payoutReference },
+    });
+    if (existingPayout) {
+      this.logger.debug(
+        `Provider wallet already credited for payment ${payment.id}`,
+      );
+      return;
+    }
+
     const providerUserId = booking.provider.user.id;
     let wallet = await this.walletRepository.findOne({
       where: { user: { id: providerUserId } },
@@ -713,7 +726,7 @@ export class PaymentsService {
       wallet,
       type: 'credit',
       amount: providerAmount,
-      reference: `booking_${booking.id}_payment_${payment.id}`,
+      reference: payoutReference,
       description: `Payout for booking #${booking.id}`,
       source: TransactionSource.BOOKING_PAYOUT,
       balanceAfter: Number(wallet.balance),
@@ -743,11 +756,11 @@ export class PaymentsService {
     }
 
     try {
-      const gateway = payment.gateway || 'cash';
+      const gateway = payment.gateway || PaymentGatewayType.CASH;
       const gatewayAccount =
-        gateway === 'razorpay'
+        gateway === PaymentGatewayType.RAZORPAY
           ? 'razorpay'
-          : gateway === 'stripe'
+          : gateway === PaymentGatewayType.STRIPE
             ? 'stripe'
             : 'cash-on-hand';
 

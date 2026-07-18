@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { Payment } from './entities/payment.entity';
 import { WebhookEvent } from './entities/webhook-event.entity';
 import { PaymentGatewayFactory } from './gateways/payment-gateway.factory';
@@ -68,7 +68,17 @@ export class WebhookService {
       payload: parsedEvent.rawPayload,
       processedAt: null,
     });
-    await this.webhookEventRepository.save(eventRecord);
+    try {
+      await this.webhookEventRepository.save(eventRecord);
+    } catch (err) {
+      if (this.isDuplicateWebhookEvent(err)) {
+        this.logger.debug(
+          `Duplicate webhook event ignored: ${parsedEvent.eventId}`,
+        );
+        return { received: true, eventId: parsedEvent.eventId };
+      }
+      throw err;
+    }
 
     try {
       if (parsedEvent.status === 'success' && parsedEvent.gatewayOrderId) {
@@ -84,6 +94,12 @@ export class WebhookService {
     await this.webhookEventRepository.save(eventRecord);
 
     return { received: true, eventId: parsedEvent.eventId };
+  }
+
+  private isDuplicateWebhookEvent(err: unknown): boolean {
+    if (!(err instanceof QueryFailedError)) return false;
+    const driverError = err.driverError as { code?: string } | undefined;
+    return driverError?.code === '23505';
   }
 
   private async handleSuccessfulPayment(
