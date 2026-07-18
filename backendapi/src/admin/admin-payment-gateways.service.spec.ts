@@ -97,6 +97,11 @@ describe('AdminPaymentGatewaysService', () => {
       transaction: jest.fn(
         (cb: (manager: Record<string, jest.Mock>) => Promise<unknown>) => {
           return cb({
+            query: jest.fn(() => {
+              for (const row of rows) {
+                row.isDefault = false;
+              }
+            }),
             update: jest.fn(
               (
                 _Entity: unknown,

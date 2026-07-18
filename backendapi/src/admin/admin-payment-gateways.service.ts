@@ -80,7 +80,9 @@ export class AdminPaymentGatewaysService {
 
     if (input.isDefault) {
       await this.dataSource.transaction(async (manager) => {
-        await manager.update(PaymentGatewayConfig, {}, { isDefault: false });
+        await manager.query(
+          `UPDATE payment_gateway_configs SET is_default = false`,
+        );
         row.isDefault = true;
         await manager.save(PaymentGatewayConfig, row);
       });
@@ -112,7 +114,9 @@ export class AdminPaymentGatewaysService {
       // Transactional: unset all others, then set this one
       await this.dataSource.transaction(async (manager) => {
         if (input.isDefault) {
-          await manager.update(PaymentGatewayConfig, {}, { isDefault: false });
+          await manager.query(
+            `UPDATE payment_gateway_configs SET is_default = false`,
+          );
         }
         row.isDefault = input.isDefault as boolean;
         await manager.save(PaymentGatewayConfig, row);
@@ -129,7 +133,9 @@ export class AdminPaymentGatewaysService {
     if (!row)
       throw new NotFoundException(`Payment gateway config '${id}' not found`);
     await this.dataSource.transaction(async (manager) => {
-      await manager.update(PaymentGatewayConfig, {}, { isDefault: false });
+      await manager.query(
+        `UPDATE payment_gateway_configs SET is_default = false`,
+      );
       row.isDefault = true;
       await manager.save(PaymentGatewayConfig, row);
     });

@@ -150,7 +150,7 @@ export class AdminPlatformFeesController {
   @Get('membership-plans')
   @ApiOperation({ summary: 'Get all customer membership plans' })
   getAllMembershipPlans() {
-    return this.platformFeesService.getAllMembershipPlans();
+    return this.platformFeesService.getAllMembershipPlansAdmin();
   }
 
   @Post('membership-plans')

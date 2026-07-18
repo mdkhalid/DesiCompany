@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../services/api';
 
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
+
 export default function Observability() {
   const [metrics, setMetrics] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -10,8 +12,13 @@ export default function Observability() {
     setLoading(true);
     setError('');
     try {
-      const data = await api.get<string>('/admin/observability/metrics');
-      setMetrics(data);
+      const token = sessionStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/admin/observability/metrics`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      setMetrics(text);
     } catch {
       setError('Failed to load metrics');
     } finally {

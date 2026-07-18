@@ -212,12 +212,13 @@ export class PlatformFeesService {
     return this.planRepository.save(plan);
   }
 
-  async deleteSubscriptionPlan(id: string): Promise<void> {
+  async deleteSubscriptionPlan(id: string): Promise<{ message: string }> {
     const plan = await this.planRepository.findOne({ where: { id } });
     if (!plan) {
       throw new NotFoundException('Subscription plan not found');
     }
     await this.planRepository.remove(plan);
+    return { message: 'Subscription plan deleted' };
   }
 
   // ─── Provider Subscriptions ──────────────────────────────────
@@ -409,7 +410,7 @@ export class PlatformFeesService {
     return this.promoCodeRepository.save(promoCode);
   }
 
-  async deletePromoCode(id: string): Promise<void> {
+  async deletePromoCode(id: string): Promise<{ message: string }> {
     const promoCode = await this.promoCodeRepository.findOne({
       where: { id },
     });
@@ -417,6 +418,7 @@ export class PlatformFeesService {
       throw new NotFoundException('Promo code not found');
     }
     await this.promoCodeRepository.remove(promoCode);
+    return { message: 'Promo code deleted' };
   }
 
   async validatePromoCode(
@@ -644,6 +646,7 @@ export class PlatformFeesService {
 
   async getAllMembershipPlans(): Promise<CustomerMembershipPlan[]> {
     return this.membershipPlanRepository.find({
+      where: { isActive: true },
       order: { monthlyPrice: 'ASC' },
     });
   }
@@ -658,10 +661,18 @@ export class PlatformFeesService {
     return this.membershipPlanRepository.save(plan);
   }
 
-  async deleteMembershipPlan(id: string): Promise<void> {
+  async getAllMembershipPlansAdmin(): Promise<CustomerMembershipPlan[]> {
+    return this.membershipPlanRepository.find({
+      order: { monthlyPrice: 'ASC' },
+    });
+  }
+
+  async deleteMembershipPlan(id: string): Promise<{ message: string }> {
     const plan = await this.membershipPlanRepository.findOne({ where: { id } });
     if (!plan) throw new NotFoundException('Membership plan not found');
-    await this.membershipPlanRepository.remove(plan);
+    plan.isActive = false;
+    await this.membershipPlanRepository.save(plan);
+    return { message: 'Membership plan deactivated' };
   }
 
   async assignCustomerMembership(
@@ -679,6 +690,8 @@ export class PlatformFeesService {
       where: { id: planId },
     });
     if (!plan) throw new NotFoundException('Membership plan not found');
+    if (!plan.isActive)
+      throw new BadRequestException('Membership plan is not active');
 
     // Expire existing
     await this.customerMembershipRepository.update(

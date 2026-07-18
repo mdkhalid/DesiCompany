@@ -483,7 +483,7 @@ function PlansTab() {
           onClick={() => { resetForm(); setShowForm(!showForm); }}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
         >
-          {showForm ? 'Cancel' : 'Add Plan'}
+          {showForm ? 'Close Form' : 'Add Plan'}
         </button>
       </div>
 
@@ -748,7 +748,7 @@ function MembershipTab() {
           onClick={() => { resetForm(); setShowForm(!showForm); }}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
         >
-          {showForm ? 'Cancel' : 'Add Plan'}
+          {showForm ? 'Close Form' : 'Add Plan'}
         </button>
       </div>
 
@@ -1069,7 +1069,7 @@ function PromoTab() {
           onClick={() => { resetForm(); setShowForm(!showForm); }}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
         >
-          {showForm ? 'Cancel' : 'Add Promo Code'}
+          {showForm ? 'Close Form' : 'Add Promo Code'}
         </button>
       </div>
 

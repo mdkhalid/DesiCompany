@@ -674,7 +674,9 @@ describe('PlatformFeesService', () => {
     it('deletes a membership plan', async () => {
       membershipPlanRepo.findOne.mockResolvedValue({ id: 'mp-1' });
       await service.deleteMembershipPlan('mp-1');
-      expect(membershipPlanRepo.remove).toHaveBeenCalled();
+      expect(membershipPlanRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'mp-1', isActive: false }),
+      );
     });
 
     describe('assignCustomerMembership', () => {
@@ -683,6 +685,7 @@ describe('PlatformFeesService', () => {
         membershipPlanRepo.findOne.mockResolvedValue({
           id: 'plan-1',
           name: 'Gold',
+          isActive: true,
         });
         customerMembershipRepo.update.mockResolvedValue(undefined);
         customerMembershipRepo.create.mockReturnValue({
@@ -709,6 +712,7 @@ describe('PlatformFeesService', () => {
         membershipPlanRepo.findOne.mockResolvedValue({
           id: 'plan-1',
           name: 'Gold',
+          isActive: true,
         });
         customerMembershipRepo.update.mockResolvedValue(undefined);
         customerMembershipRepo.create.mockReturnValue({

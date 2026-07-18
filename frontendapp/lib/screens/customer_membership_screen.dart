@@ -233,7 +233,7 @@ class _CustomerMembershipScreenState extends State<CustomerMembershipScreen> {
         ),
         TextButton(
           onPressed: () => _cancel(_activeMembership!['id']),
-          child: Text(loc.tr('subscription_cancelled'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          child: Text(loc.tr('cancel_subscription'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         ),
       ]),
     );
